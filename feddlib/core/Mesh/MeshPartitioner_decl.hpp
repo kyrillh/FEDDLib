@@ -158,6 +158,8 @@ public:
      * sequentially) is used to construct the dual graph, the distributed mesh is first locally replicated and the
      * entire dual graph is constructed on every rank before being distributed. This is inefficient but gets the job
      * done (eventually).
+     * This function should only be used if ParMETIS is not installed as it does exactly the same thing as
+     * buildOverlappingDualGraphFromDistributedParMETIS() but in a less efficient way.
      */
     void buildOverlappingDualGraphFromDistributedMETIS(const int meshNumber, const int overlap);
 
@@ -188,12 +190,16 @@ public:
 
     /**
      * \brief Fills the elementsC_ and the pointsRep_ member of a mesh corresponding to a (potentially overlapping)
-     * partition of the dual graph
+     * partition of the dual graph. Here the mesh is assumed to be locally replicated, so each rank has all the data it
+     * needs, constructed elements, node lists etc. and discards the rest. No communicated required cf.
+     * buildSubdomainFromDualGraphStructured()
      */
     void buildSubdomainFromDualGraphUnstructured(const int meshNumber);
 
     /**
-     * \brief Fills the overlapping with ghosts member variables of mesh based on the overlapping distribution of mesh->dualGraph_
+     * \brief Fills the overlapping with ghosts member variables of mesh based on the overlapping distribution of
+     * mesh->dualGraph_ The key difference to buildSubdomainFromDualGraphUnstructured() is that the structured mesh is
+     * already distributed so missing information in the overlap must be communicated.
      */
     void buildSubdomainFromDualGraphStructured(const int meshNumber);
 
