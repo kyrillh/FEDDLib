@@ -273,7 +273,7 @@ template <class SC = default_sc, class LO = default_lo, class GO = default_go, c
     GraphPtr_Type dualGraph_;
     // Overlapping partition of nodes for nonlinear Schwarz method
     MapPtr_Type mapOverlappingGhosts_;
-    // Only interior nodes of the subdomain
+    // Only interior nodes of the overlapping subdomain i.e. without ghost layer
     MapPtr_Type mapOverlapping_;
     // List of points in the overlapping subdomain
     vec2D_dbl_ptr_Type pointsOverlappingGhosts_;

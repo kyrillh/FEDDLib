@@ -37,6 +37,9 @@ typedef default_no NO;
 using namespace FEDD;
 using namespace Teuchos;
 using namespace std;
+// This example is only for applying the nonlinear Schwarz solver to the Neo-Hooke plane-stress model (i.e. 2D) provided
+// via the interface to AceGEN. For the elasticity problems provided by the FEDDLib, see the other nonlinear Schwarz
+// elasticity example.
 int main(int argc, char *argv[]) {
 
     typedef MeshUnstructured<SC, LO, GO, NO> MeshUnstr_Type;
@@ -62,7 +65,7 @@ int main(int argc, char *argv[]) {
 
     Teuchos::RCP<StackedTimer> stackedTimer = rcp(new StackedTimer("Nonlinear Schwarz solver", true));
     TimeMonitor::setStackedTimer(stackedTimer);
- 
+
     // Command Line Parameters
     Teuchos::CommandLineProcessor myCLP;
     string ulib_str = "Tpetra";
@@ -182,10 +185,10 @@ int main(int argc, char *argv[]) {
     StackedTimer::OutputOptions options;
     options.output_fraction = options.output_histogram = options.output_minmax = true;
     stackedTimer->report((std::cout), comm, options);
- 
+
     auto rankVec = Teuchos::RCP<MultiVector<SC, LO, GO, NO>>(new MultiVector<SC, LO, GO, NO>(domain->getMapUnique()));
     rankVec->putScalar(comm->getRank());
-  
+
     if (parameterListAll->sublist("General").get("ParaViewExport", false)) {
         Teuchos::RCP<ExporterParaView<SC, LO, GO, NO>> exPara(new ExporterParaView<SC, LO, GO, NO>());
 

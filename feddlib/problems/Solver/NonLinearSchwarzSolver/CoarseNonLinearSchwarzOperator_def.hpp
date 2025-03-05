@@ -106,6 +106,7 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
 
         // Initialize the underlying IPOUHarmonicCoarseOperator object
         // dofs of a node are lumped together
+        // See below for explanation of all maps especially dummyRepeatedNodesMap
         int dofOrdering = 0;
         auto dofsMaps = Teuchos::ArrayRCP<ConstXMapPtr>(1);
         Teuchos::RCP<const Xpetra::Map<LO, GO, NO>> dummyRepeatedNodesMap;

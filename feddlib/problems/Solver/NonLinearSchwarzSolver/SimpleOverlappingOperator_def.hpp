@@ -104,8 +104,10 @@ template <class SC, class LO, class GO, class NO> int SimpleOverlappingOperator<
     return 0;
 }
 
-// NOTE: if FROSch_OverlappingOperator->apply() did not expect a uniquely distributed input, it could be used here.
-// Instead we need to use this modified version.
+// NOTE: FROSch_OverlappingOperator->apply() expects a uniquely distributed input and applies the global matrix K to the
+// global input before applying the restriction operator R_i. This prevents using FROSch_OverlappingOperator for
+// evaluation of D\mathcal{F}(u) since the input must first be communicated to an overlapping vector so that R_iDF(u_i)
+// can be applied on each subdomain. Instead we need to use this modified version.
 template <class SC, class LO, class GO, class NO>
 void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, ETransp mode, SC alpha,
                                                       SC beta) const {

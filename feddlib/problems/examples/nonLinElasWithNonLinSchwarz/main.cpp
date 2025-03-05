@@ -89,6 +89,9 @@ typedef default_no NO;
 
 using namespace FEDD;
 
+// In this example the nonlinear Schwarz solver is applied to nonlinear elasticity problems. The old assembly routines
+// are used for the elasticity problem with the restriction that only Saint-Vernant Kirchhof is available in 2D. For
+// Neo-Hooke in 2D see the tests steadNonLinElasWithNonLinSchwarz.
 int main(int argc, char *argv[]) {
 
     typedef MeshPartitioner<SC, LO, GO, NO> MeshPartitioner_Type;

@@ -210,7 +210,9 @@ void Domain<SC,LO,GO,NO>::buildMesh(int flagsOption , std::string meshType, int 
 #endif
 
     MeshStrPtr_Type meshStructured = Teuchos::rcp(new MeshStr_Type(comm_));
+    // Number of subdomains per dim
     n_ = N;
+    // H/h
     m_ = M;
     dim_ = dim;
     FEType_ = FEType;

@@ -1655,7 +1655,7 @@ void MeshPartitioner<SC, LO, GO, NO>::buildSubdomainFromDualGraphUnstructured(co
 
     // Fill repeated and overlapping maps of nodes
     vec_GO_Type nodesRepIndices(0);
-    // Also keep track of which nodes belong to the subdomain interior
+    // Also keep track of which nodes belong to the subdomain interior i.e. overlapping subdomain excluding ghost nodes.
     // This is needed to set zero Dirichlet boundary conditions on the edge nodes later on
     vec_GO_Type nodesOverlappingIndices(0);
 
@@ -1871,7 +1871,7 @@ void MeshPartitioner<SC, LO, GO, NO>::buildSubdomainFromDualGraphStructured(cons
         mesh->mapOverlappingGhosts_->getNodeNumElements(), std::vector<double>(dim, -1.)));
     mesh->bcFlagOverlappingGhosts_.reset(new std::vector<int>(mesh->mapOverlappingGhosts_->getNodeNumElements(), 0));
 
-    // This repeatedly overrwites values when nodes that have already been entered are encountered again
+    // This repeatedly overwrites values when nodes that have already been entered are encountered again
     for (int i = 0; i < missingElementsMV->getLocalLength(); i++) {
         for (int j = 0; j < nodesPerElement; j++) {
             auto globalNodeIndex = missingElementsMV->getData(j)[i];
