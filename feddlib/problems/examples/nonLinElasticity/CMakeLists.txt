@@ -21,7 +21,9 @@ TRIBITS_COPY_FILES_TO_BINARY_DIR(data_nonlinelasticity
 TRIBITS_COPY_FILES_TO_BINARY_DIR(mesh_nonlinelasticity
 	SOURCE_DIR ${CMAKE_SOURCE_DIR}/meshes
   SOURCE_FILES beam2D26k.mesh
+  SOURCE_FILES square.mesh
 	DEST_DIR ${CMAKE_CURRENT_BINARY_DIR}
   DEST_FILES beam2D26k.mesh
+  DEST_FILES square.mesh
   EXEDEPS nonlinelasticity
 )
