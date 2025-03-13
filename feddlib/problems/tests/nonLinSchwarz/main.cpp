@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
         Teuchos::RCP<const MultiVector<SC, LO, GO, NO>> exportSolution = nonLinLaplace->getSolution()->getBlock(0);
 
         exPara->setup("solutionNonLinSchwarz", domain->getMesh(), FEType);
-        exPara->addVariable(exportSolution, "u", "Scalar", 1, domain->getMapUnique(), domain->getMapUniqueP2());
+        exPara->addVariable(exportSolution, "u", "Scalar", 1, domain->getMapUnique());
         exPara->save(0.0);
     }
 

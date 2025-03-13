@@ -23,18 +23,18 @@ template <class SC, class LO, class GO, class NO>
 Mesh<SC, LO, GO, NO>::Mesh()
     : dim_(-1), numElementsGlob_(0), FEType_("P1"), mapUnique_(), mapRepeated_(), pointsRep_(), pointsUni_(),
       bcFlagRep_(), bcFlagUni_(), surfaceElements_(new Elements()), elementsC_(new Elements()), elementMap_(new Map()),
-      edgeMap_(new Map()), comm_(), elementsVec_(), pointsRepRef_(), pointsUniRef_(), mapUniqueP2Map_(),
-      mapRepeatedP2Map_(), elementOrder_(-1), surfaceElementOrder_(-1), edgesElementOrder_(-1), AABBTree_(),
-      rankRange_(-1, -1), dualGraph_(), mapOverlappingGhosts_(), pointsOverlappingGhosts_(), bcFlagOverlappingGhosts_(),
+      edgeMap_(new Map()), comm_(), elementsVec_(), pointsRepRef_(), pointsUniRef_(), elementOrder_(-1),
+      surfaceElementOrder_(-1), edgesElementOrder_(-1), AABBTree_(), rankRange_(-1, -1), dualGraph_(),
+      mapOverlappingGhosts_(), pointsOverlappingGhosts_(), bcFlagOverlappingGhosts_(),
       elementsOverlappingGhosts_(new Elements()) {}
 
 template <class SC, class LO, class GO, class NO>
 Mesh<SC, LO, GO, NO>::Mesh(CommConstPtrConst_Type &comm)
     : dim_(-1), numElementsGlob_(0), FEType_("P1"), mapUnique_(), mapRepeated_(), pointsRep_(), pointsUni_(),
       bcFlagRep_(), bcFlagUni_(), surfaceElements_(new Elements()), elementsC_(new Elements()), elementMap_(new Map()),
-      edgeMap_(new Map()), comm_(comm), elementsVec_(), pointsRepRef_(), pointsUniRef_(), mapUniqueP2Map_(),
-      mapRepeatedP2Map_(), elementOrder_(-1), surfaceElementOrder_(-1), edgesElementOrder_(-1), AABBTree_(),
-      rankRange_(-1, -1), dualGraph_(), mapOverlappingGhosts_(), pointsOverlappingGhosts_(), bcFlagOverlappingGhosts_(),
+      edgeMap_(new Map()), comm_(comm), elementsVec_(), pointsRepRef_(), pointsUniRef_(), elementOrder_(-1),
+      surfaceElementOrder_(-1), edgesElementOrder_(-1), AABBTree_(), rankRange_(-1, -1), dualGraph_(),
+      mapOverlappingGhosts_(), pointsOverlappingGhosts_(), bcFlagOverlappingGhosts_(),
       elementsOverlappingGhosts_(new Elements()) {}
 
 template <class SC, class LO, class GO, class NO>
@@ -86,18 +86,6 @@ template <class SC, class LO, class GO, class NO>
 typename Mesh<SC,LO,GO,NO>::MapConstPtr_Type Mesh<SC,LO,GO,NO>::getMapRepeated() const{
 
     return mapRepeated_;
-}
-
-template <class SC, class LO, class GO, class NO>
-typename Mesh<SC,LO,GO,NO>::MapConstPtr_Type Mesh<SC,LO,GO,NO>::getMapUniqueP2() const{
-
-    return mapUniqueP2Map_;
-}
-
-template <class SC, class LO, class GO, class NO>
-typename Mesh<SC,LO,GO,NO>::MapConstPtr_Type Mesh<SC,LO,GO,NO>::getMapRepeatedP2() const{
-
-    return mapRepeatedP2Map_;
 }
 
 template <class SC, class LO, class GO, class NO>
