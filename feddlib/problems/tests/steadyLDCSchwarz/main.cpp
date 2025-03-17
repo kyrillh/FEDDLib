@@ -24,10 +24,16 @@
 
 using namespace std;
 
-void initialValue2D(double *x, double *res, double *parameters) {res[0] = 0; res[1] = 0;}
+void initialValue2D(double *x, double *res, double *parameters) {
+    res[0] = 0;
+    res[1] = 0;
+}
 // void initialValue2D(double *x, double *res, double *parameters) { res[0] = x[0] * x[1] * (1 - x[0]) * (1 - x[1]); }
 // Required for setting the Dirichlet BC on the ghost points to the current global solution in nonlinear Schwarz
-void currentSolutionDirichlet2D(double *x, double *res, double t, const double *parameters) { res[0] = x[0]; res[1] = x[1];}
+void currentSolutionDirichlet2D(double *x, double *res, double t, const double *parameters) {
+    res[0] = x[0];
+    res[1] = x[1];
+}
 void currentSolutionDirichlet1D(double *x, double *res, double t, const double *parameters) { res[0] = x[0]; }
 
 void zeroDirichlet(double *x, double *res, double t, const double *parameters) {
@@ -48,7 +54,7 @@ void zeroDirichlet2D(double *x, double *res, double t, const double *parameters)
 // For Lid Driven Cavity Test
 void ldcFunc2D(double *x, double *res, double t, const double *parameters) {
 
-    res[0] = 1.;//* parameters[0];
+    res[0] = 1.; //* parameters[0];
     res[1] = 0.;
 
     return;
@@ -111,7 +117,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    if (comm->getRank() == 1 && debug) {
+    if (comm->getRank() == 0 && debug) {
         waitForGdbAttach<LO>();
     }
     comm->barrier();
@@ -159,9 +165,9 @@ int main(int argc, char *argv[]) {
         cout << "-- Building Mesh ..." << flush;
     }
 
-    MeshPartitioner_Type::DomainPtrArray_Type domainP1Array(2);
-    domainP1Array[0] = domainPressure;
-    domainP1Array[1] = domainVelocity;
+    MeshPartitioner_Type::DomainPtrArray_Type domainArray(2);
+    domainArray[0] = domainPressure;
+    domainArray[1] = domainVelocity;
 
     ParameterListPtr_Type pListPartitioner = sublist(parameterListAll, "Mesh Partitioner");
     MeshPartitioner<SC, LO, GO, NO> partitionerP1;
@@ -176,15 +182,17 @@ int main(int argc, char *argv[]) {
         x[1] = 0.0;
         domainPressure.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., comm));
         domainVelocity.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., comm));
-        domainP1Array[0] = domainPressure;
-        domainP1Array[1] = domainVelocity;
+        domainArray[0] = domainPressure;
+        domainArray[1] = domainVelocity;
         domainPressure->buildMesh(5, "Square", dim, discPressure, n, m, numProcsCoarseSolve);
         domainVelocity->buildMesh(5, "Square", dim, discVelocity, n, m, numProcsCoarseSolve);
 
-        partitionerP1 = MeshPartitioner<SC, LO, GO, NO>(domainP1Array, pListPartitioner, "P1", dim);
+        // The FE type passed here is not used. The MeshPartitioner gets the FE type directly from each domain
+        partitionerP1 = MeshPartitioner<SC, LO, GO, NO>(domainArray, pListPartitioner, "P1", dim);
         partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(0, overlap);
-        partitionerP1.buildSubdomainFromDualGraphStructured(0);
         partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(1, overlap);
+
+        partitionerP1.buildSubdomainFromDualGraphStructured(0);
         partitionerP1.buildSubdomainFromDualGraphStructured(1);
     }
 

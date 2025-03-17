@@ -216,8 +216,8 @@ public:
      * elementsAreDistributed: Are the elements stored locally replicated (e.g. after reading in a mesh and partitining
      * with METIS) or are they distributed (e.g. when building a structured graph)
      */
-    void buildGhostLayer(vec_GO_Type &nodeIndices, vec_GO_Type &elementIndices, GraphPtr_Type dualGraph,
-                         ElementsPtr_Type elementList, bool elementsAreDistributed = false);
+    void buildGhostLayer(vec_GO_Type &nodeIndices, vec_GO_Type &elementIndices, const GraphPtr_Type dualGraph,
+                         const ElementsPtr_Type elementList, const int meshNumber, const bool elementsAreDistributed = false);
 
   private:
     /*!
