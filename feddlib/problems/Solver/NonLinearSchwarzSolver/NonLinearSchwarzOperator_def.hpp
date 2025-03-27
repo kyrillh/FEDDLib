@@ -336,14 +336,16 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         FEDD::print(relResidual, this->MpiComm_, 0, 10);
         FEDD::print("\n", this->MpiComm_);
 
+
+        // Reassemble the tangent matrix
+        problem_->assemble("Newton");
+        // After this rows corresponding to Dirichlet nodes are unity and residualVec_ = 0
+        problem_->setBoundariesSystem();
+
+        // Convergence test after reassembling since we need the current tangents for D\mathcal{F}
         if (relResidual < relNewtonTol_ || absResidual < absNewtonTol_) {
             break;
         }
-
-        problem_->assemble("Newton");
-
-        // After this rows corresponding to Dirichlet nodes are unity and residualVec_ = 0
-        problem_->setBoundariesSystem();
 
         // Passing relative residual here is not correct since the residual of the update is returned
         // Not using this value here though so it does not matter
@@ -376,7 +378,6 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     // The currently assembled Jacobian is from the previous Newton iteration. The error this causes is negligable.
     // Worth it since a reassemble is avoided. Set the rows corresponding to Dirichlet nodes to unity since some problem
     // classes reassemble the tangent when calculating the residual
-    problem_->setBoundariesSystem();
     auto blockMatDim = problem_->system_->size();
     for (int i = 0; i < blockMatDim; i++) {
         for (int j = 0; j < blockMatDim; j++) {
