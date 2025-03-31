@@ -1,135 +1,160 @@
 <ParameterList name="solver">
 
-  <Parameter name="Nonlin Schwarz Variant" type="string" value="H1" /><!-- Additive, H1 -->
-  <Parameter name="Use ASPEN" type="bool" value="true" />
-  <Parameter name="Levels" type="int" value="2" />
-  <Parameter name="Overlap" type="int" value="1" />
-  <Parameter name="Combine Mode" type="string" value="Restricted" /> <!-- Averaging, Full, Restricted -->
-  <Parameter name="Zero Initial Guess" type="bool" value="false" />
+    <Parameter name="Nonlin Schwarz Variant" type="string" value="H1" /><!-- Additive, H1 -->
+    <Parameter name="Use ASPEN" type="bool" value="true" />
+    <Parameter name="Levels" type="int" value="2" />
+    <Parameter name="Overlap" type="int" value="2" />
+    <Parameter name="Combine Mode" type="string" value="Averaging" /> <!-- Averaging, Full,
+    Restricted -->
+    <Parameter name="Zero Initial Guess" type="bool" value="false" />
 
-  <ParameterList name="ThyraSolver"> <!-- Solver used by the FEDD::Problem object in the inner Newton -->
-    <Parameter name="Linear Solver Type" type="string" value="Amesos2" />
-    <ParameterList name="Linear Solver Types">
-      <ParameterList name="Amesos2">
-        <Parameter name="Solver Type" type="string" value="KLU2" />
-      </ParameterList>
-    </ParameterList>
-  </ParameterList>
-
-  <ParameterList name="Outer Newton Nonlinear Schwarz">
-    <ParameterList name="Thyra Solver Outer Newton">
-      <Parameter name="Linear Solver Type" type="string" value="Belos" />
-      <ParameterList name="Linear Solver Types">
-        <ParameterList name="Belos">
-          <Parameter name="Solver Type" type="string" value="Block GMRES" />
-          <ParameterList name="Solver Types">
-            <ParameterList name="Block GMRES">
-              <Parameter name="Convergence Tolerance" type="double" value="1e-8" />
-              <Parameter name="Maximum Iterations" type="int" value="1000" />
-              <Parameter name="Num Blocks" type="int" value="100" />
-              <Parameter name="Block Size" type="int" value="1" />
-              <Parameter name="Output Frequency" type="int" value="1" />
-              <Parameter name="Show Maximum Residual Norm Only" type="bool" value="1" />
+    <ParameterList name="ThyraSolver"> <!-- Solver used by the FEDD::Problem object in the inner
+        Newton -->
+        <Parameter name="Linear Solver Type" type="string" value="Amesos2" />
+        <ParameterList name="Linear Solver Types">
+            <ParameterList name="Amesos2">
+                <Parameter name="Solver Type" type="string" value="KLU2" />
             </ParameterList>
-          </ParameterList>
-          <ParameterList name="VerboseObject">
-            <Parameter name="Verbosity Level" type="string" value="medium" />
-          </ParameterList>
         </ParameterList>
-      </ParameterList>
-      <Parameter name="Preconditioner Type" type="string" value="None" />
     </ParameterList>
-  </ParameterList>
 
-  <ParameterList name="Inner Newton Nonlinear Schwarz">
-    <Parameter name="Use Backtracking" type="bool" value="true" />
-    <Parameter name="Relative Tolerance" type="double" value="1.0e-3" />
-    <Parameter name="Absolute Tolerance" type="double" value="1.0e-9" />
-    <Parameter name="Max Iterations" type="int" value="10" />
-  </ParameterList>
+    <ParameterList name="Outer Newton Nonlinear Schwarz">
+        <ParameterList name="Thyra Solver Outer Newton">
+            <Parameter name="Linear Solver Type" type="string" value="Belos" />
+            <ParameterList name="Linear Solver Types">
+                <ParameterList name="Belos">
+                    <Parameter name="Solver Type" type="string" value="Block GMRES" />
+                    <ParameterList name="Solver Types">
+                        <ParameterList name="Block GMRES">
+                            <Parameter name="Convergence Tolerance" type="double" value="1e-4" />
+                            <Parameter name="Maximum Iterations" type="int" value="1000" />
+                            <Parameter name="Num Blocks" type="int" value="100" />
+                            <Parameter name="Block Size" type="int" value="1" />
+                            <!-- <Parameter name="Explicit Residual Test" type="bool" -->
+                            <!--     value="true" /> -->
+                            <!-- <Parameter name="Explicit Residual Scaling" type="string" -->
+                            <!--     value="Norm of Initial Residual" /> -->
+                            <!-- Errors= 0,                  /*!< Errors [ always printed ] */ -->
+                            <!-- Warnings = 0x1,             /*!< Internal warnings */ -->
+                            <!-- IterationDetails = 0x2,     /*!< Approximate/exact residuals */ -->
+                            <!-- OrthoDetails = 0x4,         /*!< Orthogonalization/orthonormalization
+                            details */ -->
+                            <!-- FinalSummary = 0x8,         /*!< Final computational summary */ -->
+                            <!-- TimingDetails = 0x10,       /*!< Timing details */ -->
+                            <!-- StatusTestDetails = 0x20,   /*!< Status test details */ -->
+                            <!-- Debug = 0x40                /*!< Debugging information */ -->
+                            <Parameter name="Verbosity" type="int" value="8" />
+                            <Parameter name="Output Frequency" type="int" value="2" />
+                            <Parameter name="Show Maximum Residual Norm Only" type="bool" value="0" />
+                        </ParameterList>
+                    </ParameterList>
+                    <ParameterList name="VerboseObject">
+                        <Parameter name="Verbosity Level" type="string" value="medium" />
+                    </ParameterList>
+                </ParameterList>
+            </ParameterList>
+            <Parameter name="Preconditioner Type" type="string" value="None" />
+        </ParameterList>
+    </ParameterList>
 
-  <ParameterList name="Coarse Nonlinear Schwarz"> <!-- Same list as passed to
+    <ParameterList name="Inner Newton Nonlinear Schwarz">
+        <Parameter name="Use Backtracking" type="bool" value="false" />
+        <Parameter name="Relative Tolerance" type="double" value="1.0e-3" />
+        <Parameter name="Absolute Tolerance" type="double" value="1.0e-9" />
+        <Parameter name="Max Iterations" type="int" value="10" />
+    </ParameterList>
+
+    <ParameterList name="Coarse Nonlinear Schwarz"> <!-- Same list as passed to
     IPOUHarmonicCoarseOperator in FROSch -->
 
-    <Parameter name="Number of blocks" type="int" value="2" />
-    <Parameter name="Store Phi" type="bool" value="true" />
-    <Parameter name="DofsPerNode1" type="int" value="2"/>
-    <Parameter name="DofsPerNode2" type="int" value="1"/>
+        <Parameter name="Number of blocks" type="int" value="2" />
+        <Parameter name="Store Phi" type="bool" value="true" />
+        <Parameter name="DofsPerNode1" type="int" value="2" />
+        <Parameter name="DofsPerNode2" type="int" value="1" />
 
-    <!--Set to false for inverse Euclidean drop at the edges and true for constant until the edges in RGDSW 2D -->
-    <Parameter name="Remove Dirichlet Nodes" type="bool" value="false" />
-    <Parameter name="Null Space Type" type="string" value="Laplace" />
-    <!-- <Parameter name="Null Space Type" type="string" value="Linear Elasticity" /> -->
+        <!--Set
+        to false for inverse Euclidean drop at the edges and true for constant until the edges in
+        RGDSW 2D -->
+        <Parameter name="Remove Dirichlet Nodes" type="bool" value="false" />
+        <Parameter name="Null Space Type" type="string" value="Laplace" />
+        <!-- <Parameter name="Null Space Type" type="string" value="Linear Elasticity" /> -->
 
-    <ParameterList name="Blocks"> <!-- Probably so that different types of coarse space can be
+        <ParameterList name="Blocks"> <!-- Probably so that different types of coarse space can be
       applied to each block -->
-      <ParameterList name="1">
-        <!-- In this block exclude the dofs from the following blocks -->
-        <Parameter name="Exclude" type="string" value="2"/>
-        <Parameter name="Use For Coarse Space" type="bool" value="true" />
-        <ParameterList name="InterfacePartitionOfUnity">
-          <Parameter name="Type" type="string" value="RGDSW" />
-          <ParameterList name="RGDSW">
-            <!--Specify the RGDSW coarse space type here 1.0 (Constant) or 2.2 (Inverse Euclidean)-->
-            <!-- <Parameter name="Distance Function" type="string" value="Constant" /> -->
-            <Parameter name="Distance Function" type="string" value="Inverse Euclidean" />
-            <Parameter name="Interface Communication Strategy" type="string" value="CrsGraph" />
-            <Parameter name="Type" type="string" value="Full" />
-            <ParameterList name="Custom">
-              <Parameter name="Roots" type="bool" value="true" />
-              <Parameter name="Vertices" type="bool" value="true" />
-              <Parameter name="ShortEdges" type="bool" value="true" />
-              <Parameter name="StraightEdges" type="bool" value="true" />
-              <Parameter name="Edges" type="bool" value="true" />
-              <Parameter name="Faces" type="bool" value="true" />
+            <ParameterList name="1">
+                <!-- In this block exclude the dofs from the following blocks -->
+                <Parameter name="Exclude" type="string" value="2" />
+                <Parameter name="Use For Coarse Space" type="bool" value="true" />
+                <ParameterList name="InterfacePartitionOfUnity">
+                    <Parameter name="Type" type="string" value="RGDSW" />
+                    <ParameterList name="RGDSW">
+                        <!--Specify
+                        the RGDSW coarse space type here 1.0 (Constant) or 2.2 (Inverse
+                        Euclidean)-->
+                        <!-- <Parameter name="Distance Function" type="string" value="Constant" /> -->
+                        <Parameter name="Distance Function" type="string" value="Inverse Euclidean" />
+                        <Parameter name="Interface Communication Strategy" type="string"
+                            value="CrsGraph" />
+                        <Parameter name="Type" type="string" value="Full" />
+                        <ParameterList name="Custom">
+                            <Parameter name="Roots" type="bool" value="true" />
+                            <Parameter name="Vertices" type="bool" value="true" />
+                            <Parameter name="ShortEdges" type="bool" value="true" />
+                            <Parameter name="StraightEdges" type="bool" value="true" />
+                            <Parameter name="Edges" type="bool" value="true" />
+                            <Parameter name="Faces" type="bool" value="true" />
+                        </ParameterList>
+                    </ParameterList>
+                </ParameterList>
             </ParameterList>
-          </ParameterList>
-        </ParameterList>
-      </ParameterList>
-      <ParameterList name="2">
-        <Parameter name="Exclude" type="string" value="1"/>
-        <Parameter name="Use For Coarse Space" type="bool" value="true" />
-        <ParameterList name="InterfacePartitionOfUnity">
-          <Parameter name="Type" type="string" value="RGDSW" />
-          <ParameterList name="RGDSW">
-            <!--Specify the RGDSW coarse space type here 1.0 (Constant) or 2.2 (Inverse Euclidean)-->
-            <!-- <Parameter name="Distance Function" type="string" value="Constant" /> -->
-            <Parameter name="Distance Function" type="string" value="Inverse Euclidean" />
-            <Parameter name="Interface Communication Strategy" type="string" value="CrsGraph" />
-            <Parameter name="Type" type="string" value="Full" />
-            <ParameterList name="Custom">
-              <Parameter name="Roots" type="bool" value="true" />
-              <Parameter name="Vertices" type="bool" value="true" />
-              <Parameter name="ShortEdges" type="bool" value="true" />
-              <Parameter name="StraightEdges" type="bool" value="true" />
-              <Parameter name="Edges" type="bool" value="true" />
-              <Parameter name="Faces" type="bool" value="true" />
+            <ParameterList name="2">
+                <Parameter name="Exclude" type="string" value="1" />
+                <Parameter name="Use For Coarse Space" type="bool" value="true" />
+                <ParameterList name="InterfacePartitionOfUnity">
+                    <Parameter name="Type" type="string" value="RGDSW" />
+                    <ParameterList name="RGDSW">
+                        <!--Specify
+                        the RGDSW coarse space type here 1.0 (Constant) or 2.2 (Inverse
+                        Euclidean)-->
+                        <!-- <Parameter name="Distance Function" type="string" value="Constant" /> -->
+                        <Parameter name="Distance Function" type="string" value="Inverse Euclidean" />
+                        <Parameter name="Interface Communication Strategy" type="string"
+                            value="CrsGraph" />
+                        <Parameter name="Type" type="string" value="Full" />
+                        <ParameterList name="Custom">
+                            <Parameter name="Roots" type="bool" value="true" />
+                            <Parameter name="Vertices" type="bool" value="true" />
+                            <Parameter name="ShortEdges" type="bool" value="true" />
+                            <Parameter name="StraightEdges" type="bool" value="true" />
+                            <Parameter name="Edges" type="bool" value="true" />
+                            <Parameter name="Faces" type="bool" value="true" />
+                        </ParameterList>
+                    </ParameterList>
+                </ParameterList>
             </ParameterList>
-          </ParameterList>
+
         </ParameterList>
-      </ParameterList>
 
-    </ParameterList>
-
-    <ParameterList name="ExtensionSolver"> <!-- Solver for harmonic extensions from interface into
+        <ParameterList name="ExtensionSolver"> <!-- Solver for harmonic extensions from interface
+            into
       subdomain interior -->
-      <Parameter name="SolverType" type="string" value="Amesos2" />
-      <Parameter name="Solver" type="string" value="Klu" />
-    </ParameterList>
+            <Parameter name="SolverType" type="string" value="Amesos2" />
+            <Parameter name="Solver" type="string" value="Klu" />
+        </ParameterList>
 
-    <ParameterList name="Distribution"> <!-- How the coarse problem is redistributed for solving -->
-      <Parameter name="Type" type="string" value="linear" />
-      <Parameter name="NumProcs" type="int" value="1" />
-      <Parameter name="Factor" type="double" value="1.0" />
-      <Parameter name="GatheringSteps" type="int" value="1" />
-      <ParameterList name="Gathering Communication">
-        <Parameter name="Send type" type="string" value="Send" />
-      </ParameterList>
-    </ParameterList>
+        <ParameterList name="Distribution"> <!-- How the coarse problem is redistributed for solving -->
+            <Parameter name="Type" type="string" value="linear" />
+            <Parameter name="NumProcs" type="int" value="1" />
+            <Parameter name="Factor" type="double" value="1.0" />
+            <Parameter name="GatheringSteps" type="int" value="1" />
+            <ParameterList name="Gathering Communication">
+                <Parameter name="Send type" type="string" value="Send" />
+            </ParameterList>
+        </ParameterList>
 
-    <ParameterList name="CoarseSolver">
-      <Parameter name="SolverType" type="string" value="Amesos2" />
-      <Parameter name="Solver" type="string" value="Klu" />
+        <ParameterList name="CoarseSolver">
+            <Parameter name="SolverType" type="string" value="Amesos2" />
+            <Parameter name="Solver" type="string" value="Klu" />
+        </ParameterList>
     </ParameterList>
-  </ParameterList>
 </ParameterList>

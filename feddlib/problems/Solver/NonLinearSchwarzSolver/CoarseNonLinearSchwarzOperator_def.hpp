@@ -348,10 +348,6 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
         FEDD::print(relResidual, this->MpiComm_, 0, 10);
         FEDD::print("\n", this->MpiComm_);
 
-        if (relResidual < relNewtonTol_ || absResidual < absNewtonTol_) {
-            break;
-        }
-
         problem_->assemble("Newton");
 
         // After this rows corresponding to Dirichlet nodes are unity and residualVec_ = 0
@@ -360,6 +356,10 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
         // Update the coarse matrix and the coarse solver (coarse factorization)
         this->K_ = problem_->system_->getMergedMatrix()->getXpetraMatrix();
         this->setUpCoarseOperator();
+
+        if (relResidual < relNewtonTol_ || absResidual < absNewtonTol_) {
+            break;
+        }
 
         // Apply the coarse solution
         this->applyCoarseSolve(*coarseResidualVec_, *coarseDeltaG0_, ETransp::NO_TRANS);
