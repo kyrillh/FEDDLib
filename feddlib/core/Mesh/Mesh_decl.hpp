@@ -60,7 +60,7 @@ template <class SC = default_sc, class LO = default_lo, class GO = default_go, c
 
     Mesh(CommConstPtrConst_Type &comm);
 
-    ~Mesh();
+    virtual ~Mesh() = default;
 
     /*!
      Delete all member variables
@@ -111,8 +111,6 @@ template <class SC = default_sc, class LO = default_lo, class GO = default_go, c
     /// @return bcFlagUni_
     vec_int_ptr_Type getBCFlagUnique() const;
 
-    virtual void dummy() = 0;
-    
     /// @brief Returns element list as c-object
     /// @return elementsC_
     ElementsPtr_Type getElementsC() const;

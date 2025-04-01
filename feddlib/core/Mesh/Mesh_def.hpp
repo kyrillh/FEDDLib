@@ -38,11 +38,6 @@ Mesh<SC, LO, GO, NO>::Mesh(CommConstPtrConst_Type &comm)
       elementsOverlappingGhosts_(new Elements()) {}
 
 template <class SC, class LO, class GO, class NO>
-Mesh<SC,LO,GO,NO>::~Mesh(){
-
-}
-
-template <class SC, class LO, class GO, class NO>
 void Mesh<SC,LO,GO,NO>::setElementFlags(std::string type){
 
     ElementsPtr_Type elements = this->getElementsC();
