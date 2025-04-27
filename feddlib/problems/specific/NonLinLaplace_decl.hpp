@@ -67,19 +67,19 @@ class NonLinLaplace : public NonLinearProblem<SC, LO, GO, NO> {
 
     void reAssemble(std::string type) const;
 
-    void reAssemble(BlockMultiVectorPtr_Type previousSolution) const override{};
+    void reAssemble(BlockMultiVectorPtr_Type previousSolution) const override{}
 
-    virtual void reAssemble(MatrixPtr_Type &massmatrix, std::string type) const {};
+    virtual void reAssemble(MatrixPtr_Type &massmatrix, std::string type) const {}
 
     void reAssembleExtrapolation(BlockMultiVectorPtrArray_Type previousSolutions) override;
 
     void calculateNonLinResidualVec(std::string type, double time = 0.) const override;
 
-    void getValuesOfInterest(vec_dbl_Type &values) override{};
+    void getValuesOfInterest(vec_dbl_Type &values) override{}
 
-    void computeValuesOfInterestAndExport() override{};
+    void computeValuesOfInterestAndExport() override{}
 
-    //    virtual void assembleExternal( std::string type ){};
+    //    virtual void assembleExternal( std::string type ){}
 
     Teuchos::RCP<Thyra::LinearOpBase<SC>> create_W_op() const override;
 

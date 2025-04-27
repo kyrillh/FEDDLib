@@ -38,7 +38,7 @@ class AssembleFE_NonLinElas2D : public AssembleFE<SC, LO, GO, NO> {
             \brief Assemble the element Jacobian matrix.
             @param[in] block ID i
     */
-    void assembleJacobianBlock(LO i) override {};
+    void assembleJacobianBlock(LO i) override {}
 
   protected:
     AssembleFE_NonLinElas2D(int flag, vec2D_dbl_Type nodesRefConfig, ParameterListPtr_Type parameters,

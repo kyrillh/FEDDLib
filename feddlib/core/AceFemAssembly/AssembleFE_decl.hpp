@@ -95,19 +95,19 @@ namespace FEDD {
          \brief Get the currently assembled element Jacobian matrix
          \return the element Jacobian matrix
         */
-        SmallMatrixPtr_Type getJacobian() {return jacobian_;}; 
+        SmallMatrixPtr_Type getJacobian() {return jacobian_;}
 
         /*!
          \brief Get the currently assembled element Jacobian matrix
          \return the element Jacobian matrix
         */
-        SmallMatrixPtr_Type getJacobianBlock(LO i) {return jacobianBlock_;}; 
+        SmallMatrixPtr_Type getJacobianBlock(LO i) {return jacobianBlock_;}
 
         /*!
          \brief Get the currently assembled right hand side vector.
          \return the element right hand side vector
         */
-        vec_dbl_ptr_Type getRHS(){return rhsVec_;};
+        vec_dbl_ptr_Type getRHS(){return rhsVec_;}
 
         //virtual void assembleMass(MatrixPtr_Type &A) =0;
 
@@ -126,7 +126,7 @@ namespace FEDD {
          \brief Update the parameter read from the ParameterList.
          @param[in] Parameter as read from the xml file
         */
-        virtual void updateParameter(string type, double value) {};
+        virtual void updateParameter(string type, double value) {}
         /*!
          \brief This function is called every time the FEDDLib proceeds from one to the next time step. The size of the time step will always be provided as input.
          @param[in] dt Timestepping length
@@ -189,35 +189,35 @@ namespace FEDD {
         /*!
          @todo Still work in Progress with RHS and Mass Matrix
         */
-        void addRHSFunc(RhsFunc_Type rhsFunc){ rhsFunc_ = rhsFunc;};
+        void addRHSFunc(RhsFunc_Type rhsFunc){ rhsFunc_ = rhsFunc;}
 
         /*!
          \brief Return vector of tupled with element based values. First column per tuple string with description, second column with corresponding value
 			\return elementInformation
         */
-		tuple_sd_vec_ptr_Type getTupleElement(){return elementIntormation_;};
+		tuple_sd_vec_ptr_Type getTupleElement(){return elementIntormation_;}
 
         /*!
          \brief Returns the time increment. Required by AceGen implementation.
             \return timeIncrement
         */
-        double getTimeIncrement(){return timeIncrement_;};
+        double getTimeIncrement(){return timeIncrement_;}
 
-        void setGlobalElementID(GO goID){globalElementID_ = goID;};
+        void setGlobalElementID(GO goID){globalElementID_ = goID;}
 
-        GO getGlobalElementID(){return globalElementID_;};
+        GO getGlobalElementID(){return globalElementID_;}
 
         /*!
         \brief E.g. In case of non-newtonian fluids the viscosity is not constant - Compute the viscosity for an element depending on the known velocity solution
         */
-	    virtual void computeLocalconstOutputField() {TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "computeLocalconstOutputField not yet implemented"); };
+	    virtual void computeLocalconstOutputField() {TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "computeLocalconstOutputField not yet implemented")}
           /*!
 
         /*!
          \brief Obtain value of resulting postprocessing field at nodes/ inside an element
          \return values
         */
-        vec_dbl_Type getLocalconstOutputField() {return constOutputField_;};
+        vec_dbl_Type getLocalconstOutputField() {return constOutputField_;}
 
 
     protected:

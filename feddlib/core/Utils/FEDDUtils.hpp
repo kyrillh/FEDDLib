@@ -61,7 +61,7 @@ ForwardIt uniqueWithCombines(ForwardIt first, ForwardIt last, std::vector<std::v
         }
     }
     return ++result;
-};
+}
 
 template <typename T>
 std::vector<T> sort_from_ref(
@@ -75,7 +75,7 @@ std::vector<T> sort_from_ref(
         ret[i] = in[reference[i]];
     
     return ret;
-};
+}
 
 template <typename T>
 std::vector<T> sort_from_ref(
@@ -89,7 +89,7 @@ std::vector<T> sort_from_ref(
         ret[i] = in[reference[i]];
     
     return ret;
-};
+}
 
     
 template <typename T>
@@ -97,7 +97,7 @@ void sort2byFirst( std::vector<std::vector<T> >& in, std::vector<T>& in2 )
 {
 
     std::vector<int> index(in.size(), 0);
-    for (int i = 0 ; i != index.size() ; i++)
+    for (size_t i = 0 ; i != index.size() ; i++)
         index[i] = i;
     
     std::sort(index.begin(), index.end(),
@@ -115,7 +115,7 @@ void make_unique( std::vector<std::vector<T> >& in, vec2D_GO_Type& combinedEleme
 {
     {
         std::vector<int> index(in.size(), 0);
-        for (int i = 0 ; i != index.size() ; i++)
+        for (size_t i = 0 ; i != index.size() ; i++)
             index[i] = i;
         
         std::sort(index.begin(), index.end(),
@@ -128,7 +128,7 @@ void make_unique( std::vector<std::vector<T> >& in, vec2D_GO_Type& combinedEleme
     }
     {
         std::vector<int> index(in.size(), 0);
-        for (int i = 0 ; i != index.size() ; i++)
+        for (size_t i = 0 ; i != index.size() ; i++)
             index[i] = i;
         
         combinedElements.resize( in.size() );
@@ -138,14 +138,14 @@ void make_unique( std::vector<std::vector<T> >& in, vec2D_GO_Type& combinedEleme
         in.resize( distance( in.begin(), it ) );
         combinedElements.resize( in.size() );
     }
-};
+}
     
 template <typename T>
 void make_unique( std::vector<std::vector<T> >& in )
 {
     {
         std::vector<int> index(in.size(), 0);
-        for (int i = 0 ; i != index.size() ; i++)
+        for (size_t i = 0 ; i != index.size() ; i++)
             index[i] = i;
 
         std::sort(index.begin(), index.end(),
@@ -161,14 +161,14 @@ void make_unique( std::vector<std::vector<T> >& in )
 
         in.resize( distance( in.begin(), it ) );
     }
-};
+}
 
 template <typename T>
 void make_unique( std::vector<std::vector<T> >& in, vec2D_GO_Type& combinedElements )
 {
     {
         std::vector<int> index(in.size(), 0);
-        for (int i = 0 ; i != index.size() ; i++)
+        for (size_t i = 0 ; i != index.size() ; i++)
             index[i] = i;
         
         std::sort(index.begin(), index.end(),
@@ -181,7 +181,7 @@ void make_unique( std::vector<std::vector<T> >& in, vec2D_GO_Type& combinedEleme
     }
     {
         std::vector<int> index(in.size(), 0);
-        for (int i = 0 ; i != index.size() ; i++)
+        for (size_t i = 0 ; i != index.size() ; i++)
             index[i] = i;
         
         combinedElements.resize( in.size() );
@@ -192,7 +192,7 @@ void make_unique( std::vector<std::vector<T> >& in, vec2D_GO_Type& combinedEleme
         
         combinedElements.resize( in.size() );
     }
-};
+}
     
 template <typename T>
 std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
@@ -205,7 +205,7 @@ std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
     std::transform(a.begin(), a.end(), b.begin(),
                    std::back_inserter(result), std::plus<T>());
     return result;
-};
+}
     
 template <typename T>
 std::vector<T> operator-(const std::vector<T>& a, const std::vector<T>& b)
@@ -218,7 +218,7 @@ std::vector<T> operator-(const std::vector<T>& a, const std::vector<T>& b)
     std::transform(a.begin(), a.end(), b.begin(),
                    std::back_inserter(result), std::minus<T>());
     return result;
-};
+}
     
 template <typename T>
 void make_unique( std::vector<T>& in )
@@ -226,7 +226,7 @@ void make_unique( std::vector<T>& in )
     std::sort( in.begin(), in.end() );
     auto it = unique( in.begin(), in.end() );
     in.erase( it, in.end() );
-};
+}
 
 // ################# Nonlinear Schwarz related functions
 template <class LO, class GO, class NO>

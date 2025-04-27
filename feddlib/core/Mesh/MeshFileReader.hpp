@@ -1,5 +1,9 @@
 #ifndef MeshFileReader_hpp
 #define MeshFileReader_hpp
+#include <string>
+#include <vector>
+#include <fstream>
+
 /*!
  Declaration of MeshFileReader
  
@@ -81,7 +85,6 @@ void meshReadData ( const string& mesh_filename, const string& type, const strin
     
     ifstream file;
     int lineLength;
-    int pos;
     string text;
     file.open ( mesh_filename.c_str ( ) );
     for ( ; ; )

@@ -124,17 +124,17 @@ public:
 
     void setPressureMassMatrix(MatrixPtr_Type massMatrix) const;
 
-    void setFaCSIBCFactory( BCConstPtr_Type bcFactory ){ faCSIBCFactory_ = bcFactory; };
+    void setFaCSIBCFactory( BCConstPtr_Type bcFactory ){ faCSIBCFactory_ = bcFactory; }
 
-    bool hasFaCSIBCFactory(){ return !faCSIBCFactory_.is_null(); };
+    bool hasFaCSIBCFactory(){ return !faCSIBCFactory_.is_null(); }
 
-    BCConstPtr_Type getFaCSIBCFactory( ){ return faCSIBCFactory_; };
+    BCConstPtr_Type getFaCSIBCFactory( ){ return faCSIBCFactory_; }
 
     void exportCoarseBasis( );
 
     void exportCoarseBasisFSI( );
 
-    bool isPreconditionerComputed() const{return precondtionerIsBuilt_;};
+    bool isPreconditionerComputed() const{return precondtionerIsBuilt_;}
 
 private:
     ThyraPrecPtr_Type thyraPrec_;

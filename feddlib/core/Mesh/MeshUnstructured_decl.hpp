@@ -158,7 +158,7 @@ public:
 
     void getTriangles(int vertex1ID, int vertex2ID, vec_int_Type &vertices3ID);
 
-    SurfaceElementsPtr_Type getSurfaceTriangleElements() { return surfaceTriangleElements_; };
+    SurfaceElementsPtr_Type getSurfaceTriangleElements() { return surfaceTriangleElements_; }
 
     void findSurfaces(const vec_int_Type &elementNodeList, vec_int_Type numbering,
                       vec2D_int_Type &localSurfaceNodeList_vec, vec_int_Type &locSurfaces, bool critical = false);
@@ -188,19 +188,19 @@ public:
             \brief setEdgeElements with external edges
             @param[in] edgeElements
     */
-    void setEdgeElements(EdgeElementsPtr_Type edgeElements) { edgeElements_ = edgeElements; };
+    void setEdgeElements(EdgeElementsPtr_Type edgeElements) { edgeElements_ = edgeElements; }
 
     /*!
             \brief Get EdgeElements
             \return edgeElements_
     */
-    EdgeElementsPtr_Type getEdgeElements() { return edgeElements_; };
+    EdgeElementsPtr_Type getEdgeElements() { return edgeElements_; }
 
     /*!
             \brief Get SurfaceEdgeElements. Edges as only surface elements (i.e. when reading .mesh file). Used in mesh
        partitioner \return surfaceEdgeElements_
     */
-    ElementsPtr_Type getSurfaceEdgeElements() { return surfaceEdgeElements_; };
+    ElementsPtr_Type getSurfaceEdgeElements() { return surfaceEdgeElements_; }
 
     /*!
             \brief Reading mesh size
@@ -222,7 +222,7 @@ public:
             \brief Get global number of nodes
             \return numNodes_
     */
-    int getNumGlobalNodes() { return numNodes_; };
+    int getNumGlobalNodes() { return numNodes_; }
 
     /*!
             \brief Assigning flags to all edges

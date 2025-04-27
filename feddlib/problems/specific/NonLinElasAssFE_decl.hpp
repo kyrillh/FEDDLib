@@ -64,7 +64,7 @@ public:
 
     void reAssemble(std::string type) const;
 
-    virtual void reAssemble( BlockMultiVectorPtr_Type previousSolution ) const{};
+    virtual void reAssemble( BlockMultiVectorPtr_Type previousSolution ) const{}
     
     virtual void reAssemble( MatrixPtr_Type& massmatrix, std::string type ) const;
     
@@ -72,16 +72,16 @@ public:
     
     virtual void calculateNonLinResidualVec(std::string type, double time=0.) const;
     
-    virtual void getValuesOfInterest( vec_dbl_Type& values ){};
+    virtual void getValuesOfInterest( vec_dbl_Type& values ){}
     
-    virtual void computeValuesOfInterestAndExport() {};
+    virtual void computeValuesOfInterestAndExport() {}
 
     void assembleSourceTermLoadstepping(double time=0.) const;
 
     void updateTime() const;
 
-    void updateConcentration(MultiVectorConstPtr_Type concentration) {concentration_.reset(new MultiVector_Type (concentration));};
-//    virtual void assembleExternal( std::string type ){};
+    void updateConcentration(MultiVectorConstPtr_Type concentration) {concentration_.reset(new MultiVector_Type (concentration));}
+//    virtual void assembleExternal( std::string type ){}
     
     Teuchos::RCP< Thyra::LinearOpBase<SC> > create_W_op() const;
     
