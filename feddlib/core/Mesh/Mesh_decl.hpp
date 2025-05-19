@@ -241,8 +241,10 @@ template <class SC = default_sc, class LO = default_lo, class GO = default_go, c
 
     // 2D int vector (vector of int vectors) that stores element point indices
     // Rarely used and simpler than elementsC_
+    // Constructed from elementsC_ by getElementsVec()
     vec2D_int_ptr_Type elementsVec_;
 
+    // These are required when moving the mesh
     vec2D_dbl_ptr_Type pointsRepRef_; // Repeated reference configuration
     vec2D_dbl_ptr_Type pointsUniRef_; // Unique reference configuration
 

@@ -1278,11 +1278,24 @@ void MeshPartitioner<SC, LO, GO, NO>::buildOverlappingDualGraphFromDistributedPa
     for (auto &val : eindVec) {
         val = mesh->getMapRepeated()->getGlobalElement(val);
     }
-    // TODO: kho need to make this use subset of ranks at some point for coarse solving
+    // [KH]  TODO: need to make this use subset of ranks at some point for coarse solving
     /* idx_t nparts = get<1>(rankRanges_[meshNumber]) - get<0>(rankRanges_[meshNumber]) + 1; */
     idx_t nparts = comm_->getSize();
     vec_idx_Type elmdistVec(nparts + 1);
+
     // Build the element distribution array as described in the ParMETIS manual
+    // [KH] NOTE: elmdistVec must be the same on every rank. It contains the index boundaries of the element-to-rank
+    // distribution [0,4,8,12] means elements 0-3 are on rank 0, 4-7 on rank 1 etc. and there are 12 elements in total.
+    // This initialization assumes every rank has the same number of elements (uniform distribution) and that they are
+    // distributed consecutively (contiguous distribution). For a non-uniform distribution every rank broadcasts its
+    // numElems. If mesh->elementMap_->getXpetraMap()->isContiguous() == false, a new element distribution would need to
+    // be determined. build a new element mapping to be able to use ParMETIS_V3_Mesh2Dual().
+    TEUCHOS_TEST_FOR_EXCEPTION(!mesh->getElementMap()->getXpetraMap()->isContiguous(), std::runtime_error,
+                               "We can only build a dual graph from a contiguously distributed mesh");
+    // auto tempTpetraMap = Teuchos::rcp_dynamic_cast<const Tpetra::Map<LO, GO, NO>>(mesh->getElementMap()->getXpetraMap());
+    // TEUCHOS_TEST_FOR_EXCEPTION(!tempTpetraMap->isUniform(), std::runtime_error,
+    //                            "We can only build a dual graph from a uniformly distributed mesh");
+ 
     for (auto i = 0; i < nparts + 1; i++) {
         elmdistVec.at(i) = i * (mesh->getNumElements());
     }
@@ -1357,6 +1370,9 @@ void MeshPartitioner<SC, LO, GO, NO>::buildOverlappingDualGraphFromDistributedPa
     for (auto i = 0; i < adjncyArrayRCP.size(); i++) {
         adjncyArrayRCP[i] = dualGraphColMap->getLocalElement(adjncy[i]);
     }
+    // elementMap: global element indices on this rank. dualGraphColMap: global element indices connected to elements on
+    // this rank. xadjArray: indices in adjncyArray where new rows start. adjncyArray: indices in current row that have
+    // a non-zero entry indicating two elements are neighbours.
     mesh->dualGraph_ = Xpetra::CrsGraphFactory<LO, GO, NO>::Build(mesh->getElementMap()->getXpetraMap(),
                                                                   dualGraphColMap, xadjArrayRCP, adjncyArrayRCP);
     mesh->dualGraph_->fillComplete();
@@ -1862,7 +1878,6 @@ void MeshPartitioner<SC, LO, GO, NO>::buildSubdomainFromDualGraphStructured(cons
     // which is not built in the latter.
     vec_GO_Type nodesOverlappingGhostsIndices(nodesOverlappingIndices);
 
-    // TODO: kho this does not work for P2 nodes
     buildGhostLayer(nodesOverlappingGhostsIndices, elementsOverlappingGhostsIndices, mesh->dualGraph_, mesh->elementsC_,
                     meshNumber, true);
 

@@ -172,7 +172,6 @@ void MeshUnstructured<SC,LO,GO,NO>::buildP2ofP1MeshEdge( MeshUnstrPtr_Type meshP
        	newFlags[i] = edgeElements->getElement(i).getFlag(); // New flags according to edge flags
 		                
         const vec_LO_Type elementsOfEdge = edgeElements->getElementsOfEdge( i );
-        const vec_GO_Type elementsGlobalOfEdge = edgeElements->getElementsOfEdgeGlobal( i );
                 
         vec_GO_Type relevantElementsOfEdge(0);
         for (int j=0; j<elementsOfEdge.size(); j++) {
@@ -181,6 +180,14 @@ void MeshUnstructured<SC,LO,GO,NO>::buildP2ofP1MeshEdge( MeshUnstrPtr_Type meshP
         }
 
         // We need to determine the correct location in the P2 element as prescribed by a specific pattern
+        // [KH] what is the "specific pattern"? Probably the following node numbering in triangles
+        //                    2
+        //                  * *
+        //                *   *
+        //              4	  5
+        //            *       *
+        //          *         *
+        //        1 * * 3 * * 0
         vec_int_Type positions( relevantElementsOfEdge.size() );
         if ( relevantElementsOfEdge.size() > 0 )
             determinePositionInElementP2( positions, relevantElementsOfEdge, p1ID, p2ID, meshP1 );
@@ -191,6 +198,8 @@ void MeshUnstructured<SC,LO,GO,NO>::buildP2ofP1MeshEdge( MeshUnstrPtr_Type meshP
         else if(this->dim_==3)
             factor = 4;
         for (int j=0; j<relevantElementsOfEdge.size(); j++)
+            // [KH] Why determine positions above and then subtract the factor?
+            // Each edge corresponds to one P2 dof/node -> we can use the edge index i as the P2 dof index
             newElementNodes[ relevantElementsOfEdge[j] ][ positions[j]-factor ] =  i ;
         
     }
@@ -200,10 +209,14 @@ void MeshUnstructured<SC,LO,GO,NO>::buildP2ofP1MeshEdge( MeshUnstrPtr_Type meshP
     
     LO numberLocalP1Nodes = meshP1->getPointsRepeated()->size();
     
+    // Iterate over P1 
     for (int i=0; i<elements->numberElements(); i++) {
         vec_int_Type feNodeList = elements->getElement( i ).getVectorNodeListNonConst(); // get a copy
-        for (int j=0; j<newElementNodes[i].size(); j++)
+        for (int j=0; j<newElementNodes[i].size(); j++) {
+            // Add the P2 nodes to the element after the P1 nodes
+            // pointsRep_ holds the P2 coords after the P1 coords
             feNodeList.push_back( newElementNodes[i][j] + numberLocalP1Nodes );
+        }
         FiniteElement feP2( feNodeList,elements->getElement( i ).getFlag() );
         this->elementsC_->addElement(feP2);
     }
@@ -693,10 +706,12 @@ void MeshUnstructured<SC,LO,GO,NO>::determinePositionInElementP2( vec_int_Type& 
 
         const vec_int_Type nodeList = elements->getElement( elementsOfEdge[i] ).getVectorNodeList();
 
+        // Find locations of first edge vertices
         auto it1 = find( nodeList.begin(), nodeList.end() , p1ID );
         int localElNum1 = distance( nodeList.begin() , it1 );
         auto it2 = find( nodeList.begin(), nodeList.end() , p2ID );
         int localElNum2 = distance( nodeList.begin() , it2 );
+        // Make sure the vertex with the lower index in nodeList is the first edge vertex
         if (localElNum1 > localElNum2) {
             int tmp = localElNum1;
             localElNum1 = localElNum2;

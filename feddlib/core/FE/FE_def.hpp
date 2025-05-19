@@ -4019,12 +4019,15 @@ void FE<SC,LO,GO,NO>::assemblyDivAndDivTFast( int dim,
         vec3D_dbl_Type dPhiTrans( dPhi->size(), vec2D_dbl_Type( dPhi->at(0).size(), vec_dbl_Type(dim,0.) ) );
         applyBTinv( dPhi, dPhiTrans, Binv );
         
+        // Pressure basis functions
         for (UN i=0; i < phi->at(0).size(); i++) {
             if (FEType2=="P0")
                 rowIndex[0] = GO ( mapping2->getGlobalElement( T ) );
             else
                 rowIndex[0] = GO ( mapping2->getGlobalElement( elements2->getElement(T).getNode(i) ) );
 
+            // Gradient of velocity basis functions
+            // In 2D dPhiTrans is a 3D array with (gauss points)(mesh node)(velocity component)
             for (UN j=0; j < dPhiTrans[0].size(); j++) {
                 for (UN d=0; d<dim; d++){
                     value[0] = 0.;
