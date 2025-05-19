@@ -136,25 +136,6 @@ int main(int argc, char *argv[]) {
             domain = Teuchos::rcp(new Domain<SC, LO, GO, NO>(x, 1., 1., 1., comm));
             domain->buildMesh(1, "Square", dim, FEType, n, m, numProcsCoarseSolve);
         }
-    }
-    if (!meshType.compare("structured_bfs")) {
-        TEUCHOS_TEST_FOR_EXCEPTION(size % minNumberSubdomains != 0, std::logic_error,
-                                   "Wrong number of processors for structured BFS mesh.");
-        if (dim == 2) {
-            n = (int)(std::pow(size / minNumberSubdomains, 1 / 2.) + 100 * Teuchos::ScalarTraits<double>::eps()); // 1/H
-            std::vector<double> x(2);
-            x[0] = -1.0;
-            x[1] = -1.0;
-            domain.reset(new Domain<SC, LO, GO, NO>(x, length + 1., 2., comm));
-        } else if (dim == 3) {
-            n = (int)(std::pow(size / minNumberSubdomains, 1 / 3.) + 100 * Teuchos::ScalarTraits<double>::eps()); // 1/H
-            std::vector<double> x(3);
-            x[0] = -1.0;
-            x[1] = 0.0;
-            x[2] = -1.0;
-            domain.reset(new Domain<SC, LO, GO, NO>(x, length + 1., 1., 2., comm));
-        }
-        domain->buildMesh(2, "BFS", dim, FEType, n, m, numProcsCoarseSolve);
     } else if (!meshType.compare("unstructured")) {
         Teuchos::RCP<Domain<SC, LO, GO, NO>> domainP1;
         Teuchos::RCP<Domain<SC, LO, GO, NO>> domainP2;
@@ -164,7 +145,7 @@ int main(int argc, char *argv[]) {
         domainP1Array[0] = domainP1;
 
         ParameterListPtr_Type pListPartitioner = sublist(parameterListAll, "Mesh Partitioner");
-        MeshPartitioner<SC, LO, GO, NO> partitionerP1(domainP1Array, pListPartitioner, "P1", dim);
+        MeshPartitioner<SC, LO, GO, NO> partitionerP1(domainP1Array, pListPartitioner, FEType, dim);
 
         partitionerP1.readAndPartition();
 
@@ -201,6 +182,9 @@ int main(int argc, char *argv[]) {
     // Initializes the system matrix (no values) and initializes the solution, rhs, residual vectors and splits them
     // between the subdomains
     NonLinLaplace.initializeProblem();
+    // Fills the matrix and sets BCs. Necessary for NOX since it expects a non-empty matrix object.
+    NonLinLaplace.assemble();
+    NonLinLaplace.setBoundaries();
 
     std::string nlSolverType = parameterListProblem->sublist("General").get("Linearization", "NOX");
     NonLinearSolver<SC, LO, GO, NO> nlSolverAssFE(nlSolverType);

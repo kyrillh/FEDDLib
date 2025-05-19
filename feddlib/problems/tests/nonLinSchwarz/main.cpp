@@ -125,14 +125,13 @@ int main(int argc, char *argv[]) {
     // Build mesh
     // ########################
     DomainPtr_Type domain;
-    Teuchos::RCP<Domain<SC, LO, GO, NO>> domainP1;
-    domainP1.reset(new Domain<SC, LO, GO, NO>(comm, dim));
+    domain.reset(new Domain<SC, LO, GO, NO>(comm, dim));
 
-    MeshPartitioner_Type::DomainPtrArray_Type domainP1Array(1);
-    domainP1Array[0] = domainP1;
+    MeshPartitioner_Type::DomainPtrArray_Type domainArray(1);
+    domainArray[0] = domain;
 
     ParameterListPtr_Type pListPartitioner = sublist(parameterListAll, "Mesh Partitioner");
-    MeshPartitioner<SC, LO, GO, NO> partitionerP1(domainP1Array, pListPartitioner, "P1", dim);
+    MeshPartitioner<SC, LO, GO, NO> partitioner(domainArray, pListPartitioner, FEType, dim);
 
     if (!meshType.compare("structured")) {
         TEUCHOS_TEST_FOR_EXCEPTION(size % minNumberSubdomains != 0, std::logic_error,
@@ -142,29 +141,28 @@ int main(int argc, char *argv[]) {
             std::vector<double> x(2);
             x[0] = 0.0;
             x[1] = 0.0;
-            domainP1.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., comm));
-            domainP1Array[0] = domainP1;
-            domainP1->buildMesh(1, "Square", dim, FEType, n, m, numProcsCoarseSolve);
+            domain.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., comm));
+            domainArray[0] = domain;
+            domain->buildMesh(1, "Square", dim, FEType, n, m, numProcsCoarseSolve);
         } else if (dim == 3) {
             n = (int)(std::pow(size, 1 / 3.) + 100. * Teuchos::ScalarTraits<SC>::eps()); // 1/H
             std::vector<double> x(3);
             x[0] = 0.0;
             x[1] = 0.0;
             x[2] = 0.0;
-            domainP1.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., 1., comm));
-            domainP1Array[0] = domainP1;
-            domainP1->buildMesh(1, "Square", dim, FEType, n, m, numProcsCoarseSolve);
+            domain.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., 1., comm));
+            domainArray[0] = domain;
+            domain->buildMesh(1, "Square", dim, FEType, n, m, numProcsCoarseSolve);
         }
-        partitionerP1 = MeshPartitioner<SC, LO, GO, NO>(domainP1Array, pListPartitioner, "P1", dim);
-        partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(0, overlap);
-        partitionerP1.buildSubdomainFromDualGraphStructured(0);
+        partitioner = MeshPartitioner<SC, LO, GO, NO>(domainArray, pListPartitioner, FEType, dim);
+        partitioner.buildOverlappingDualGraphFromDistributedParMETIS(0, overlap);
+        partitioner.buildSubdomainFromDualGraphStructured(0);
     } else if (!meshType.compare("unstructured")) {
-        partitionerP1.readMesh();
-        partitionerP1.buildDualGraph(0);
-        partitionerP1.partitionDualGraphWithOverlap(0, overlap);
-    partitionerP1.buildSubdomainFromDualGraphUnstructured(0);
+        partitioner.readMesh();
+        partitioner.buildDualGraph(0);
+        partitioner.partitionDualGraphWithOverlap(0, overlap);
+    partitioner.buildSubdomainFromDualGraphUnstructured(0);
     }
-    domain = domainP1;
     // ########################
     // Set flags for the boundary conditions
     // ########################
