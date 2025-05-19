@@ -3957,15 +3957,12 @@ void MeshStructured<SC,LO,GO,NO>::flipSurface(vec_int_Type &surfaceElements_vec)
 
 template <class SC, class LO, class GO, class NO>
 void MeshStructured<SC,LO,GO,NO>::buildElementMap(){
-
-    Teuchos::Array<GO> elementsGlobalMapping( this->elementsC_->numberElements() );
-    LO offset = this->comm_->getRank() * elementsGlobalMapping.size();
-    for (int i=0; i<elementsGlobalMapping.size(); i++)
-        elementsGlobalMapping[i] = i + offset;
-
+    // Only passing the local number of elements to the map constructor results in a contiguous map which is more efficient. See isContiguous() in
+    // https://docs.trilinos.org/dev/packages/tpetra/doc/html/classTpetra_1_1Map.html#aa6cea53165b7f4d3dbec708d47996c4b
+    // Trilinos enumerates global indices by traversing ranks in increasing order i.e. first rank 0 followed by rank 1 etc.
+ 
     std::string underlyingLib = this->mapRepeated_->getUnderlyingLib();
-    this->elementMap_.reset(new Map<LO,GO,NO>( underlyingLib, (GO) -1, elementsGlobalMapping(), 0, this->comm_) );
-
+    this->elementMap_.reset(new Map<LO,GO,NO>( underlyingLib, (GO) -1, this->elementsC_->numberElements(), 0, this->comm_) );
 }
 
 }
