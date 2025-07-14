@@ -1,6 +1,8 @@
 #ifndef NonLinElasAssFE_def_hpp
 #define NonLinElasAssFE_def_hpp
 #include "NonLinElasAssFE_decl.hpp"
+#include "feddlib/core/LinearAlgebra/BlockMap_decl.hpp"
+#include <Teuchos_RCPDecl.hpp>
 /*!
  Definition of NonLinElasticity
  
@@ -373,8 +375,8 @@ void NonLinElasAssFE<SC,LO,GO,NO>::calculateNonLinResidualVec(std::string type, 
 }
 
 template <class SC, class LO, class GO, class NO>
-void NonLinElasAssFE<SC, LO, GO, NO>::reInitSpecificProblemVectors(const MapConstPtr_Type newMap) {
-    this->u_rep_ = Teuchos::rcp(new MultiVector_Type(newMap));
+void NonLinElasAssFE<SC, LO, GO, NO>::reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) {
+    this->u_rep_ = Teuchos::rcp(new MultiVector_Type(newMap->getBlock(0)));
 }
 }
 #endif

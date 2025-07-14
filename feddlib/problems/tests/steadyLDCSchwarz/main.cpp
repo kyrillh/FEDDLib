@@ -6,7 +6,7 @@
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
-#include "feddlib/problems/specific/NavierStokes.hpp"
+#include "feddlib/problems/specific/NavierStokesAssFE.hpp"
 
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
     bcFactory->addBC(currentSolutionDirichlet2D, -99, 0, domainVelocity, "Dirichlet", dim);
     bcFactory->addBC(currentSolutionDirichlet1D, -99, 1, domainPressure, "Dirichlet", 1);
 
-    NavierStokes<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,
+    NavierStokesAssFE<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,
                                               parameterListAll);
 
     domainVelocity->info();

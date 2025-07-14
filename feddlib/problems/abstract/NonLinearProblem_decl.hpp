@@ -120,7 +120,7 @@ public:
     // Can be implemented by specific nonlinear problems so that nonlinear Schwarz solver can be used
     // Reinitializes the vectors used to store intermediate results using the provided map
     // Uggly that this needs to be added here like this
-    virtual void reInitSpecificProblemVectors(const MapConstPtr_Type newMap){}
+    virtual void reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap){}
     
     double nonLinearTolerance_;
     BlockMultiVectorPtr_Type    previousSolution_;

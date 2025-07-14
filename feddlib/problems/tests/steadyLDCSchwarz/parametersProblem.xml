@@ -1,7 +1,7 @@
 <ParameterList name="Problem">
     <ParameterList name="Parameter">
     <Parameter name="Dimension" type="int" value="2"/>
-    <Parameter name="Discretization Velocity" type="string" value="P1"/><!--P1, P2; velocity -->
+    <Parameter name="Discretization Velocity" type="string" value="P2"/><!--P1-P1 with NavierStokesAssFE does not work because of checkFE. -->
     <Parameter name="Discretization Pressure" type="string" value="P1"/>
     <Parameter name="Mesh Type" type="string" value="structured_ldc"/> <!--structured, structured_bfs, structured_ldc, unstructured -->
     <Parameter name="BC Type" type="string" value="LDC"/><!-- parabolic, parabolic_benchmark, partialCFD, LDC-->
@@ -26,7 +26,7 @@
     </ParameterList>
     <ParameterList name="Exporter">
 
-        <Parameter name="Export coarse functions" type="bool" value="false"/>
+        <Parameter name="Export coarse functions" type="bool" value="true"/>
 
         <Parameter name="Name coarse functions block1" type="string" value="phiU"/>
         <Parameter name="Exclude coarse functions block1" type="bool" value="false"/>

@@ -85,7 +85,7 @@ class NonLinLaplace : public NonLinearProblem<SC, LO, GO, NO> {
 
     Teuchos::RCP<Thyra::PreconditionerBase<SC>> create_W_prec() const override;
 
-    void reInitSpecificProblemVectors(const MapConstPtr_Type newMap) override;
+    void reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) override;
 
   private:
     void evalModelImpl(const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,

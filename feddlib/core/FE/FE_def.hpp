@@ -1098,6 +1098,7 @@ void FE<SC,LO,GO,NO>::assemblyNavierStokes(int dim,
 
     UN FElocVel = checkFE(dim,FETypeVelocity); // Checks for different domains which belongs to a certain fetype
     UN FElocPres = checkFE(dim,FETypePressure); // Checks for different domains which belongs to a certain fetype
+    // TODO: [KH] this does not work for P1-P1.
 
 	ElementsPtr_Type elements = domainVec_.at(FElocVel)->getElementsC();
 

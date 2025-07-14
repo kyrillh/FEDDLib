@@ -886,8 +886,8 @@ Teuchos::RCP<Thyra::PreconditionerBase<SC> > NavierStokes<SC,LO,GO,NO>::create_W
 }
 
 template<class SC,class LO,class GO,class NO>
-    void NavierStokes<SC,LO,GO,NO>::reInitSpecificProblemVectors(const MapConstPtr_Type newMap){
-    this->u_rep_ = Teuchos::rcp(new MultiVector_Type(newMap));
+    void NavierStokes<SC,LO,GO,NO>::reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap){
+    this->u_rep_ = Teuchos::rcp(new MultiVector_Type(newMap->getBlock(0)));
     assembleConstantMatrices();
 }
 }

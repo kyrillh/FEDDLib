@@ -134,7 +134,8 @@ template <class SC, class LO, class GO, class NO> int NonLinearSchwarzOperator<S
         combinationMode_ = CombinationMode::Restricted;
     }
 
-    // Store overlapping ghosts map in blockMap object. mapVecField if vector valued problem
+    // Store overlapping ghosts map in blockMap object. mapVecField if vector valued problem. We need to store scalar
+    // version of the map as well for replaceRepeatedMembers and replaceUniqueMembers.
     for (int i = 0; i < domainVec.size(); i++) {
         auto tmpMPIMap = domainVec.at(i)->getMesh()->getMapOverlappingGhosts();
         auto mapOverlappingGhostsLocal =
@@ -209,8 +210,15 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         blockElementMapMpiTmp_->addBlock(mesh->getElementMap(), i);
         blockMapRepeatedMpiTmp_->addBlock(mesh->getMapRepeated(), i);
         blockMapUniqueMpiTmp_->addBlock(mesh->getMapUnique(), i);
-        blockMapVecFieldRepeatedMpiTmp_->addBlock(domainVec.at(i)->getMapVecFieldRepeated(), i);
-        blockMapVecFieldUniqueMpiTmp_->addBlock(domainVec.at(i)->getMapVecFieldUnique(), i);
+        // In NonLinearSchwarzOperator the blockMapVecField objects contain the maps corresponding to the dof count in
+        // each block, unlike the vecfield maps in the domain class.
+        if (problem_->getDofsPerNode(i) > 1) {
+            blockMapVecFieldRepeatedMpiTmp_->addBlock(domainVec.at(i)->getMapVecFieldRepeated(), i);
+            blockMapVecFieldUniqueMpiTmp_->addBlock(domainVec.at(i)->getMapVecFieldUnique(), i);
+        } else {
+            blockMapVecFieldRepeatedMpiTmp_->addBlock(domainVec.at(i)->getMapRepeated(), i);
+            blockMapVecFieldUniqueMpiTmp_->addBlock(domainVec.at(i)->getMapUnique(), i);
+        }
         pointsRepTmp_.at(i) = mesh->getPointsRepeated();
         pointsUniTmp_.at(i) = mesh->getPointsUnique();
         bcFlagRepTmp_.at(i) = mesh->getBCFlagRepeated();
@@ -225,8 +233,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         //    3. pointsRep to pointsOverlapping
         //    4. bcFlagRep_ and bcFlagUni_ to bcFlagOverlappingGhosts_
         //    5. elementsC_ to elementsOverlappingGhosts_
-        //    6. u_rep_ to u_overlapping_ in problemSpecific
-        //    7. feFactory_ to feFactoryLocal_ in problem
+        //    6. feFactory_ to feFactoryLocal_ in problem
+        //    7. problemSpecific variables to overlapping
         //  No destinction between unique and repeated needs to be made since assembly is only local here.
 
         // 1. replace communicators
@@ -243,12 +251,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         mesh->elementMap_ = blockElementMapLocal_->getBlock(i);
         mesh->setElementsC(mesh->elementsOverlappingGhosts_);
 
-        if (problem_->getDofsPerNode(i) > 1) {
-            // Map of current input
-            x_->getBlockNonConst(i)->replaceMap(mapVecFieldOverlappingGhostsLocal);
-        } else {
-            x_->getBlockNonConst(i)->replaceMap(mapOverlappingGhostsLocal);
-        }
+        // Map of current input
+        x_->getBlockNonConst(i)->replaceMap(mapVecFieldOverlappingGhostsLocal);
     }
     // Replace problem level distributed properties
     problem_->comm_ = this->SerialComm_;
@@ -256,17 +260,12 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     // Problems block vectors and matrices need to be reinitialized
     problem_->initializeProblem();
 
-    // 6. rebuild problem->u_rep_ to use overlapping map
-    // NOTE: For now only check the first block. This will work for (Navier-)Stokes, elasticity and nonlinear diffusion
-    // since only u_rep_ needs replacing. Change this if needed for other problem types
-    if (problem_->getDofsPerNode(0) > 1) {
-        problem_->reInitSpecificProblemVectors(blockMapVecFieldOverlappingGhostsLocal_->getBlock(0));
-    } else {
-        problem_->reInitSpecificProblemVectors(blockMapOverlappingGhostsLocal_->getBlock(0));
-    }
-
-    // 7. feFactory. Needs replacing because stores an AssembleFEFactoryObject
+    // 6. feFactory. Needs replacing because stores an AssembleFEFactoryObject
     problem_->feFactory_ = feFactoryGhostsLocal_;
+
+
+    // 7. rebuild problem->u_rep_ to use overlapping map
+    problem_->reInitSpecificProblemVectors(blockMapVecFieldOverlappingGhostsLocal_);
 
     auto tempVecFlag = problem_->bcFactory_->getVecFlag();
     auto tempVecDomain = problem_->bcFactory_->getVecDomain();
@@ -275,14 +274,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         // Set Dirichlet BC on ghost points to current global solution. This ensures:
         // 1. The linear system solved in each Newton iteration will have a solution of zero at the ghost points
         // 2. This implies that residual is zero at the ghost points i.e. original solution is maintained
-        Teuchos::RCP<FEDD::MultiVector<SC, LO, GO, NO>> tempMV;
-        if (problem_->getDofsPerNode(i) > 1) {
-            tempMV = Teuchos::rcp(
-                new FEDD::MultiVector<SC, LO, GO, NO>(blockMapVecFieldOverlappingGhostsLocal_->getBlock(i), 1));
-        } else {
-            tempMV =
-                Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(blockMapOverlappingGhostsLocal_->getBlock(i), 1));
-        }
+        Teuchos::RCP<FEDD::MultiVector<SC, LO, GO, NO>> tempMV = Teuchos::rcp(
+            new FEDD::MultiVector<SC, LO, GO, NO>(blockMapVecFieldOverlappingGhostsLocal_->getBlock(i), 1));
         for (int j = 0; j < domainVec.at(i)->getMesh()->bcFlagOverlappingGhosts_->size(); j++) {
             if (domainVec.at(i)->getMesh()->bcFlagOverlappingGhosts_->at(j) == -99) {
                 for (int k = 0; k < problem_->getDofsPerNode(i); k++) {
@@ -335,7 +328,6 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         FEDD::print("\nRelative residual: ", this->MpiComm_);
         FEDD::print(relResidual, this->MpiComm_, 0, 10);
         FEDD::print("\n", this->MpiComm_);
-
 
         // Reassemble the tangent matrix
         problem_->assemble("Newton");
@@ -397,8 +389,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     //    3. pointsRep
     //    4. bcFlagRep_ and bcFlagUni_
     //    5. elementsC_
-    //    6. u_rep_
-    //    7. feFactory_
+    //    6. feFactory_
+    //    7. problemSpecific variables to original
 
     problem_->comm_ = this->MpiComm_;
     for (int i = 0; i < domainVec.size(); i++) {
@@ -441,12 +433,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
             x_->getBlockNonConst(i)->replaceMap(domainVec.at(i)->getMapOverlappingGhosts());
         }
     }
-    if (problem_->getDofsPerNode(0) > 1) {
-        // 6. rebuild problem->u_rep_ to use repeated map
-        problem_->reInitSpecificProblemVectors(blockMapVecFieldRepeatedMpiTmp_->getBlock(0));
-    } else {
-        problem_->reInitSpecificProblemVectors(blockMapRepeatedMpiTmp_->getBlock(0));
-    }
+    // 6. rebuild problem->u_rep_ to use repeated map
+    problem_->reInitSpecificProblemVectors(blockMapVecFieldRepeatedMpiTmp_);
 
     // y = alpha*f(x) + beta*y
     y->update(alpha, *y_, beta);
