@@ -1,6 +1,7 @@
 #ifndef FE_DEF_hpp
 #define FE_DEF_hpp
 
+#include <string>
 #ifdef FEDD_HAVE_ACEGENINTERFACE
 #include <aceinterface.hpp>
 #endif
@@ -1144,6 +1145,8 @@ void FE<SC,LO,GO,NO>::assemblyNavierStokes(int dim,
 	if(assemblyFEElements_.size()== 0){
         if(params->sublist("Material").get("Newtonian",true) == false)
 	 	    initAssembleFEElements("GeneralizedNewtonian",problemDisk,elements, params,pointsRep,domainVec_.at(FElocVel)->getElementMap()); // In cas of non Newtonian Fluid
+        else if (params->sublist("Parameter").get("Use feat3 interface", false) == true)
+            initAssembleFEElements("NavierStokesFEAT", problemDisk, elements, params, pointsRep, domainVec_.at(FElocVel)->getElementMap());
         else
         	initAssembleFEElements("NavierStokes",problemDisk,elements, params,pointsRep,domainVec_.at(FElocVel)->getElementMap());
     }
@@ -1192,6 +1195,10 @@ void FE<SC,LO,GO,NO>::assemblyNavierStokes(int dim,
             if(params->sublist("Material").get("Newtonian",true) == false)
             {
                 AssembleFEGeneralizedNewtonianPtr_Type elTmp = Teuchos::rcp_dynamic_cast<AssembleFEGeneralizedNewtonian_Type>( assemblyFEElements_[T] );
+                elTmp->assembleFixedPoint();
+                elementMatrix =  elTmp->getFixedPointMatrix(); 
+            } else if (params->sublist("Parameter").get("Use feat3 interface", false) == true){
+                Teuchos::RCP<AssembleFENavierStokesFEAT<SC, LO, GO, NO>> elTmp = Teuchos::rcp_dynamic_cast<AssembleFENavierStokesFEAT<SC, LO, GO, NO>>( assemblyFEElements_[T] );
                 elTmp->assembleFixedPoint();
                 elementMatrix =  elTmp->getFixedPointMatrix(); 
             }

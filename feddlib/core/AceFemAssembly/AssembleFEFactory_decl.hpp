@@ -12,6 +12,7 @@
 #include "feddlib/core/AceFemAssembly/specific/AssembleFE_NonLinElas2.hpp"
 #include "feddlib/core/AceFemAssembly/specific/AssembleFE_NonLinElas2D.hpp"
 #include "feddlib/core/AceFemAssembly/specific/AssembleFENavierStokes.hpp"
+#include "feddlib/core/AceFemAssembly/specific/AssembleFENavierStokesFEAT.hpp"
 #include "feddlib/core/AceFemAssembly/specific/AssembleFEGeneralizedNewtonian.hpp"
 #include "feddlib/core/AceFemAssembly/specific/AssembleFE_SCI_NH_decl.hpp"
 #include "feddlib/core/AceFemAssembly/specific/AssembleFE_SCI_SMC_MLCK_decl.hpp"
