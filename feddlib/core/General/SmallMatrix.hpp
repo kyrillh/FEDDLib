@@ -72,14 +72,12 @@ public:
     double computeDet();
     
     double computeScaling();
+
+    Vec_T_Type& getRow(const int row);
 private:
     Vec2D_T_Type     values_;
     int         size_;
 };
-
-
-
-#include "SmallMatrix.hpp"
 
 template<class T>
 SmallMatrix<T>::SmallMatrix():
@@ -387,8 +385,10 @@ double SmallMatrix<T>::computeScaling( ){
     
     return scaling;
 }
-    
-    //Pseudo-Inverse: (A^T A)^-1 * A^T
-    
+
+template <class T> typename SmallMatrix<T>::Vec_T_Type &SmallMatrix<T>::getRow(const int row) {
+    return values_.at(row);
+}
+// Pseudo-Inverse: (A^T A)^-1 * A^T
 }
 #endif

@@ -3,6 +3,11 @@
 
 #include "AssembleFENavierStokesFEAT_decl.hpp"
 #include "feddlib/core/AceFemAssembly/specific/AssembleFENavierStokes_decl.hpp"
+#include <Teuchos_Assert.hpp>
+#include <Teuchos_TestForException.hpp>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace FEDD {
 
@@ -11,38 +16,38 @@ AssembleFENavierStokesFEAT<SC, LO, GO, NO>::AssembleFENavierStokesFEAT(int flag,
                                                                        ParameterListPtr_Type params,
                                                                        tuple_disk_vec_ptr_Type tuple)
     : AssembleFENavierStokes<SC, LO, GO, NO>(flag, nodesRefConfig, params, tuple) {
-    auto fn = params->sublist("Parameter").get<std::function<void(SC *, const SC *, const SC *)>>("feat3 call-back");
+    featCallback_ =
+        params->sublist("Parameter").get<std::function<void(SC *, const SC *, const SC *)>>("feat3 call-back");
+    const int numLocEntries = this->numNodesVelocity_ * this->dofsVelocity_;
+    featMat_ = std::vector<SC>(numLocEntries * numLocEntries);
+    // TODO:[KH] what does this do? Can we hardcode it feat?
+    locConv_ = std::vector<SC>(numLocEntries, 1);
 
-    const int num_loc_entries = 12;
-    const int num_loc_verts = 3;
+    int numVerts;
+    // TODO: [KH] for now only consider 2D
+    TEUCHOS_TEST_FOR_EXCEPTION(this->getDim() != 2, std::runtime_error, "feat interface currently only supports 2D");
 
-    SC *mat = new SC[num_loc_entries * num_loc_entries];
-    SC *loc_conv = new SC[num_loc_entries];
-    std::fill(&loc_conv[0], &(loc_conv[0]) + num_loc_entries, SC(1.));
-    SC *vt = new SC[num_loc_verts * 3]; // Allocate space for 3D coordinates
-    SC verts[3][3] = {{0, 0, 0}, {0.1, 0, 0}, {0, 0.1, 0}};
-    for (int i = 0; i < num_loc_verts; ++i) {
-        SC *loc_vert = verts[i];
-        for (int k = 0; k < 3; ++k) {
-            vt[i * 3 + k] = loc_vert[k];
+    if (this->FETypeVelocity_ == "P2") {
+        if (this->getDim() == 2) {
+            numVerts = 3;
+        } else {
+            numVerts = 4;
         }
+    } else {
+        TEUCHOS_TEST_FOR_EXCEPTION(true, std::runtime_error, "Unsupported FE type used for feat3 interface");
     }
 
-    fn(mat, loc_conv, vt);
+    // feat expects 3D coords even in 2D, in which case the 3rd coord is zero.
+    verts4feat_.resize(numVerts * 3);
 
-    string output = "Loc Mat element 0: \n";
-
-    for (int i = 0; i < num_loc_entries; ++i) {
-        for (int j = 0; j < num_loc_entries; ++j) {
-            output += std::to_string(mat[i * num_loc_entries + j]) + ", ";
+    for (int i(0); i < numVerts; i++) {
+        auto &vert = this->nodesRefConfig_[i];
+        std::copy(vert.begin(), vert.end(), verts4feat_.begin() + i * 3);
+        // feat uses 3D coords also in 2D, in which case the last coord is empty
+        if (this->getDim() == 2) {
+            verts4feat_[i * 3 + 2] = 0;
         }
-        output += "\n";
     }
-    cout << output << endl;
-
-    delete[] vt;
-    delete[] loc_conv;
-    delete[] mat;
 }
 
 template <class SC, class LO, class GO, class NO> void AssembleFENavierStokesFEAT<SC, LO, GO, NO>::assembleJacobian() {
@@ -137,48 +142,16 @@ void AssembleFENavierStokesFEAT<SC, LO, GO, NO>::assembleFixedPoint() {
 template <class SC, class LO, class GO, class NO>
 void AssembleFENavierStokesFEAT<SC, LO, GO, NO>::assemblyLaplacian(SmallMatrixPtr_Type &elementMatrix) {
 
-    int dim = this->getDim();
-    int numNodes = this->numNodesVelocity_;
-    UN Grad = 2; // Needs to be fixed
-    string FEType = this->FETypeVelocity_;
-    int dofs = this->dofsVelocity_;
+    // num rows/cols of the element matrix
+    LO numLocEntries = this->numNodesVelocity_ * this->dofsVelocity_;
 
-    vec3D_dbl_ptr_Type dPhi;
-    vec_dbl_ptr_Type weights = Teuchos::rcp(new vec_dbl_Type(0));
+    // Ask feat for the assembled element matrix
+    featCallback_(featMat_.data(), locConv_.data(), verts4feat_.data());
 
-    UN deg = Helper::determineDegree(dim, FEType, Grad);
-    // cout << " Degree " << deg << " Grad " << Grad << " FeType " << FEType << endl;
-    Helper::getDPhi(dPhi, weights, dim, FEType, deg);
-
-    SC detB;
-    SC absDetB;
-    SmallMatrix<SC> B(dim);
-    SmallMatrix<SC> Binv(dim);
-
-    this->buildTransformation(B);
-
-    detB = B.computeInverse(Binv);
-    absDetB = std::fabs(detB);
-
-    vec3D_dbl_Type dPhiTrans(dPhi->size(), vec2D_dbl_Type(dPhi->at(0).size(), vec_dbl_Type(dim, 0.)));
-    Helper::applyBTinv(dPhi, dPhiTrans, Binv);
-
-    for (UN i = 0; i < numNodes; i++) {
-        Teuchos::Array<SC> value(dPhiTrans[0].size(), 0.);
-        for (UN j = 0; j < numNodes; j++) {
-            for (UN w = 0; w < dPhiTrans.size(); w++) {
-                for (UN d = 0; d < dim; d++) {
-                    value[j] += weights->at(w) * dPhiTrans[w][i][d] * dPhiTrans[w][j][d];
-                }
-            }
-            value[j] *= absDetB;
-            /*if (std::fabs(value[j]) < pow(10,-14)) {
-               value[j] = 0.;
-           }*/
-            for (UN d = 0; d < dofs; d++) {
-                (*elementMatrix)[i * dofs + d][j * dofs + d] = value[j];
-            }
-        }
+    // Copy to fedd element matrix
+    for (int i = 0; i < numLocEntries; i++) {
+        std::copy(featMat_.begin() + i * numLocEntries, featMat_.begin() + (i + 1) * numLocEntries,
+                  elementMatrix->getRow(i).begin());
     }
 }
 

@@ -8,6 +8,7 @@
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/LinearAlgebra/Matrix.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
+#include <vector>
 
 namespace FEDD {
 
@@ -77,6 +78,12 @@ class AssembleFENavierStokesFEAT : public AssembleFENavierStokes<SC, LO, GO, NO>
     void assemblyAdvectionInU(SmallMatrixPtr_Type &elementMatrix);
 
     friend class AssembleFEFactory<SC, LO, GO, NO>; // Must have for specfic classes
+    
+    std::function<void(SC *, const SC *, const SC *)> featCallback_;
+    std::vector<double> verts4feat_;
+    std::vector<SC> featMat_;
+    std::vector<SC> locConv_;
+
 };
 
 } // namespace FEDD
