@@ -49,12 +49,6 @@ namespace FEDD
 		void assembleRHS() override;
 
 		/*!
-		  \brief Assemble the element Jacobian matrix.
-	 	  @param[in] block ID i
-	    */
-		void assembleJacobianBlock(LO i){TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "No implementation")}
-
-		/*!
 	    \brief Compute the viscosity for an element depending on the knwon velocity solution.
 		*/
 		void computeLocalconstOutputField() override;
@@ -63,8 +57,6 @@ namespace FEDD
 			\brief Assembly of FixedPoint- Matrix (System Matrix K with current u) 
 	     */
 	    void assembleFixedPoint();
-
-	   SmallMatrixPtr_Type getFixedPointMatrix(){return this->ANB_;}
 
 	protected:
 		std::string shearThinningModel;

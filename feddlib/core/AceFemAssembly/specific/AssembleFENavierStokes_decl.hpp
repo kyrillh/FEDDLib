@@ -39,7 +39,7 @@ class AssembleFENavierStokes : public AssembleFE<SC,LO,GO,NO> {
 		\brief Assemble the element Jacobian matrix.
 		@param[in] block ID i
 	*/
-	void assembleJacobianBlock(LO i) override {}
+    void assembleJacobianBlock(LO i){TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "No implementation")}
 	
 	void setCoeff(SmallMatrix_Type coeff);
 

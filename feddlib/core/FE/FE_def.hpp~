@@ -473,16 +473,10 @@ void FE<SC,LO,GO,NO>::assemblyNonLinearElasticity(int dim,
 
 	/// Tupel construction follows follwing pattern:
 	/// std::string: Physical Entity (i.e. Velocity) , std::string: Discretisation (i.e. "P2"), int: Degrees of Freedom per Node, int: Number of Nodes per element)
-	int numNodes=3;
-    if(FEType== "P2"){
-        numNodes=6;
-    }    
+	int numNodes=6;
 	if(dim==3){
-		numNodes=4;
-        if(FEType== "P2")
-            numNodes=10;
+		numNodes=10;
 	}
-	
 	tuple_disk_vec_ptr_Type problemDisk = Teuchos::rcp(new tuple_disk_vec_Type(0));
 	tuple_ssii_Type displacement ("Displacement",FEType,dofs,numNodes);
 	problemDisk->push_back(displacement);
@@ -1125,12 +1119,31 @@ void FE<SC,LO,GO,NO>::assemblyNavierStokes(int dim,
 
     vec_dbl_ptr_Type rhsVec;
 
+<<<<<<< HEAD
+	/// Tupel construction follows follwing pattern:
+	/// std::string: Physical Entity (i.e. Velocity) , std::string: Discretisation (i.e. "P2"), int: Degrees of Freedom per Node, int: Number of Nodes per element)
+	int numVelo=3;
+    if(FETypeVelocity == "P2")
+        numVelo=6;
+        
+	if(dim==3){
+		numVelo=4;
+        if(FETypeVelocity == "P2")
+            numVelo=10;
+	}
+	tuple_disk_vec_ptr_Type problemDisk = Teuchos::rcp(new tuple_disk_vec_Type(0));
+	tuple_ssii_Type vel ("Velocity",FETypeVelocity,dofsVelocity,numVelo);
+	tuple_ssii_Type pres ("Pressure",FETypePressure,dofsPressure,dim+1);
+	problemDisk->push_back(vel);
+	problemDisk->push_back(pres);
+=======
     /// Tupel construction follows follwing pattern:
     /// string: Physical Entity (i.e. Velocity) , string: Discretisation (i.e. "P2"), int: Degrees of Freedom per Node,
     /// int: Number of Nodes per element)
     int numVelo = 3;
     if (FETypeVelocity == "P2")
         numVelo = 6;
+>>>>>>> e2516b41 (First full feat3 version. Working for LDC problem with 4 subdomains.)
 
     if (dim == 3) {
         numVelo = 4;

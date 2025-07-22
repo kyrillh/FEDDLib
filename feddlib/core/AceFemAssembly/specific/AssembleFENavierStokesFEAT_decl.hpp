@@ -43,9 +43,7 @@ class AssembleFENavierStokesFEAT : public AssembleFENavierStokes<SC, LO, GO, NO>
 
   protected:
     /*!
-
      \brief Constructor for AssembleFEAceNavierStokes
-
     @param[in] flag Flag of element
     @param[in] nodesRefConfig Nodes of element in reference configuration
     @param[in] params Parameterlist for current problem
@@ -55,35 +53,32 @@ class AssembleFENavierStokesFEAT : public AssembleFENavierStokes<SC, LO, GO, NO>
                                tuple_disk_vec_ptr_Type tuple);
 
     /*!
-
-     \brief Assembly function for vector values laplacian \f$ \int_T \nabla v \cdot \nabla u ~dx\f$
-    @param[in] &elementMatrix
-
-    */
-    void assemblyLaplacian(SmallMatrixPtr_Type &elementMatrix);
-
-    /*!
-
      \brief Assembly advection vector field \f$ \int_T \nabla v \cdot u(\nabla u) ~dx\f$
     @param[in] &elementMatrix
-
     */
-    void assemblyAdvection(SmallMatrixPtr_Type &elementMatrix);
+    inline void assemblyAdvection(SmallMatrixPtr_Type &elementMatrix);
 
     /*!
-     \brief Assembly advection vector field in u
+     \brief Assembly vector Laplace and divergence matrices
     @param[in] &elementMatrix
-
     */
-    void assemblyAdvectionInU(SmallMatrixPtr_Type &elementMatrix);
+    inline void assembleConstantMatrix();
+
+    /*!
+     \brief Copy values from featMat_ to passed FEDDLib SmallMatrix.
+    @param[in] &feddMat FEDDLib SmallMatrix to be filled.
+    */
+    inline void copyFEAT2FEDD(SmallMatrixPtr_Type feddMat) const;
 
     friend class AssembleFEFactory<SC, LO, GO, NO>; // Must have for specfic classes
-    
-    std::function<void(SC *, const SC *, const SC *)> featCallback_;
+
+    std::function<void(SC *, const SC *, const SC *)> featDiffusion_;
+    std::function<void(SC *, const SC *, const SC *)> featAdvection_;
+    std::function<void(SC *, const SC *, const SC *)> featFrechetAdvection_;
     std::vector<double> verts4feat_;
     std::vector<SC> featMat_;
+    // Dummy convolution (velocity) dofs for feat interface when assembling constant matrices
     std::vector<SC> locConv_;
-
 };
 
 } // namespace FEDD
