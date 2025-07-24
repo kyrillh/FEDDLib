@@ -48,8 +48,6 @@ template <class SC = default_sc, class LO = default_lo, class GO = default_go, c
 class FE {
   public:
 
-    enum VarType {Std=0,Grad=1};
-
     typedef Domain<SC,LO,GO,NO> Domain_Type;
     typedef Teuchos::RCP<Domain_Type> DomainPtr_Type;
     typedef Teuchos::RCP<const Domain_Type> DomainConstPtr_Type;
@@ -112,6 +110,15 @@ class FE {
     
     void assemblyIdentity(MatrixPtr_Type &A);
     
+    void assemblySurfaceRobinBC(int dim, 
+                                std::string FETypeP, 
+                                std::string FETypeV, 
+                                MultiVectorPtr_Type u, 
+                                MatrixPtr_Type A, 
+                                std::vector<SC> &funcParameter, 
+                                RhsFunc_Type func, 
+                                ParameterListPtr_Type params);
+
     void assemblySurfaceIntegral(int dim,
                                  std::string FEType,
                                  MultiVectorPtr_Type  a,
@@ -145,21 +152,21 @@ class FE {
                                      BC_func_Type func,
                                      std::vector<SC>& funcParameter);
     
-    void assemblyAceGenTPM( MatrixPtr_Type &A00,
-                            MatrixPtr_Type &A01,
-                            MatrixPtr_Type &A10,
-                            MatrixPtr_Type &A11,
-                            MultiVectorPtr_Type &F0,
-                            MultiVectorPtr_Type &F1,
-                            MapPtr_Type &mapRepeated1,
-                            MapPtr_Type &mapRepeated2,
-                            ParameterListPtr_Type parameterList,
-                            MultiVectorPtr_Type u_repeatedNewton=Teuchos::null,
-                            MultiVectorPtr_Type p_repeatedNewton=Teuchos::null,
-                            MultiVectorPtr_Type u_repeatedTime=Teuchos::null,
-                            MultiVectorPtr_Type p_repeatedTime=Teuchos::null,
-                           bool update=true,
-                           bool updateHistory=true);
+    // void assemblyAceGenTPM( MatrixPtr_Type &A00,
+    //                         MatrixPtr_Type &A01,
+    //                         MatrixPtr_Type &A10,
+    //                         MatrixPtr_Type &A11,
+    //                         MultiVectorPtr_Type &F0,
+    //                         MultiVectorPtr_Type &F1,
+    //                         MapPtr_Type &mapRepeated1,
+    //                         MapPtr_Type &mapRepeated2,
+    //                         ParameterListPtr_Type parameterList,
+    //                         MultiVectorPtr_Type u_repeatedNewton=Teuchos::null,
+    //                         MultiVectorPtr_Type p_repeatedNewton=Teuchos::null,
+    //                         MultiVectorPtr_Type u_repeatedTime=Teuchos::null,
+    //                         MultiVectorPtr_Type p_repeatedTime=Teuchos::null,
+    //                        bool update=true,
+    //                        bool updateHistory=true);
     
     
     void addFE(DomainConstPtr_Type domain);
@@ -214,34 +221,34 @@ class FE {
     void assemblyNonlinearLaplace(
         int dim, std::string FEType, int degree, MultiVectorPtr_Type u_rep,
         BlockMatrixPtr_Type &A, BlockMultiVectorPtr_Type &resVec,
-        ParameterListPtr_Type params, string assembleMode,
+        ParameterListPtr_Type params, std::string assembleMode,
         bool callFillComplete = true, int FELocExternal = -1);
 
-    // Assembling the reaction term of the reaction diffusion equation. Maybe add default function.
-	void assemblyLinearReactionTerm(int dim,
-    							std::string FEType,
-                                MatrixPtr_Type &A,
-                                bool callFillComplete,
-                     			std::vector<SC>& funcParameter,
-								RhsFunc_Type reactionFunc);	
+    // // Assembling the reaction term of the reaction diffusion equation. Maybe add default function.
+	// void assemblyLinearReactionTerm(int dim,
+    // 							std::string FEType,
+    //                             MatrixPtr_Type &A,
+    //                             bool callFillComplete,
+    //                  			std::vector<SC>& funcParameter,
+	// 							RhsFunc_Type reactionFunc);	
 
-	// Assembling the reaction term of the reaction diffusion equation. Maybe add default function.
-	void assemblyReactionTerm(int dim,
-    							std::string FEType,
-                                MatrixPtr_Type &A,
-                                MultiVectorPtr_Type u,
-                                bool callFillComplete,
-                     			std::vector<SC>& funcParameter,
-								RhsFunc_Type reactionFunc);	
+	// // Assembling the reaction term of the reaction diffusion equation. Maybe add default function.
+	// void assemblyReactionTerm(int dim,
+    // 							std::string FEType,
+    //                             MatrixPtr_Type &A,
+    //                             MultiVectorPtr_Type u,
+    //                             bool callFillComplete,
+    //                  			std::vector<SC>& funcParameter,
+	// 							RhsFunc_Type reactionFunc);	
 
-                                // Assembling the reaction term of the reaction diffusion equation. Maybe add default function.
-	void assemblyDReactionTerm(int dim,
-    							std::string FEType,
-                                MatrixPtr_Type &A,
-                                MultiVectorPtr_Type u,
-                                bool callFillComplete,
-                     			std::vector<SC>& funcParameter,
-								RhsFunc_Type reactionFunc);
+    //                             // Assembling the reaction term of the reaction diffusion equation. Maybe add default function.
+	// void assemblyDReactionTerm(int dim,
+    // 							std::string FEType,
+    //                             MatrixPtr_Type &A,
+    //                             MultiVectorPtr_Type u,
+    //                             bool callFillComplete,
+    //                  			std::vector<SC>& funcParameter,
+	// 							RhsFunc_Type reactionFunc);
 
     void assemblyLinElasXDimE(int dim,
                                 std::string FEType,
@@ -304,6 +311,13 @@ class FE {
                                       MultiVectorPtr_Type u,
                                       bool callFillComplete);
 
+    void assemblyAdvectionVecFieldScalar(int dim,
+                                    std::string FEType,
+                                    std::string FETypeV,
+                                    MatrixPtr_Type &A,
+                                    MultiVectorPtr_Type u,
+                                    bool callFillComplete);
+                                    
     void assemblyDivAndDivT( int dim,
                             std::string FEType1,
                             std::string FEType2,
@@ -471,8 +485,8 @@ class FE {
     void epsilonTensor(vec_dbl_Type &basisValues, SmallMatrix<SC> &epsilonValues, int activeDof);
 
     void assemblyNavierStokes(int dim,
-								string FETypeVelocity,
-								string FETypePressure,
+								std::string FETypeVelocity,
+								std::string FETypePressure,
 								int degree,
 								int dofsVelocity,
 								int dofsPressure,
@@ -483,12 +497,12 @@ class FE {
 								SmallMatrix_Type coeff,
 								ParameterListPtr_Type params,
 								bool reAssemble,
-							    string assembleMode,
+							        std::string assembleMode,
 								bool callFillComplete = true,
 								int FELocExternal=-1);
 
     void assemblyLaplaceAssFE(int dim,
-                            string FEType,
+                            std::string FEType,
                             int degree,
                             int dofs,
                             BlockMatrixPtr_Type &A,
@@ -496,8 +510,8 @@ class FE {
                             int FELocExternal=-1);
 
     void assemblyAceDeformDiffu(int dim,
-								string FETypeChem,
-								string FETypeSolid,
+								std::string FETypeChem,
+								std::string FETypeSolid,
 								int degree,
 								int dofsChem,
 								int dofsSolid,
@@ -506,13 +520,13 @@ class FE {
 								BlockMatrixPtr_Type &A,
 								BlockMultiVectorPtr_Type &resVec,
 								ParameterListPtr_Type params,
-							    string assembleMode,
+							        std::string assembleMode,
 								bool callFillComplete = true,
 								int FELocExternal=-1);
 
     void assemblyAceDeformDiffuBlock(int dim,
-                                string FETypeChem,
-                                string FETypeSolid,
+                                std::string FETypeChem,
+                                std::string FETypeSolid,
                                 int degree,
                                 int dofsChem,
                                 int dofsSolid,
@@ -524,7 +538,7 @@ class FE {
                                 BlockMultiVectorPtr_Type &resVec,
                                 int block,
                                 ParameterListPtr_Type params,
-                                string assembleMode,
+                                std::string assembleMode,
                                 bool callFillComplete = true,
                                 int FELocExternal=-1);
 
@@ -556,7 +570,7 @@ class FE {
     }
 
 	void assemblyLinearElasticity(int dim,
-                                string FEType,
+                                std::string FEType,
                                 int degree,
                                 int dofs,
                                 MultiVectorPtr_Type d_rep,
@@ -564,12 +578,12 @@ class FE {
                                 BlockMultiVectorPtr_Type &resVec,
                                 ParameterListPtr_Type params,
                                 bool reAssemble,
-                                string assembleMode,
+                                std::string assembleMode,
                                 bool callFillComplete=true,
                                 int FELocExternal=-1);
 
     void assemblyNonLinearElasticity(int dim,
-                                    string FEType,
+                                    std::string FEType,
                                     int degree,
                                     int dofs,
                                     MultiVectorPtr_Type d_rep,
@@ -580,7 +594,7 @@ class FE {
                                     int FELocExternal=-1);
                                     
     void assemblyNonLinearElasticity(int dim,
-                                    string FEType,
+                                    std::string FEType,
                                     int degree,
                                     int dofs,
                                     MultiVectorPtr_Type d_rep,
@@ -592,15 +606,15 @@ class FE {
                                     bool callFillComplete = true,
                                     int FELocExternal=-1);
                                     
-    void checkMeshOrientation(int dim,string FEType);
+    void checkMeshOrientation(int dim, std::string FEType);
 
     /* Given a converged velocity solution this function 
        computes the averaged viscosity estimate in each cell at the center of mass 
        - CM stands for center of mass so the values at the node are averaged to obtain one value
     */
     void computeSteadyViscosityFE_CM(int dim,
-	                                    string FETypeVelocity,
-	                                    string FETypePressure,
+	                                    std::string FETypeVelocity,
+	                                    std::string FETypePressure,
 										int dofsVelocity,
 										int dofsPressure,
 										MultiVectorPtr_Type u_rep,
@@ -618,7 +632,7 @@ private:
 
 	void addFeBlock(BlockMatrixPtr_Type &A, SmallMatrixPtr_Type elementMatrix, FiniteElement element, MapConstPtr_Type mapFirstRow, int row, int column, tuple_disk_vec_ptr_Type problemDisk);
 
-    void initAssembleFEElements(string elementType, tuple_disk_vec_ptr_Type problemDisk, ElementsPtr_Type elements, ParameterListPtr_Type params, vec2D_dbl_ptr_Type pointsRep, MapConstPtr_Type elementMap);
+    void initAssembleFEElements(std::string elementType, tuple_disk_vec_ptr_Type problemDisk, ElementsPtr_Type elements, ParameterListPtr_Type params, vec2D_dbl_ptr_Type pointsRep, MapConstPtr_Type elementMap);
 
     void addFeBlockMv(BlockMultiVectorPtr_Type &res, vec_dbl_ptr_Type rhsVec, FiniteElement elementBlock1,FiniteElement elementBlock2, int dofs1, int dofs2 );
 
@@ -654,21 +668,37 @@ private:
      */
     void mr3d(double* v, double (*E), double (*Nu), double (*C), double** F, double** Pmat, double**** Amat);
 
+    /*! AceGen code for 3D Saint-Venant-Kirchhoff material model 
+    @param[out] v: values needed for the computaion of F, not needed after computation
+    @param[in] lam: lambda
+    @param[in] mue: mu
+    @param[in] F: deformation gradient, basis functions
+    @param[out] P: stresses
+    @param[out] A: strains
+    */
     void stvk3d(double* v,double (*lam),double (*mue),double** F,double** Pmat,double**** Amat);
-
+    
+    /*! AceGen code for 2D Saint-Venant-Kirchhoff material model 
+    @param[out] v: values needed for the computaion of F, not needed after computation
+    @param[in] lam: lambda
+    @param[in] mue: mu
+    @param[in] F: deformation gradient, basis functions
+    @param[out] P: stresses
+    @param[out] A: strains
+    */
     void stvk2d(double* v, double (*lam),double (*mue),double** F ,double** Pmat,double**** Amat);
     
-    void SMTSetElSpecBiot(ElementSpec *es,int *idata/*not needed*/,int ic,int ng, vec_dbl_Type& paraVec);
+    // void SMTSetElSpecBiot(ElementSpec *es,int *idata/*not needed*/,int ic,int ng, vec_dbl_Type& paraVec);
     
-    void SMTSetElSpecBiotStVK(ElementSpec *es,int *idata/*not needed*/,int ic,int ng, vec_dbl_Type& paraVec);
+    // void SMTSetElSpecBiotStVK(ElementSpec *es,int *idata/*not needed*/,int ic,int ng, vec_dbl_Type& paraVec);
     
-    void SMTSetElSpecBiot3D(ElementSpec *es,int *idata/*not needed*/,int ic,int ng, vec_dbl_Type& paraVec);
+    // void SMTSetElSpecBiot3D(ElementSpec *es,int *idata/*not needed*/,int ic,int ng, vec_dbl_Type& paraVec);
     
-    void SKR_Biot(double* v,ElementSpec *es,ElementData *ed, NodeSpec **ns, NodeData **nd,double *rdata,int *idata,double *p,double **s);
+    // void SKR_Biot(double* v,ElementSpec *es,ElementData *ed, NodeSpec **ns, NodeData **nd,double *rdata,int *idata,double *p,double **s);
     
-    void SKR_Biot_StVK(double* v,ElementSpec *es,ElementData *ed, NodeSpec **ns, NodeData **nd,double *rdata,int *idata,double *p,double **s);
+    // void SKR_Biot_StVK(double* v,ElementSpec *es,ElementData *ed, NodeSpec **ns, NodeData **nd,double *rdata,int *idata,double *p,double **s);
     
-    void SKR_Biot3D(double* v,ElementSpec *es,ElementData *ed, NodeSpec **ns, NodeData **nd,double *rdata,int *idata,double *p,double **s);
+    // void SKR_Biot3D(double* v,ElementSpec *es,ElementData *ed, NodeSpec **ns, NodeData **nd,double *rdata,int *idata,double *p,double **s);
     
     //End of AceGen code
     
@@ -736,21 +766,6 @@ private:
 
     int checkFE(int Dimension,
                 std::string FEType);
-
-    /*UN determineDegree(UN dim,
-                       std::string FEType1,
-                       std::string FEType2,
-                       VarType type1,
-                       VarType type2,
-                       UN extraDeg = 0);
-
-    UN determineDegree(UN dim,
-                       std::string FEType,
-                       VarType type);
-
-    UN determineDegree(UN dim,
-                       std::string FEType,
-                       UN degFunc);*/
     
 
     bool setZeros_;

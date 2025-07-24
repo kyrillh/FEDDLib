@@ -1,3 +1,5 @@
+#include <Tpetra_Core.hpp>
+
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 
@@ -5,10 +7,10 @@
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
+
 #include "feddlib/problems/Solver/DAESolverInTime.hpp"
 #include "feddlib/problems/specific/NonLinElasticity.hpp"
-#include <Teuchos_GlobalMPISession.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
+
 
 void rhsY2D(double* x, double* res, double* parameters){
     
@@ -17,7 +19,6 @@ void rhsY2D(double* x, double* res, double* parameters){
     if (parameters[0]<=parameters[2])
         res[1] = parameters[1];
     
-    std::cout << "res[1]:" << res[1] <<" parameters[0]:"<<parameters[0] << " parameters[2]:" << parameters[2]<< std::endl;
     return;
 }
 
@@ -32,12 +33,24 @@ void rhsY(double* x, double* res, double* parameters){
 }
 
 void rhsX2D(double* x, double* res, double* parameters){
-    
-    res[0] = 0.;
-    if (parameters[0]<=parameters[2])
-        res[0] = parameters[1];
-    res[1] = 0.;
+    // parameters[0] is the time, not needed here
 
+    double force = parameters[1];
+    double TRamp = parameters[2];
+    double dt = parameters[3];
+
+  	res[0] =0.;
+    res[1] =0.;
+    
+    if(parameters[0]+1.e-8 < TRamp)
+        force = (parameters[0]/TRamp+dt ) * force ;
+    else
+        force = parameters[1];
+
+    if(parameters[5] == 2 ){
+      	res[0] = force;
+    }
+    
     return;
 }
 
@@ -110,15 +123,12 @@ int main(int argc, char *argv[])
     typedef BlockMultiVector<SC,LO,GO,NO> BlockMultiVector_Type;
     typedef RCP<BlockMultiVector_Type> BlockMultiVectorPtr_Type;
 
-    Teuchos::oblackholestream blackhole;
-    Teuchos::GlobalMPISession mpiSession(&argc,&argv,&blackhole);
-
-    Teuchos::RCP<const Teuchos::Comm<int> > comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    // MPI boilerplate
+    Tpetra::ScopeGuard tpetraScope (&argc, &argv); // initializes MPI
+    Teuchos::RCP<const Teuchos::Comm<int> > comm = Tpetra::getDefaultComm();
 
     // Command Line Parameters
     Teuchos::CommandLineProcessor myCLP;
-    string ulib_str = "Tpetra";
-    myCLP.setOption("ulib",&ulib_str,"Underlying lib");
     // int dim = 2;
     // myCLP.setOption("dim",&dim,"dim");
     string xmlProblemFile = "parametersProblem.xml";
@@ -133,8 +143,7 @@ int main(int argc, char *argv[])
     Teuchos::CommandLineProcessor::EParseCommandLineReturn parseReturn = myCLP.parse(argc,argv);
     if(parseReturn == Teuchos::CommandLineProcessor::PARSE_HELP_PRINTED)
     {
-        mpiSession.~GlobalMPISession();
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     bool verbose (comm->getRank() == 0); // Print-Ausgaben nur auf rank = 0
@@ -160,8 +169,6 @@ int main(int argc, char *argv[])
         int m = parameterListProblem->sublist("Parameter").get("H/h",5);
         std::string FEType = parameterListProblem->sublist("Parameter").get("Discretization","P1");
         std::string meshType = parameterListProblem->sublist("Parameter").get("Mesh Type","structured");
-        std::string bcType = parameterListProblem->sublist("Parameter").get("BC Type","volumeY");
-        std::string bcPlace = parameterListProblem->sublist("Parameter").get("BC Placement","standard");
         
         int n;
         int size = comm->getSize();
@@ -207,6 +214,8 @@ int main(int argc, char *argv[])
             }
             else
                 domain = domainP1;
+
+            domain->preProcessMesh(true,true);
         }
         
         
@@ -219,19 +228,12 @@ int main(int argc, char *argv[])
                 bcFactory->addBC(zeroDirichlet3D, 2, 0, domain, "Dirichlet", dim);
         }
         else if (meshType == "unstructured") {
-            if(bcPlace == "standard"){
-                if (dim == 2)
-                    bcFactory->addBC(zeroDirichlet2D, 1, 0, domain, "Dirichlet", dim);
-                else if (dim == 3)
-                    bcFactory->addBC(zeroDirichlet3D, 1, 0, domain, "Dirichlet", dim);
+            if (dim == 2){
+                bcFactory->addBC(zeroDirichlet2D, 4, 0, domain, "Dirichlet", dim);
+
             }
-            else if(bcPlace == "foamFine"){
-                if (dim == 2){
-                    TEUCHOS_TEST_FOR_EXCEPTION( true, std::runtime_error, "Foam should only be available in 3D." );
-                }
-                else if (dim == 3)
-                    bcFactory->addBC(zeroDirichlet3D, 2, 0, domain, "Dirichlet", dim);
-            }
+            else if (dim == 3)
+                TEUCHOS_TEST_FOR_EXCEPTION( true, std::runtime_error, "There only exists a 2D test for unstructured grids." );    
         }
         
         {
@@ -240,25 +242,31 @@ int main(int argc, char *argv[])
 
             domain->info();
             nonLinElas.info();
-            if (bcType=="volumeY"){
+
+            std::string sourceType = parameterListProblem->sublist("Parameter").get("Source Type","volume");
+
+            if (sourceType=="volume"){
                 if (dim == 2)
                     nonLinElas.addRhsFunction( rhsY2D );
                 else if (dim==3)
                     nonLinElas.addRhsFunction( rhsY );
             }
-            else if(bcType=="volumeX"){
+            else if(sourceType=="surface"){
                 if (dim == 2)
                     nonLinElas.addRhsFunction( rhsX2D );
                 else if (dim==3)
-                    nonLinElas.addRhsFunction( rhsX );
+                    TEUCHOS_TEST_FOR_EXCEPTION( true, std::runtime_error, "There only exists a 2D test with surface force." );    
+
             }
                 
             double force = parameterListAll->sublist("Parameter").get("Volume force",0.);
             double finalTimeRamp = parameterListAll->sublist("Timestepping Parameter").get("Final time force",0.1);
+            double dt = parameterListAll->sublist("Timestepping Parameter").get("dt",0.1);
             double degree = 0;
             
             nonLinElas.addParemeterRhs( force );
             nonLinElas.addParemeterRhs( finalTimeRamp );
+            nonLinElas.addParemeterRhs( dt );
             nonLinElas.addParemeterRhs( degree );
             
             nonLinElas.addBoundaries(bcFactory); // Dem Problem RW hinzufuegen
@@ -293,6 +301,5 @@ int main(int argc, char *argv[])
         }
     }
     Teuchos::TimeMonitor::report(cout);
-
-    return(EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }

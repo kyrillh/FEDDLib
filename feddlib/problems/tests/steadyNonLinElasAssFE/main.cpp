@@ -1,3 +1,5 @@
+#include <Tpetra_Core.hpp>
+
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 
@@ -9,8 +11,6 @@
 #include "feddlib/problems/specific/NonLinElasticity.hpp"
 #include "feddlib/problems/specific/LinElasAssFE.hpp"
 #include "feddlib/problems/specific/NonLinElasAssFE.hpp"
-#include <Teuchos_GlobalMPISession.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 
 void zeroDirichlet(double* x, double* res, double t, const double* parameters)
@@ -99,12 +99,12 @@ void rhsYZ(double* x, double* res, double* parameters){
     res[0] = 0.;
     double force = parameters[1];
 
-    if(parameters[2] == 5)
+    if(parameters[3] == 5)
         res[1] = force;
     else
         res[1] =0.;
         
-    if (parameters[2] == 4)
+    if (parameters[3] == 4)
         res[2] = force;
     else
         res[2] = 0.;
@@ -141,15 +141,13 @@ int main(int argc, char *argv[])
     typedef BlockMultiVector<SC,LO,GO,NO> BlockMultiVector_Type;
     typedef RCP<BlockMultiVector_Type> BlockMultiVectorPtr_Type;
 
-    Teuchos::oblackholestream blackhole;
-    Teuchos::GlobalMPISession mpiSession(&argc,&argv,&blackhole);
-
-    Teuchos::RCP<const Teuchos::Comm<int> > comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    // MPI boilerplate
+    Tpetra::ScopeGuard tpetraScope (&argc, &argv); // initializes MPI
+    Teuchos::RCP<const Teuchos::Comm<int> > comm = Tpetra::getDefaultComm();
 
     // Command Line Parameters
     Teuchos::CommandLineProcessor myCLP;
-    string ulib_str = "Tpetra";
-    myCLP.setOption("ulib",&ulib_str,"Underlying lib");
+
     // int dim = 2;
     // myCLP.setOption("dim",&dim,"dim");
     string xmlProblemFile = "parametersProblem.xml";
@@ -163,8 +161,7 @@ int main(int argc, char *argv[])
     myCLP.throwExceptions(false);
     Teuchos::CommandLineProcessor::EParseCommandLineReturn parseReturn = myCLP.parse(argc,argv);
     if(parseReturn == Teuchos::CommandLineProcessor::PARSE_HELP_PRINTED) {
-        mpiSession.~GlobalMPISession();
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     bool verbose (comm->getRank() == 0); // Print-Ausgaben nur auf rank = 0
@@ -279,7 +276,6 @@ int main(int argc, char *argv[])
         NonLinElas.assemble();                
         NonLinElas.setBoundaries(); // In der Klasse Problem
 		NonLinElas.setBoundariesRHS();
-
 		std::string nlSolverType = parameterListProblem->sublist("General").get("Linearization","FixedPoint");
         NonLinearSolver<SC,LO,GO,NO> nlSolver( nlSolverType );
         nlSolver.solve( NonLinElas );
@@ -378,7 +374,7 @@ int main(int argc, char *argv[])
 				cout << " Relative error Inf-Norm of solutions nonlinear elasticity assemFE " << infNormError/res << endl;
 		
 
-          // TEUCHOS_TEST_FOR_EXCEPTION( infNormError > 1e-11 , std::logic_error, "Inf Norm of Error between calculated solutions is too great. Exceeded 1e-11. ");
+           TEUCHOS_TEST_FOR_EXCEPTION( infNormError > 1e-11 , std::logic_error, "Inf Norm of Error between calculated solutions is too great. Exceeded 1e-11. ");
 
     }
 

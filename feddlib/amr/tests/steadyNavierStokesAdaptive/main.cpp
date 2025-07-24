@@ -34,6 +34,13 @@
  @copyright CH
  */
 
+using std::pow;
+using std::cos;
+using std::sin;
+using std::atan2;
+using std::sqrt;
+using std::exp;
+
 
 // ######################
 // Verfuerth
@@ -261,6 +268,7 @@ typedef default_go GO;
 typedef default_no NO;
 
 using namespace FEDD;
+using namespace std;
 
 int main(int argc, char *argv[]) {
     
@@ -443,10 +451,10 @@ int main(int argc, char *argv[]) {
 		
 
 		int j=0;
-		MAIN_TIMER_START(Total," Step 4:	 Total RefinementAlgorithm");
+		MAIN_TIMER_START(Total," Step 4:\t Total RefinementAlgorithm");
 		while(j<maxIter+1 ){
 
-			MAIN_TIMER_START(buildP2," Step 0:	 buildP2Mesh");
+			MAIN_TIMER_START(buildP2," Step 0:\t buildP2Mesh");
 			if (discVelocity=="P2" ) {
 				domainVelocity.reset( new Domain<SC,LO,GO,NO>( comm, dim ));
 		        domainVelocity->buildP2ofP1Domain( domainPressure );
@@ -456,7 +464,7 @@ int main(int argc, char *argv[]) {
 			
 			MAIN_TIMER_STOP(buildP2);		
 
-			MAIN_TIMER_START(Bounds," Step 1:	 bcFactory");
+			MAIN_TIMER_START(Bounds," Step 1:\t bcFactory");
             Teuchos::RCP<BCBuilder<SC,LO,GO,NO> > bcFactory( new BCBuilder<SC,LO,GO,NO>( ) );
 
 			bcFactory->addBC(flag1Func, 1, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
@@ -467,7 +475,7 @@ int main(int argc, char *argv[]) {
 			//bcFactory->addBC(flag7Func, 7, 0, domainPressure, "Dirichlet", dim, parameter_vec);
       
 			MAIN_TIMER_STOP(Bounds);	
-			MAIN_TIMER_START(Solver," Step 2:	 solving PDE");
+			MAIN_TIMER_START(Solver," Step 2:\t solving PDE");
 
 			Teuchos::RCP<NavierStokes<SC,LO,GO,NO>> navierStokes( new NavierStokes<SC,LO,GO,NO> (domainVelocity, discVelocity, domainPressure, discPressure, parameterListAll ));
 
@@ -491,7 +499,7 @@ int main(int argc, char *argv[]) {
 			MAIN_TIMER_STOP(Solver);	
 
 
-			MAIN_TIMER_START(Refinement," Step 3:	 meshRefinement");
+			MAIN_TIMER_START(Refinement," Step 3:\t meshRefinement");
 
 			// Refinement
 			domainRefined.reset( new Domain<SC,LO,GO,NO>( comm, dim ) );

@@ -305,7 +305,6 @@ namespace FEDD
     template <class SC, class LO, class GO, class NO>
     int Problem<SC, LO, GO, NO>::solve(BlockMultiVectorPtr_Type rhs)
     {
-
         int its;
         if (verbose_)
             std::cout << "-- Solve System ..." << std::endl;
@@ -631,6 +630,106 @@ namespace FEDD
 
         return result;
     }
+
+    template <class SC, class LO, class GO, class NO>
+    void Problem<SC, LO, GO, NO>::infoParameter()
+    {
+        bool verbose(comm_->getRank() == 0);
+        if (verbose)
+        {
+            std::cout << "#####################################" << std::endl;
+            std::cout << " ### Problem Information ###" << std::endl;
+            std::cout << " ### Dimension: " << dim_ << std::endl;
+            std::cout << " ### Number of blocks/equations/variables: " << domainPtr_vec_.size() << std::endl;
+            for (int i = 0; i < domainPtr_vec_.size(); i++)
+            {
+                std::cout << "  ## Block " << i + 1 << " name: " << variableName_vec_.at(i) << " d.o.f.s: " << dofsPerNode_vec_.at(i) << " FE type: " << domain_FEType_vec_.at(i) << std::endl;
+            }
+            std::cout << " ####################################" << std::endl;
+            ParameterListPtr_Type parameterlist = sublist(parameterList_, "Parameter");
+            std::cout << " ### Parameter Information ###" << std::endl;
+            std::cout << " ### Mesh Type: " << parameterlist->get("Mesh Type", "???") << std::endl;
+            if(parameterlist->get("Mesh Type", "???") == "structured" || parameterlist->get("Mesh Type", "???") == "structured_bfs" )
+                std::cout << " ### H/h= " << parameterlist->get("H/h", 0) << std::endl;
+            else
+                std::cout << " ### Mesh File Name 1: " << parameterList_->sublist("Mesh Partitioner").get("Mesh 1 Name", "???") << std::endl;
+
+            std::cout << " ### Viscosity: " << parameterlist->get("Viscosity", 0.) 
+                      << " ### Density: " << parameterlist->get("Density", 0.) << std::endl;
+
+            if(abs(parameterlist->get("MaxVelocity", 0.)) > 0 )
+                std::cout << " ### Maximum Velocity: " << parameterlist->get("MaxVelocity", 0.) << std::endl;   
+            else if(abs(parameterlist->get("Max Velocity", 0.)) > 0 )
+                std::cout << " ### or Maximum Velocity: " << parameterlist->get("Max Velocity", 0.) << std::endl;   
+
+            std::cout << " ### Rel. Tol.: " << parameterlist->get("relNonLinTol", 0.) 
+                << " ### Abs. Tol.: " << parameterlist->get("absNonLinTol", 0.) << std::endl;    
+
+            std::cout << " ####################################" << std::endl;
+
+            
+            // ch 15.04.19: Hier ggf. unterscheiden zwischen Monolithic und Teko bzw. anderen Block-Precs.
+            ParameterListPtr_Type pListThyraPrec = sublist(parameterList_, "ThyraPreconditioner");
+            std::cout << " ### Preconditioner Information ###" << std::endl;
+            std::cout << "  ## Type: " << parameterList_->sublist("General").get("Preconditioner Method", "Monolithic") << std::endl;
+
+            if (!pListThyraPrec->get("Preconditioner Type", "FROSch").compare("FROSch") && parameterList_->sublist("General").get("Preconditioner Method", "Monolithic") == "Monolithic")
+            {
+                std::cout << "  ## Variant: " << pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").get("FROSch Preconditioner Type", "TwoLevelBlockPreconditioner") << std::endl;
+                std::cout << "  ## Overlap: "
+                          << pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").get("Overlap", 0) << std::endl;
+                std::cout << "  ## OverlappingOperator Type: "
+                          << pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").get("OverlappingOperator Type", "AlgebraicOverlappingOperator") << std::endl;
+
+                std::cout << "  ## CoarseOperator Type: "
+                          << pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").get("CoarseOperator Type", "GDSWCoarseOperator") << std::endl;
+
+                if(pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").get("CoarseOperator Type", "GDSWCoarseOperator") == "IPOUHarmonicCoarseOperator"){
+                    for (int i = 0; i < this->parameterList_->get("Number of blocks", 2); i++)
+                    {
+                        std::cout << "   # IPOU Block "<< std::to_string(i + 1) <<":  " << pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").sublist("IPOUHarmonicCoarseOperator").sublist("Blocks").sublist(std::to_string(i + 1)).sublist("InterfacePartitionOfUnity").get("Type","NOTFOUND") << std::endl;
+                    }
+                }
+                    
+            }
+            else if (!parameterList_->sublist("General").get("Preconditioner Method", "Monolithic").compare("Teko")){
+                std::cout << "  ### Block Preconditioner Type: " << parameterList_->sublist("Teko Parameters").sublist("Preconditioner Types").sublist("Teko").get("Inverse Type","SIMPLE") << std::endl;
+                std::cout << "  ### Velocity Preconditioner:   " << parameterList_->sublist("Teko Parameters").sublist("Preconditioner Types").sublist("Teko").sublist("Inverse Factory Library").sublist("FROSch-Velocity").get("CoarseOperator Type","GDSW#") << std::endl;
+                std::cout << "  ### Pressure Preconditioner:   " << parameterList_->sublist("Teko Parameters").sublist("Preconditioner Types").sublist("Teko").sublist("Inverse Factory Library").sublist("FROSch-Pressure").get("CoarseOperator Type","GDSW#") << std::endl;
+
+            }
+            else if (!parameterList_->sublist("General").get("Preconditioner Method", "Monolithic").compare("Diagonal") ||
+                !parameterList_->sublist("General").get("Preconditioner Method", "Monolithic").compare("Triangular") ||
+                !parameterList_->sublist("General").get("Preconditioner Method", "Monolithic").compare("PCD") ||
+                !parameterList_->sublist("General").get("Preconditioner Method", "Monolithic").compare("LSC"))
+            {
+                // ParameterListPtr_Type pListThyraPrecBlock = sublist(parameterList_, "Block Preconditioner");
+
+                std::cout << "  ### Block Preconditioner Type: " << parameterList_->sublist("General").get("Preconditioner Method", "Monolithic") << std::endl;
+                std::cout << "   ## Velocity Preconditioner:   " << parameterList_->sublist("Velocity preconditioner").sublist("ThyraPreconditioner").sublist("Preconditioner Types").sublist("FROSch").get("CoarseOperator Type", "Nada") << std::endl;
+                std::cout << "    # Variant: " << parameterList_->sublist("Velocity preconditioner").sublist("ThyraPreconditioner").sublist("Preconditioner Types").sublist("FROSch").get("FROSch Preconditioner Type", "TwoLevelBlockPreconditioner") << std::endl;
+                std::cout << "    # Overlap: "
+                          << parameterList_->sublist("Velocity preconditioner").sublist("ThyraPreconditioner").sublist("Preconditioner Types").sublist("FROSch").get("Overlap", 0) << std::endl;
+               
+                std::cout << "   ## Schur Complement Preconditioner: " << parameterList_->sublist("Schur complement preconditioner").sublist("ThyraPreconditioner").sublist("Preconditioner Types").sublist("FROSch").get("CoarseOperator Type", "Nada") << std::endl;
+                std::cout << "    # Variant: " << parameterList_->sublist("Schur complement preconditioner").sublist("ThyraPreconditioner").sublist("Preconditioner Types").sublist("FROSch").get("FROSch Preconditioner Type", "TwoLevelBlockPreconditioner") << std::endl;
+                std::cout << "    # Overlap: "
+                          << parameterList_->sublist("Schur complement preconditioner").sublist("ThyraPreconditioner").sublist("Preconditioner Types").sublist("FROSch").get("Overlap", 0) << std::endl;
+            }
+            else
+            {
+                std::cout << " ### Full preconditioner information only available for Monolithic/Teko preconditioner type ###" << std::endl;
+            }
+            std::cout << " ####################################" << std::endl;
+
+            std::cout << " ### Git commit hash: " << GIT_COMMIT_HASH << std::endl;
+            std::cout << " ### Git branch name: " << GIT_BRANCH_NAME << std::endl;
+
+            std::cout << "#####################################" << std::endl;
+
+        }
+    }
+
 
 }
 #endif

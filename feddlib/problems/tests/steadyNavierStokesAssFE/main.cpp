@@ -6,6 +6,8 @@
 #define MAIN_TIMER_STOP(A) A.reset();
 #endif
 
+#include <Tpetra_Core.hpp>
+
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/core/FE/Domain.hpp"
@@ -15,9 +17,6 @@
 
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 #include "feddlib/problems/specific/NavierStokesAssFE.hpp"
-
-#include <Teuchos_GlobalMPISession.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
 
 
 /*!
@@ -137,10 +136,9 @@ int main(int argc, char *argv[]) {
     typedef Matrix<SC,LO,GO,NO> Matrix_Type;
     typedef Teuchos::RCP<Matrix_Type> MatrixPtr_Type;
 
-    Teuchos::oblackholestream blackhole;
-    Teuchos::GlobalMPISession mpiSession(&argc,&argv,&blackhole);
-
-    Teuchos::RCP<const Teuchos::Comm<int> > comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    // MPI boilerplate
+    Tpetra::ScopeGuard tpetraScope (&argc, &argv); // initializes MPI
+    Teuchos::RCP<const Teuchos::Comm<int> > comm = Tpetra::getDefaultComm();
     bool verbose (comm->getRank() == 0);
 
 //    Teuchos::RCP<Teuchos::FancyOStream> out = Teuchos::VerboseObjectBase::getDefaultOStream();
@@ -171,8 +169,7 @@ int main(int argc, char *argv[]) {
     myCLP.throwExceptions(false);
     Teuchos::CommandLineProcessor::EParseCommandLineReturn parseReturn = myCLP.parse(argc,argv);
     if(parseReturn == Teuchos::CommandLineProcessor::PARSE_HELP_PRINTED) {
-        MPI_Finalize();
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     {
@@ -266,6 +263,25 @@ int main(int argc, char *argv[]) {
                 bcFactory->addBC(zeroDirichlet3D, 2, 0, domainVelocity, "Dirichlet", dim);
                 
             }
+         
+             // Flag Check
+            Teuchos::RCP<ExporterParaView<SC,LO,GO,NO> > exPara(new ExporterParaView<SC,LO,GO,NO>());
+
+			Teuchos::RCP<MultiVector<SC,LO,GO,NO> > exportSolution(new MultiVector<SC,LO,GO,NO>(domainVelocity->getMapUnique()));
+			vec_int_ptr_Type BCFlags = domainVelocity->getBCFlagUnique();
+
+			Teuchos::ArrayRCP< SC > entries  = exportSolution->getDataNonConst(0);
+			for(int i=0; i< entries.size(); i++){
+				entries[i] = BCFlags->at(i);
+			}
+
+			Teuchos::RCP<const MultiVector<SC,LO,GO,NO> > exportSolutionConst = exportSolution;
+
+			exPara->setup("FlagsFluid",domainVelocity->getMesh(), discVelocity);
+
+			exPara->addVariable(exportSolutionConst, "Flags", "Scalar", 1,domainVelocity->getMapUnique());
+
+			exPara->save(0.0);
 			// ---------------------
 			// Old Assembly Rouine
         
@@ -360,17 +376,40 @@ int main(int argc, char *argv[]) {
 					Sum2->getGlobalRowView(row, indices,values);
 					
 					for(int j=0; j< values.size() ; j++){
-						if(fabs(values[j])>res)
-							res = fabs(values[j]);			
+						if(std::fabs(values[j])>res)
+							res = std::fabs(values[j]);			
 					}	
 				}	
 			}
-			res = fabs(res);
+			res = std::fabs(res);
 			reduceAll<int, double> (*comm, REDUCE_MAX, res, outArg (res));
            
 			if(comm->getRank() == 0)
 				cout << "Inf Norm of Difference between Block A: " << res << endl;
 
+            if(discVelocity=="P1"){
+            MatrixPtr_Type Sum3= Teuchos::rcp(new Matrix_Type( domainPressure->getMapUnique(), domainPressure->getDimension() * domainPressure->getApproxEntriesPerRow() )  );
+			navierStokes.getSystem()->getBlock(1,1)->addMatrix(1, Sum3, 1);
+			navierStokesAssFE.getSystem()->getBlock(1,1)->addMatrix(-1, Sum3, 1);
+			
+			res=0.;
+			for (UN i=0; i < domainPressure->getMapUnique()->getMaxLocalIndex()+1 ; i++) {
+				
+                GO row = domainPressure->getMapUnique()->getGlobalElement( i );
+                Sum3->getGlobalRowView(row, indices,values);
+                
+                for(int j=0; j< values.size() ; j++){
+                    if(std::fabs(values[j])>res)
+                        res = std::fabs(values[j]);			
+                }	
+            
+			}
+			res = std::fabs(res);
+			reduceAll<int, double> (*comm, REDUCE_MAX, res, outArg (res));
+           
+			if(comm->getRank() == 0)
+				cout << " Inf Norm of Difference between Block C: " << res << endl;
+            }
 			MatrixPtr_Type Sum1= Teuchos::rcp(new Matrix_Type( domainPressure->getMapUnique(), domainVelocity->getDimension() * domainVelocity->getApproxEntriesPerRow() )  );
 			navierStokes.getSystem()->getBlock(1,0)->addMatrix(1, Sum1, 1);
 			navierStokesAssFE.getSystem()->getBlock(1,0)->addMatrix(-1, Sum1, 1);
@@ -381,16 +420,37 @@ int main(int argc, char *argv[]) {
 				Sum1->getGlobalRowView(row, indices,values);
 				
 				for(int j=0; j< values.size() ; j++){
-					res += fabs(values[j]);			
+					res += std::fabs(values[j]);			
 				}	
 			}	
 			
-			res = fabs(res);
+			res = std::fabs(res);
 			reduceAll<int, double> (*comm, REDUCE_SUM, res, outArg (res));
 		
 			if(comm->getRank() == 0)
 				cout << " Norm of Difference between Block B: " << res << endl;
 
+            MatrixPtr_Type Sum4= Teuchos::rcp(new Matrix_Type( domainVelocity->getMapVecFieldUnique(), domainVelocity->getDimension() * domainVelocity->getApproxEntriesPerRow() )  );
+			navierStokes.getSystem()->getBlock(0,1)->addMatrix(1, Sum4, 1);
+			navierStokesAssFE.getSystem()->getBlock(0,1)->addMatrix(-1, Sum4, 1);
+
+			res=0.;
+			for (UN i=0; i < domainVelocity->getMapUnique()->getMaxLocalIndex()+1 ; i++) {
+				for(int d=0; d< dim ; d++){
+					GO row = dim*domainVelocity->getMapUnique()->getGlobalElement( i )+d;
+					Sum4->getGlobalRowView(row, indices,values);
+				
+                    for(int j=0; j< values.size() ; j++){
+                        res += std::fabs(values[j]);			
+                    }	
+                }
+			}	
+			
+			res = std::fabs(res);
+			reduceAll<int, double> (*comm, REDUCE_SUM, res, outArg (res));
+		
+			if(comm->getRank() == 0)
+				cout << " Norm of Difference between Block BT: " << res << endl;
 		  			
 
             DomainPtr_Type dom = domainVelocity;

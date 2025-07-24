@@ -103,7 +103,7 @@ partialGlobalInterfaceVecFieldMap_(),
     geometries2DVec_.reset(new string_vec_Type(0));
     geometries2DVec_->push_back("Square");
     geometries2DVec_->push_back("BFS");
-    geometries2DVec_->push_back("SquareTPM");
+    // geometries2DVec_->push_back("SquareTPM");
     geometries2DVec_->push_back("structuredMiniTest");
 //    geometries2DVec->push_back("REC");
 }
@@ -166,6 +166,12 @@ void Domain<SC,LO,GO,NO>::initializeFEData(){
 
     this->getElementsC()->initializeFEData( this->getPointsRepeated() );
 }
+
+template <class SC, class LO, class GO, class NO>
+void Domain<SC,LO,GO,NO>::setMeshParameterList( ParameterListPtr_Type& pl ){
+    TEUCHOS_TEST_FOR_EXCEPTION( mesh_.is_null(), std::runtime_error, "Mesh is null." );
+    mesh_->setParameterList( pl );
+}
     
 template <class SC, class LO, class GO, class NO>
 vec_int_ptr_Type Domain<SC,LO,GO,NO>::getElementsFlag() const{
@@ -177,23 +183,23 @@ template <class SC, class LO, class GO, class NO>
 LO Domain<SC,LO,GO,NO>::getApproxEntriesPerRow() const{
     if (this->dim_ == 2) {
         if ( this->FEType_ == "P1" ) {
-            return 44;
+            return 50;
         }
         else if ( this->FEType_ == "P2" ) {
-            return 60;
+            return 100;
         }
         else {
-            return 60;
+            return 200;
         }
     } else {
         if ( this->FEType_ == "P1" ) {
-            return 400;
+            return 100;
         }
         else if ( this->FEType_ == "P2" ) {
-            return 460;
+            return 200;
         }
         else {
-            return 400;
+            return 300;
         }
     }
 }
@@ -231,16 +237,8 @@ void Domain<SC,LO,GO,NO>::buildMesh(int flagsOption , std::string meshType, int 
                     meshStructured->setGeometry2DRectangle(coorRec, length, height);
                     meshStructured->buildMesh2DBFS(FEType, n_, m_, numProcsCoarseSolve);
                     break;
-                case 2:
-                    meshStructured->setGeometry2DRectangle(coorRec, length, height);
-                    meshStructured->buildMesh2DTPM(FEType, n_, m_, numProcsCoarseSolve);
-                    break;
-                case 3:
-                    meshStructured->setGeometry2DRectangle(coorRec, length, height);
-                    meshStructured->buildMesh2DMiniTPM(FEType, n_, m_, numProcsCoarseSolve);
-                    break;
                 default:
-                    TEUCHOS_TEST_FOR_EXCEPTION(true,std::logic_error,"Select valid mesh. Structured types are 'structured' and 'structured_bfs' in 2D. TPM test meshes also available.");
+                    TEUCHOS_TEST_FOR_EXCEPTION(true,std::logic_error,"Select valid mesh. Structured types are 'structured' and 'structured_bfs' in 2D.");
                     break;
             }
 
@@ -276,7 +274,7 @@ void Domain<SC,LO,GO,NO>::buildMesh(int flagsOption , std::string meshType, int 
 }
 
 template <class SC, class LO, class GO, class NO>
-void Domain<SC,LO,GO,NO>::initializeUnstructuredMesh(int dimension, string feType, int volumeID){
+void Domain<SC,LO,GO,NO>::initializeUnstructuredMesh(int dimension, std::string feType, int volumeID){
     
     MeshUnstrPtr_Type meshUnstructured = Teuchos::rcp(new MeshUnstr_Type(comm_, volumeID));
     mesh_ = meshUnstructured;
@@ -290,7 +288,7 @@ void Domain<SC,LO,GO,NO>::initializeUnstructuredMesh(int dimension, string feTyp
 }
 
 template <class SC, class LO, class GO, class NO>
-void Domain<SC,LO,GO,NO>::readMeshSize(string filename, string delimiter){
+void Domain<SC,LO,GO,NO>::readMeshSize(std::string filename, std::string delimiter){
     
     MeshUnstrPtr_Type meshUnstructured = Teuchos::rcp_dynamic_cast<MeshUnstr_Type>( mesh_ );
     TEUCHOS_TEST_FOR_EXCEPTION( meshUnstructured.is_null(), std::runtime_error, "Unstructured Mesh is null." );
@@ -409,7 +407,7 @@ void Domain<SC, LO, GO, NO>::initDummyMesh(MapPtr_Type map)
 }
 
 template <class SC, class LO, class GO, class NO>
-void Domain<SC,LO,GO,NO>::exportMesh(bool exportEdges, bool exportSurfaces, string exportMesh){ 
+void Domain<SC,LO,GO,NO>::exportMesh(bool exportEdges, bool exportSurfaces, std::string exportMesh){ 
 
     MeshUnstrPtr_Type meshUnstructured = Teuchos::rcp_dynamic_cast<MeshUnstr_Type>( mesh_ );
 
@@ -651,11 +649,11 @@ void Domain<SC,LO,GO,NO>::calculateDistancesToInterface()
         {
             for(int k = 0; k < dim_; k++)
             {
-                distance = distance + pow( sourceNodesRep->at(i).at(k) - endNodesRep->at(j).at(k), 2.0 );
+                distance = distance + std::pow( sourceNodesRep->at(i).at(k) - endNodesRep->at(j).at(k), 2.0 );
             }
 
             // Noch die Wurzel ziehen
-            distance = sqrt(distance);
+            distance = std::sqrt(distance);
 
             if(distancesToInterface_->at(i) > distance)
             {
@@ -744,9 +742,8 @@ void Domain<SC,LO,GO,NO>::buildUniqueInterfaceMaps()
     GO numberInterfaceNodes = localInterfaceID; // long long wg. 64
     
     // Baue nun die InterfaceMap (node)
-    std::string ulib = this->getMapUnique()->getUnderlyingLib();
     Teuchos::ArrayView<GO> vecInterfaceMapArray =  Teuchos::arrayViewFromVector( vecInterfaceMap );
-    interfaceMapUnique_ = Teuchos::rcp(new Map_Type( ulib, numberInterfaceNodes, vecInterfaceMapArray, 0, comm_ ) ); //maybe numberInterfaceNodes instead of -1
+    interfaceMapUnique_ = Teuchos::rcp(new Map_Type( numberInterfaceNodes, vecInterfaceMapArray, 0, comm_ ) ); //maybe numberInterfaceNodes instead of -1
     // dof-Map bauen
     interfaceMapVecFieldUnique_ = interfaceMapUnique_->buildVecFieldMap(dim_/*dofs*/);
 }
@@ -824,15 +821,14 @@ void Domain<SC,LO,GO,NO>::buildInterfaceMaps()
     }
 //    std::sort( vecGlobalInterfaceID.begin(), vecGlobalInterfaceID.end() );
     // Baue nun die InterfaceMap fuer Fluid oder Struktur
-    std::string ulib = this->getMapUnique()->getUnderlyingLib();
     Teuchos::ArrayView<GO> vecInterfaceGlobalMapArray =  Teuchos::arrayViewFromVector( vecGlobalInterfaceID );
     Teuchos::ArrayView<GO> vecInterfaceMapArray =  Teuchos::arrayViewFromVector( vecInterfaceID );
     Teuchos::ArrayView<GO> vecOtherInterfaceGlobalMapArray =  Teuchos::arrayViewFromVector( vecOtherGlobalInterfaceID );
     
-    globalInterfaceMapUnique_ = Teuchos::rcp(new Map_Type( ulib, -1, vecInterfaceGlobalMapArray, 0, comm_ ) );
-    interfaceMapUnique_ = Teuchos::rcp(new Map_Type( ulib, -1, vecInterfaceMapArray, 0, comm_ ) );
+    globalInterfaceMapUnique_ = Teuchos::rcp(new Map_Type( -1, vecInterfaceGlobalMapArray, 0, comm_ ) );
+    interfaceMapUnique_ = Teuchos::rcp(new Map_Type(-1, vecInterfaceMapArray, 0, comm_ ) );
 
-    otherGlobalInterfaceMapUnique_ = Teuchos::rcp(new Map_Type( ulib, -1, vecOtherInterfaceGlobalMapArray, 0, comm_ ) );
+    otherGlobalInterfaceMapUnique_ = Teuchos::rcp(new Map_Type(-1, vecOtherInterfaceGlobalMapArray, 0, comm_ ) );
 
     
     if ( interface->sizePartialCoupling() == 0 ) {
@@ -885,13 +881,13 @@ void Domain<SC,LO,GO,NO>::buildInterfaceMaps()
                 }
             }
         }
-        globalInterfaceMapVecFieldUnique_ = Teuchos::rcp(new Map_Type( globalInterfaceMapUnique_->getUnderlyingLib(), -1, elementListFieldGlobal(), 0/*index base*/, this->getComm() ) );
-        otherGlobalInterfaceMapVecFieldUnique_ = Teuchos::rcp(new Map_Type( globalInterfaceMapUnique_->getUnderlyingLib(), -1, otherElementListFieldGlobal(), 0/*index base*/, this->getComm() ) );
+        globalInterfaceMapVecFieldUnique_ = Teuchos::rcp(new Map_Type(  -1, elementListFieldGlobal(), 0/*index base*/, this->getComm() ) );
+        otherGlobalInterfaceMapVecFieldUnique_ = Teuchos::rcp(new Map_Type(  -1, otherElementListFieldGlobal(), 0/*index base*/, this->getComm() ) );
         // This is only a temporary map. We need to make sure that the dummy values have a higher GID, as the real coupling values. Otherwise we might get a problem during the assembly of the coupling matrices
-        interfaceMapVecFieldUnique_ = Teuchos::rcp(new Map_Type( globalInterfaceMapUnique_->getUnderlyingLib(), -1, elementListFieldGlobal.size(), 0/*index base*/, this->getComm() ) );
+        interfaceMapVecFieldUnique_ = Teuchos::rcp(new Map_Type(-1, elementListFieldGlobal.size(), 0/*index base*/, this->getComm() ) );
         
-        partialGlobalInterfaceVecFieldMap_ = Teuchos::rcp(new Map_Type( interfaceMapUnique_->getUnderlyingLib(), -1, elListFieldPartial(), 0/*index base*/, this->getComm() ) );
-        otherPartialGlobalInterfaceVecFieldMap_ = Teuchos::rcp(new Map_Type( interfaceMapUnique_->getUnderlyingLib(), -1, otherElListFieldPartial(), 0/*index base*/, this->getComm() ) );
+        partialGlobalInterfaceVecFieldMap_ = Teuchos::rcp(new Map_Type(  -1, elListFieldPartial(), 0/*index base*/, this->getComm() ) );
+        otherPartialGlobalInterfaceVecFieldMap_ = Teuchos::rcp(new Map_Type(-1, otherElListFieldPartial(), 0/*index base*/, this->getComm() ) );
         
     }
 
@@ -956,7 +952,7 @@ int Domain<SC,LO,GO,NO>::findInPointsUnique(const vec_dbl_Type& x) const{
     
     if (this->getDimension()==2) {
         auto iterator = std::find_if( points->begin(), points->end(),
-                                     [&] (const vector<double>& a){
+                                     [&] (const std::vector<double>& a){
                                          if (a[0] >= x[0]-eps && a[0] <= x[0]+eps
                                              && a[1] >= x[1]-eps && a[1] <= x[1]+eps)
                                              return true;
@@ -971,7 +967,7 @@ int Domain<SC,LO,GO,NO>::findInPointsUnique(const vec_dbl_Type& x) const{
     }
     else if(this->getDimension()==3) {
         auto iterator = std::find_if(points->begin(),points->end(),
-                                     [&] (const vector<double>& a){
+                                     [&] (const std::vector<double>& a){
                                          if (a[0] >= x[0]-eps && a[0] <= x[0]+eps
                                              && a[1] >= x[1]-eps && a[1] <= x[1]+eps
                                              && a[2] >= x[2]-eps && a[2] <= x[2]+eps)
@@ -1004,7 +1000,7 @@ typename Domain<SC,LO,GO,NO>::MultiVectorPtr_Type Domain<SC,LO,GO,NO>::getNodeLi
 }
 
 template <class SC, class LO, class GO, class NO>
-void Domain<SC, LO, GO, NO>::exportNodeFlags(string name)
+void Domain<SC, LO, GO, NO>::exportNodeFlags(std::string name)
 {
         Teuchos::RCP<ExporterParaView<SC,LO,GO,NO> > exPara(new ExporterParaView<SC,LO,GO,NO>());
 
@@ -1027,7 +1023,7 @@ void Domain<SC, LO, GO, NO>::exportNodeFlags(string name)
 } 
 
 template <class SC, class LO, class GO, class NO>
-void Domain<SC, LO, GO, NO>::exportSurfaceNormals(string name)
+void Domain<SC, LO, GO, NO>::exportSurfaceNormals(std::string name)
 {
         Teuchos::RCP<ExporterParaView<SC,LO,GO,NO> > exPara(new ExporterParaView<SC,LO,GO,NO>());
 
@@ -1075,7 +1071,7 @@ void Domain<SC, LO, GO, NO>::exportSurfaceNormals(string name)
 } 
 
 template <class SC, class LO, class GO, class NO>
-void Domain<SC, LO, GO, NO>::exportElementOrientation(string name)
+void Domain<SC, LO, GO, NO>::exportElementOrientation(std::string name)
 {
         Teuchos::RCP<ExporterParaView<SC,LO,GO,NO> > exPara(new ExporterParaView<SC,LO,GO,NO>());
 
@@ -1107,7 +1103,7 @@ void Domain<SC, LO, GO, NO>::exportElementOrientation(string name)
 
 
 template <class SC, class LO, class GO, class NO>
-void Domain<SC, LO, GO, NO>::exportElementFlags(string name)
+void Domain<SC, LO, GO, NO>::exportElementFlags(std::string name)
 {
         Teuchos::RCP<ExporterParaView<SC,LO,GO,NO> > exPara(new ExporterParaView<SC,LO,GO,NO>());
 

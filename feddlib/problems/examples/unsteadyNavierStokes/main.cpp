@@ -1,14 +1,20 @@
+#include <Tpetra_Core.hpp>
+
 #include "feddlib/core/FEDDCore.hpp"
+#include "feddlib/core/General/DefaultTypeDefs.hpp"
+
 #include "feddlib/core/FE/Domain.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
+
 #include "feddlib/problems/Solver/DAESolverInTime.hpp"
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 #include "feddlib/problems/specific/NavierStokes.hpp"
 
+#include <Teuchos_GlobalMPISession.hpp>
 #include <Xpetra_DefaultPlatform.hpp>
+#include <Teuchos_StackedTimer.hpp>
 
 /*!
  main of time-dependent Navier-Stokes problem
@@ -119,6 +125,7 @@ void inflow3DRichter(double* x, double* res, double t, const double* parameters)
     return;
 }
 
+
 void dummyFunc(double* x, double* res, double t, const double* parameters){
 
     return;
@@ -129,21 +136,22 @@ typedef default_sc SC;
 typedef default_lo LO;
 typedef default_go GO;
 typedef default_no NO;
+using namespace Teuchos;
 
 using namespace FEDD;
 int main(int argc, char *argv[]) {
     typedef MeshPartitioner<SC,LO,GO,NO> MeshPartitioner_Type;
     typedef Teuchos::RCP<Domain<SC,LO,GO,NO> > DomainPtr_Type;
 
-    Teuchos::oblackholestream blackhole;
-    Teuchos::GlobalMPISession mpiSession(&argc,&argv,&blackhole);
+    // MPI boilerplate
+    Tpetra::ScopeGuard tpetraScope (&argc, &argv); // initializes MPI
+    Teuchos::RCP<const Teuchos::Comm<int> > comm = Tpetra::getDefaultComm();
 
-    Teuchos::RCP<const Teuchos::Comm<int> > comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
     bool verbose (comm->getRank() == 0);
     if (verbose) {
-        cout << "###############################################################" <<endl;
-        cout << "################### Unsteady Navier-Stokes ####################" <<endl;
-        cout << "###############################################################" <<endl;
+        std::cout << "###############################################################" << std::endl;
+        std::cout << "################### Unsteady Navier-Stokes ####################" << std::endl;
+        std::cout << "###############################################################" << std::endl;
     }
 
     // Command Line Parameters
@@ -158,7 +166,9 @@ int main(int argc, char *argv[]) {
 
     string xmlTekoPrecFile = "parametersTeko.xml";
     myCLP.setOption("tekoprecfile",&xmlTekoPrecFile,".xml file with Inputparameters.");
-
+    string xmlBlockPrecFile = "parametersPrecBlock.xml";
+    myCLP.setOption("blockprecfile",&xmlBlockPrecFile,".xml file with Inputparameters.");
+   
     double length = 4.;
     myCLP.setOption("length",&length,"length of domain.");
 
@@ -166,9 +176,11 @@ int main(int argc, char *argv[]) {
     myCLP.throwExceptions(false);
     Teuchos::CommandLineProcessor::EParseCommandLineReturn parseReturn = myCLP.parse(argc,argv);
     if(parseReturn == Teuchos::CommandLineProcessor::PARSE_HELP_PRINTED) {
-        MPI_Finalize();
-        return 0;
+        return EXIT_SUCCESS;
     }
+
+    Teuchos::RCP<StackedTimer> stackedTimer =  rcp(new StackedTimer("Unsteady Navier-Stokes",true));
+    TimeMonitor::setStackedTimer(stackedTimer);
 
     {
         ParameterListPtr_Type parameterListProblem = Teuchos::getParametersFromXmlFile(xmlProblemFile);
@@ -178,6 +190,9 @@ int main(int argc, char *argv[]) {
         ParameterListPtr_Type parameterListSolver = Teuchos::getParametersFromXmlFile(xmlSolverFile);
 
         ParameterListPtr_Type parameterListPrecTeko = Teuchos::getParametersFromXmlFile(xmlTekoPrecFile);
+
+        ParameterListPtr_Type parameterListPrecBlock = Teuchos::getParametersFromXmlFile(xmlBlockPrecFile);
+
         int 		dim				= parameterListProblem->sublist("Parameter").get("Dimension",3);
         std::string feTypeV = parameterListProblem->sublist("Parameter").get("Discretization Velocity","P2");
         std::string feTypeP = parameterListProblem->sublist("Parameter").get("Discretization Pressure","P1");
@@ -194,8 +209,10 @@ int main(int argc, char *argv[]) {
         ParameterListPtr_Type parameterListAll(new Teuchos::ParameterList(*parameterListProblem)) ;
         if (!precMethod.compare("Monolithic"))
             parameterListAll->setParameters(*parameterListPrec);
-        else
+        else if(precMethod == "Teko")
             parameterListAll->setParameters(*parameterListPrecTeko);
+        else if(precMethod == "Diagonal" || precMethod == "Triangular" || precMethod == "PCD" || precMethod == "LSC")
+            parameterListAll->setParameters(*parameterListPrecBlock);
 
         parameterListAll->setParameters(*parameterListSolver);
 
@@ -289,96 +306,6 @@ int main(int argc, char *argv[]) {
                     
                 }
             }
-
-            
-//            ofstream myFile;
-//            FILE * pFile;
-//            std::cout << "FluidP2Elements..." << '\n';
-//            myFile.open ("FluidP2ElementsH00.txt");
-//            for(int i = 0; i < domainVelocity->getElements()->size(); i++)
-//            {
-//                for(int j= 0; j < domainVelocity->getElements()->at(i).size(); j++)
-//                {
-//                    myFile << domainVelocity->getElements()->at(i).at(j);
-//                    myFile << " ";
-//                }
-//                myFile << endl;
-//            }
-//            myFile.close();
-//            std::cout << "done" << '\n';
-//
-//            std::cout << "FluidP1Elements..." << '\n';
-//            myFile.open ("FluidP1ElementsH00.txt");
-//            for(int i = 0; i < domainPressure->getElements()->size(); i++)
-//            {
-//                for(int j= 0; j < domainPressure->getElements()->at(i).size(); j++)
-//                {
-//                    myFile << domainPressure->getElements()->at(i).at(j);
-//                    myFile << " ";
-//                }
-//                myFile << endl;
-//            }
-//            myFile.close();
-//            std::cout << "done" << '\n';
-//
-//            std::cout << "FluidP2Nodes..." << '\n';
-////            myFile.open ("FluidP2NodesH00.txt");
-//            pFile = fopen ("FluidP2NodesH00.txt","w");
-//
-//            for(int i = 0; i < domainVelocity->getPointsUnique()->size(); i++)
-//            {
-//                for(int j= 0; j < domainVelocity->getPointsUnique()->at(i).size(); j++)
-//                {
-//                    fprintf(pFile,"%4.10f ", domainVelocity->getPointsUnique()->at(i).at(j) );
-//
-////                    printf("%4.10f ", domainFluidVelocity->getPointsUnique()->at(i).at(j) );
-////                    myFile << domainFluidVelocity->getPointsUnique()->at(i).at(j);
-////                    myFile << " ";
-//                }
-//                fprintf(pFile,"\n");
-////                myFile << endl;
-//            }
-//            fclose(pFile);
-////            myFile.close();
-//            std::cout << "done" << '\n';
-//
-//            std::cout << "FluidP1Nodes..." << '\n';
-////            myFile.open ("FluidP1NodesH00.txt");
-//            pFile = fopen ("FluidP1NodesH00.txt","w");
-//
-//            for(int i = 0; i < domainPressure->getPointsUnique()->size(); i++)
-//            {
-//                for(int j= 0; j < domainPressure->getPointsUnique()->at(i).size(); j++)
-//                {
-//                    fprintf(pFile,"%4.10f ", domainPressure->getPointsUnique()->at(i).at(j) );
-////                    myFile << domainFluidPressure->getPointsUnique()->at(i).at(j);
-////                    myFile << " ";
-//                }
-//                fprintf(pFile,"\n");
-////                myFile << endl;
-//            }
-//            fclose(pFile);
-////            myFile.close();
-//            std::cout << "done" << '\n';
-//            
-//
-//            std::cout << "FluidP2Flags..." << '\n';
-//            myFile.open ("FluidP2FlagsH00.txt");
-//            for(int i = 0; i < domainVelocity->getBCFlagUnique()->size(); i++)
-//            {
-//                myFile << domainVelocity->getBCFlagUnique()->at(i) << endl;
-//            }
-//            myFile.close();
-//            std::cout << "done" << '\n';
-//
-//            std::cout << "FluidPFlags..." << '\n';
-//            myFile.open ("FluidP1FlagsH00.txt");
-//            for(int i = 0; i < domainPressure->getBCFlagUnique()->size(); i++)
-//            {
-//                myFile << domainPressure->getBCFlagUnique()->at(i) << endl;
-//            }
-//            myFile.close();
-//            std::cout << "done" << '\n';
             
             std::vector<double> parameter_vec(1);
             if ( !bcType.compare("parabolic") || !bcType.compare("parabolic_benchmark") || !bcType.compare("parabolic_benchmark_sin") )
@@ -461,7 +388,7 @@ int main(int argc, char *argv[]) {
             NavierStokes<SC,LO,GO,NO> navierStokes( domainVelocity, feTypeV, domainPressure, feTypeP, parameterListAll );
 
             navierStokes.addBoundaries(bcFactory);
-            
+
             navierStokes.initializeProblem();
             
             navierStokes.assemble();
@@ -483,10 +410,16 @@ int main(int argc, char *argv[]) {
 
             daeTimeSolver.advanceInTime();
 
+            navierStokes.infoParameter();
+
         }
     }
 
     Teuchos::TimeMonitor::report(cout);
+    stackedTimer->stop("Unsteady Navier-Stokes");
+	StackedTimer::OutputOptions options;
+	options.output_fraction = options.output_histogram = options.output_minmax = true;
+	stackedTimer->report((std::cout),comm,options);
 
-    return(EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }

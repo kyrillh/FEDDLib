@@ -169,10 +169,10 @@ void AssembleFE_NonLinElas<SC,LO,GO,NO>::assembleRHS() {
 	// std::cout << "[DEBUG] SKR-Rhs Call successful!" << std::endl;
 
 	for(int i=0; i< p.size(); i++)
-		(*this->rhsVec_)[i] = p[i];
+		(*this->rhsVec_)[i] = -p[i];
 }
 template <class SC, class LO, class GO, class NO>
-void AssembleFE_NonLinElas<SC,LO,GO,NO>:: updateParameter(string type, double value){
+void AssembleFE_NonLinElas<SC,LO,GO,NO>:: updateParameter(std::string type, double value){
 	if(type == "E")
 		this->E_ = value;
 

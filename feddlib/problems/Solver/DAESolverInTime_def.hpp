@@ -12,7 +12,6 @@
  @copyright CH
  */
 
-using namespace std;
 namespace FEDD {
 
 
@@ -217,7 +216,7 @@ void DAESolverInTime<SC,LO,GO,NO>::advanceInTimeLinear(){
         for (int s=0; s<timeSteppingTool_->getNmbStages(); s++) {
             double time = timeSteppingTool_->currentTime() + dt * timeSteppingTool_->getButcherTableC(s);
             if (verbose_)
-                cout << "Currently in stage " << s+1 << " of "<< timeSteppingTool_->getNmbStages() << endl;
+                std::cout << "Currently in stage " << s+1 << " of "<< timeSteppingTool_->getNmbStages() << std::endl;
             
             problemTime_->updateRhs();/*apply (mass matrix / dt) to u_t*/
             if ( problemTime_->hasSourceTerm() ){
@@ -432,7 +431,7 @@ void DAESolverInTime<SC,LO,GO,NO>::advanceInTimeNonLinear(){
 
         TEUCHOS_TEST_FOR_EXCEPTION(timeSteppingTool_->getButcherTableCoefficient(0 , 0) != 0.0, std::logic_error, "Not implemented butchertable! First stage should have 0 diagonal value");
         if (verbose_)
-            cout << "Currently in stage " << 1 << " of "<< timeSteppingTool_->getNmbStages() <<" (dummy stage)"<< endl;
+            std::cout << "Currently in stage " << 1 << " of "<< timeSteppingTool_->getNmbStages() <<" (dummy stage)"<< std::endl;
         // Multistage stepping, in general we use at least 2 stages (implicit Euler and Crank-Nicolson)
         Teuchos::Array<BlockMatrixPtr_Type> matrixPrevStages;
         BlockMultiVectorPtrArray_Type       solutionPrevStages;
@@ -450,7 +449,7 @@ void DAESolverInTime<SC,LO,GO,NO>::advanceInTimeNonLinear(){
             double time = timeSteppingTool_->currentTime() + dt * timeSteppingTool_->getButcherTableC(stage);
             problemTime_->updateTime( time );
             if (verbose_)
-                cout << "Currently in stage " << stage+1 << " of "<< timeSteppingTool_->getNmbStages() << endl;
+                std::cout << "Currently in stage " << stage+1 << " of "<< timeSteppingTool_->getNmbStages() << std::endl;
             
             buildMultiStageRhs( stage, matrixPrevStages, solutionPrevStages );
                                     
@@ -1006,7 +1005,7 @@ void DAESolverInTime<SC,LO,GO,NO>::advanceInTimeFSI()
     {
         problemCoeffFSI[4][2] = 1.0; // C4
         problemCoeffFSI[4][4] = 1.0; // H (Geometrie)
-        string linearization = this->parameterList_->sublist("General").get("Linearization","Extrapolation");
+        std::string linearization = this->parameterList_->sublist("General").get("Linearization","Extrapolation");
         if(linearization == "Newton" || linearization == "NOX")
         {
             problemCoeffFSI[0][4] = 1.0; // Shape-Derivatives Velocity
@@ -1043,7 +1042,7 @@ void DAESolverInTime<SC,LO,GO,NO>::advanceInTimeFSI()
     {
         problemTime_->updateTime ( timeSteppingTool_->currentTime() );
 
-        string linearization = this->parameterList_->sublist("General").get("Linearization","Extrapolation");
+        std::string linearization = this->parameterList_->sublist("General").get("Linearization","Extrapolation");
 
         // Ist noetig, falls wir extrapolieren, damit wir
         // immer die korrekten previousSolution_ haben.
@@ -1309,8 +1308,28 @@ template<class SC,class LO,class GO,class NO>
 void DAESolverInTime<SC,LO,GO,NO>::advanceInTimeNonLinearMultistep(){
 
     bool print = parameterList_->sublist("General").get("ParaViewExport",false);
+    bool printData = parameterList_->sublist("General").get("Export Data",false);
+
     if (print) {
         exportTimestep();
+    }
+
+    ExporterTxtPtr_Type exporterIterations;
+    ExporterTxtPtr_Type exporterNewtonIterations;
+    ExporterTxtPtr_Type exporterTimeTxt;
+    vec_dbl_ptr_Type its = Teuchos::rcp(new vec_dbl_Type ( 2, 0. ) ); //0:linear iterations, 1: nonlinear iterations
+
+    if (printData) {
+        exporterTimeTxt = Teuchos::rcp(new ExporterTxt());
+        exporterTimeTxt->setup( "time", this->comm_ );
+
+        std::string suffix = parameterList_->sublist("General").get("Export Suffix","");
+        
+        exporterNewtonIterations = Teuchos::rcp(new ExporterTxt());
+        exporterNewtonIterations->setup( "newtonIterations" + suffix, this->comm_ );
+        
+        exporterIterations = Teuchos::rcp(new ExporterTxt());
+        exporterIterations->setup( "linearIterations" + suffix, this->comm_ );
     }
 
     int size = timeStepDef_.size();
@@ -1348,9 +1367,14 @@ void DAESolverInTime<SC,LO,GO,NO>::advanceInTimeNonLinearMultistep(){
         }
     }
     problemTime_->setTimeParameters(massCoeff, problemCoeff);
+
     //#########
     //time loop
     //#########
+    vec_dbl_Type linearIterations(0);
+    vec_dbl_Type newtonIterations(0);
+    NonLinearSolver<SC, LO, GO, NO> nlSolver(parameterList_->sublist("General").get("Linearization","FixedPoint"));
+
     while (timeSteppingTool_->continueTimeStepping()) {
 
         // For the first time step we use BDF1
@@ -1411,21 +1435,47 @@ void DAESolverInTime<SC,LO,GO,NO>::advanceInTimeNonLinearMultistep(){
 //            }
         }
 
-        NonLinearSolver<SC, LO, GO, NO> nlSolver(parameterList_->sublist("General").get("Linearization","FixedPoint"));
-        nlSolver.solve(*problemTime_,time);
-
+        nlSolver.solve(*problemTime_,time,its);
+        problemTime_->assemble("UpdateTime");
         // After the first time step we can use the desired BDF Parameters
         if (timeSteppingTool_->currentTime()==0.) {
             problemTime_->setTimeParameters(massCoeff, problemCoeff);
         }
 
         timeSteppingTool_->advanceTime(true/*output info*/);
+        if (printData) {
+            exporterTimeTxt->exportData( timeSteppingTool_->currentTime() );
+            exporterIterations->exportData( (*its)[0] );
+            linearIterations.push_back((*its)[0]);
+            exporterNewtonIterations->exportData( (*its)[1] );
+            newtonIterations.push_back((*its)[1]);
 
+        }
         if (print) {
             exportTimestep();
         }
     }
+    if (printData) {
+        exporterTimeTxt->closeExporter();
+        exporterIterations->closeExporter();
+        exporterNewtonIterations->closeExporter();
 
+        double sumLinear=0., sumNewton=0.;
+        for(int i=0; i < linearIterations.size(); i++){
+            sumLinear += linearIterations[i];
+            sumNewton += newtonIterations[i];
+        }
+        sumLinear = sumLinear / linearIterations.size();
+        sumNewton = sumNewton / newtonIterations.size();
+
+        if (verbose_) {
+            std::cout << " ######################################################## "<< std::endl;
+            std::cout << " Average linear iteration count over all time steps:  " << sumLinear << std::endl;
+            std::cout << " Average Newton iteration count over all time steps:  " << sumNewton << std::endl;
+            std::cout << " ######################################################## \n"<< std::endl;
+        }
+    
+    }
     if (print) {
         closeExporter();
     }
@@ -1555,7 +1605,7 @@ void DAESolverInTime<SC,LO,GO,NO>::exportTimestep(){
         setupExporter();
     }
     if (verbose_) {
-        cout << "-- Exporting..."<< flush;
+        std::cout << "-- Exporting..."<< std::flush;
     }
     for (int i=0; i<exporter_vector_.size(); i++) {
         
@@ -1564,7 +1614,7 @@ void DAESolverInTime<SC,LO,GO,NO>::exportTimestep(){
     }
 
     if (verbose_) {
-        cout << "done! --"<< endl;
+        std::cout << "done! --"<< std::endl;
     }
 
 }
@@ -1576,7 +1626,7 @@ void DAESolverInTime<SC,LO,GO,NO>::exportTimestep(BlockMultiVectorPtr_Type& solS
         setupExporter(solShort);
     }
     if (verbose_) {
-        cout << "-- Exporting..."<< flush;
+        std::cout << "-- Exporting..."<< std::flush;
     }
     for (int i=0; i<exporter_vector_.size(); i++) {
         
@@ -1585,7 +1635,7 @@ void DAESolverInTime<SC,LO,GO,NO>::exportTimestep(BlockMultiVectorPtr_Type& solS
     }
 
     if (verbose_) {
-        cout << "done! --"<< endl;
+        std::cout << "done! --"<< std::endl;
     }
 
 }
@@ -1618,7 +1668,7 @@ void DAESolverInTime<SC,LO,GO,NO>::setupExporter(){
             DomainConstPtr_Type dom = problemTime_->getDomain(i);
 
             int exportEveryXTimesteps = parameterList_->sublist("Exporter").get( "Export every X timesteps", 1 );
-            std::string plSuffix = "Suffix variable" + to_string(i+1);
+            std::string plSuffix = "Suffix variable" + std::to_string(i+1);
             std::string suffix = parameterList_->sublist("Exporter").get(plSuffix, "" );
             std::string varName = problemTime_->getVariableName(i) + suffix;
             MeshPtr_Type meshNonConst = Teuchos::rcp_const_cast<Mesh_Type>(dom->getMesh());
@@ -1656,7 +1706,7 @@ void DAESolverInTime<SC,LO,GO,NO>::setupExporter(BlockMultiVectorPtr_Type& solSh
             DomainConstPtr_Type dom = problemTime_->getDomain(i);
 
             int exportEveryXTimesteps = parameterList_->sublist("Exporter").get( "Export every X timesteps", 1 );
-            std::string plSuffix = "Suffix variable" + to_string(i+1);
+            std::string plSuffix = "Suffix variable" + std::to_string(i+1);
             std::string suffix = parameterList_->sublist("Exporter").get(plSuffix, "" );
             std::string varName = problemTime_->getVariableName(i) + suffix;
             std::string varNameShort = problemTime_->getVariableName(i) + "_short_" + suffix;

@@ -29,7 +29,6 @@
  @copyright CH
  */
 
-using namespace std;
 namespace FEDD {
 
 
@@ -40,7 +39,7 @@ type_("")
 
 
 template<class SC,class LO,class GO,class NO>
-NonLinearSolver<SC,LO,GO,NO>::NonLinearSolver(string type):
+NonLinearSolver<SC,LO,GO,NO>::NonLinearSolver(std::string type):
 type_(type)
 {}
 
@@ -50,17 +49,17 @@ NonLinearSolver<SC,LO,GO,NO>::~NonLinearSolver(){
 }
 
 template<class SC,class LO,class GO,class NO>
-void NonLinearSolver<SC,LO,GO,NO>::solve(NonLinearProblem_Type &problem){
+void NonLinearSolver<SC,LO,GO,NO>::solve(NonLinearProblem_Type &problem,vec_dbl_ptr_Type valuesForExport){
 
     if (!type_.compare("FixedPoint")) {
-        solveFixedPoint(problem);
+        solveFixedPoint(problem,valuesForExport);
     }
     else if(!type_.compare("Newton")){
-        solveNewton(problem);
+        solveNewton(problem,valuesForExport);
     }
     else if(!type_.compare("NOX")){
 #ifdef FEDD_HAVE_NOX
-        solveNOX(problem);
+        solveNOX(problem,valuesForExport);
 #endif
     } else if (!type_.compare("NonLinearSchwarz")) {
         solveNonLinearSchwarz(problem);
@@ -89,7 +88,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solve(TimeProblem_Type &problem, double time,
 
 #ifdef FEDD_HAVE_NOX
 template<class SC,class LO,class GO,class NO>
-void NonLinearSolver<SC,LO,GO,NO>::solveNOX(NonLinearProblem_Type &problem){
+void NonLinearSolver<SC,LO,GO,NO>::solveNOX(NonLinearProblem_Type &problem,vec_dbl_ptr_Type valuesForExport){
 
     bool verbose = problem.getVerbose();
     Teuchos::RCP<NonLinearProblem<SC,LO,GO,NO> > problemPtr = Teuchos::rcpFromRef(problem);
@@ -105,13 +104,19 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNOX(NonLinearProblem_Type &problem){
     // Create the initial guess
     Teuchos::RCP<Thyra::VectorBase<SC> > initial_guess = problemPtr->getNominalValues().get_x()->clone_v();
     Thyra::V_S(initial_guess.ptr(),Teuchos::ScalarTraits<SC>::zero());
+
+    Teuchos::RCP<Thyra::LinearOpBase<SC> > W_op = problemPtr->create_W_op();
+    Teuchos::RCP<Thyra::PreconditionerBase<SC> > W_prec = problemPtr->create_W_prec();
+
+    // cout << " NonLinearSolver<SC,LO,GO,NO>::solveNOX " << endl;
     
-      
+    // problemPtr->create_W_op();
+
     Teuchos::RCP<NOX::Thyra::Group> nox_group(new NOX::Thyra::Group(initial_guess,
                                                                     problemPtr.getConst(),
-                                                                    problemPtr->create_W_op(),
+                                                                    W_op,
                                                                     lowsFactory.getConst(),
-                                                                    problemPtr->create_W_prec(),
+                                                                    W_prec,
                                                                     Teuchos::null,
                                                                     Teuchos::null,
                                                                     Teuchos::null));
@@ -165,15 +170,14 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNOX(NonLinearProblem_Type &problem){
     // Create the solver
     Teuchos::RCP<NOX::Solver::Generic> solver = NOX::Solver::buildSolver(nox_group, combo, nl_params);
     NOX::StatusTest::StatusType solveStatus = solver->solve();
-    
     double nonLinearIts = solver->getSolverStatistics()->linearSolve.allNonlinearSolves_NumLinearSolves;
     double linearIts = solver->getSolverStatistics()->linearSolve.allNonlinearSolves_NumLinearIterations;
 
     linearIts/=nonLinearIts;
     if (verbose){
-        cout << "############################################################" << endl;
-        cout << "### Total nonlinear iterations : " << nonLinearIts << "  with an average of " << linearIts << " linear iterations ###" << endl;
-        cout << "############################################################" << endl;
+        std::cout << "############################################################" << std::endl;
+        std::cout << "### Total nonlinear iterations : " << nonLinearIts << "  with an average of " << linearIts << " linear iterations ###" << std::endl;
+        std::cout << "############################################################" << std::endl;
     }
     
     if ( problemPtr->getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts",false) ) {
@@ -207,13 +211,16 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNOX(TimeProblem_Type &problem, vec_dbl_p
         solMV = problemPtr->getSolution()->getThyraMultiVector();
 
     Thyra::assign(initialGuess.ptr(), *solMV->col(0));
-
     //Thyra::V_S(initialGuess.ptr(),Teuchos::ScalarTraits<SC>::zero());
+    Teuchos::RCP<Thyra::LinearOpBase<SC> > W_op = problemPtr->create_W_op();
+    Teuchos::RCP<Thyra::PreconditionerBase<SC> > W_prec = problemPtr->create_W_prec();
+    // problemPtr->create_W_op();
+
     Teuchos::RCP<NOX::Thyra::Group> nox_group(new NOX::Thyra::Group(initialGuess,
                                                                     problemPtr.getConst(),
-                                                                    problemPtr->create_W_op(),
+                                                                    W_op,
                                                                     lowsFactory.getConst(),
-                                                                    problemPtr->create_W_prec(),
+                                                                    W_prec,
                                                                     Teuchos::null,
                                                                     Teuchos::null,
                                                                     Teuchos::null));
@@ -273,9 +280,9 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNOX(TimeProblem_Type &problem, vec_dbl_p
     
     linearIts/=nonLinearIts;
     if (verbose){
-        cout << "############################################################" << endl;
-        cout << "### Total nonlinear iterations : " << nonLinearIts << "  with an average of " << linearIts << " linear iterations ###" << endl;
-        cout << "############################################################" << endl;
+        std::cout << "############################################################" << std::endl;
+        std::cout << "### Total nonlinear iterations : " << nonLinearIts << "  with an average of " << linearIts << " linear iterations ###" << std::endl;
+        std::cout << "############################################################" << std::endl;
     }
     
     if ( problemPtr->getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts",false) ) {
@@ -292,7 +299,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNOX(TimeProblem_Type &problem, vec_dbl_p
 #endif
 
 template<class SC,class LO,class GO,class NO>
-void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(NonLinearProblem_Type &problem){
+void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(NonLinearProblem_Type &problem,vec_dbl_ptr_Type valuesForExport){
 
     bool verbose = problem.getVerbose();
     TEUCHOS_TEST_FOR_EXCEPTION(problem.getRhs()->getNumVectors()!=1,std::logic_error,"We need to change the code for numVectors>1.");
@@ -325,7 +332,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(NonLinearProblem_Type &proble
         if (criterion=="Residual"){
             criterionValue = residual/residual0;
             if (verbose)
-                cout << "### Fixed Point iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << endl;
+                std::cout << "### Fixed Point iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << std::endl;
             if ( criterionValue < tol )
                 break;
         }
@@ -335,7 +342,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(NonLinearProblem_Type &proble
         nlIts++;
         if(criterion=="Update"){
             if (verbose)
-                cout << "### Fixed Point iteration : " << nlIts << "  residual of update : " << criterionValue << endl;
+                std::cout << "### Fixed Point iteration : " << nlIts << "  residual of update : " << criterionValue << std::endl;
             if ( criterionValue < tol )
                 break;
         }
@@ -344,7 +351,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(NonLinearProblem_Type &proble
 
     gmresIts/=nlIts;
     if (verbose)
-        cout << "### Total FPI : " << nlIts << "  with average gmres its : " << gmresIts << endl;
+        std::cout << "### Total FPI : " << nlIts << "  with average gmres its : " << gmresIts << std::endl;
     if ( problem.getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts",false) ) {
         TEUCHOS_TEST_FOR_EXCEPTION( nlIts == maxNonLinIts ,std::runtime_error,"Maximum nonlinear Iterations reached. Problem might have converged in the last step. Still we cancel here.");
     }
@@ -352,7 +359,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(NonLinearProblem_Type &proble
 }
 
 template<class SC,class LO,class GO,class NO>
-void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem ){
+void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, vec_dbl_ptr_Type valuesForExport ){
 
     bool verbose = problem.getVerbose();
 
@@ -388,7 +395,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem )
         if (criterion=="Residual"){
             criterionValue = residual/residual0;
             if (verbose)
-                cout << "### Newton iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << endl;
+                std::cout << "### Newton iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << std::endl;
             if ( criterionValue < tol )
                 break;
         }
@@ -397,7 +404,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem )
         nlIts++;
         if(criterion=="Update"){
             if (verbose)
-                cout << "### Newton iteration : " << nlIts << "  residual of update : " << criterionValue << endl;
+                std::cout << "### Newton iteration : " << nlIts << "  residual of update : " << criterionValue << std::endl;
             if ( criterionValue < tol )
                 break;
         }
@@ -407,9 +414,16 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem )
 
     gmresIts/=nlIts;
     if (verbose)
-        cout << "### Total Newton iterations : " << nlIts << "  with average gmres its : " << gmresIts << endl;
+        std::cout << "### Total Newton iterations : " << nlIts << "  with average gmres its : " << gmresIts << std::endl;
     if ( problem.getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts",false) ) {
         TEUCHOS_TEST_FOR_EXCEPTION(nlIts == maxNonLinIts ,std::runtime_error,"Maximum nonlinear Iterations reached. Problem might have converged in the last step. Still we cancel here.");
+    }
+
+    if (!valuesForExport.is_null()) {
+        if (valuesForExport->size() == 2){
+            (*valuesForExport)[0] = gmresIts;
+            (*valuesForExport)[1] = nlIts;
+        }
     }
 }
 
@@ -451,7 +465,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(TimeProblem_Type &problem, do
         if (criterion=="Residual"){
             criterionValue = residual/residual0;
             if (verbose)
-                cout << "### Fixed Point iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << endl;
+                std::cout << "### Fixed Point iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << std::endl;
             if ( criterionValue < tol )
                 break;
         }
@@ -461,7 +475,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(TimeProblem_Type &problem, do
         nlIts++;
         if(criterion=="Update"){
             if (verbose)
-                cout << "### Fixed Point iteration : " << nlIts << "  residual of update : " << criterionValue << endl;
+                std::cout << "### Fixed Point iteration : " << nlIts << "  residual of update : " << criterionValue << std::endl;
             if ( criterionValue < tol )
                 break;
         }
@@ -470,7 +484,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(TimeProblem_Type &problem, do
     
     gmresIts/=nlIts;
     if (verbose)
-        cout << "### Total FPI : " << nlIts << "  with average gmres its : " << gmresIts << endl;
+        std::cout << "### Total FPI : " << nlIts << "  with average gmres its : " << gmresIts << std::endl;
     if ( problem.getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts",false) ) {
         TEUCHOS_TEST_FOR_EXCEPTION( nlIts == maxNonLinIts ,std::runtime_error,"Maximum nonlinear Iterations reached. Problem might have converged in the last step. Still we cancel here.");
     }
@@ -515,7 +529,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton(TimeProblem_Type &problem, double
             criterionValue = residual/residual0;
 //            exporterTxt->exportData( criterionValue );
             if (verbose)
-                cout << "### Newton iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << endl;
+                std::cout << "### Newton iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << std::endl;
             if ( criterionValue < tol )
                 break;
         }
@@ -542,7 +556,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton(TimeProblem_Type &problem, double
         //problem.getSolution()->getBlock(0)->print();
         if(criterion=="Update"){
             if (verbose)
-                cout << "### Newton iteration : " << nlIts << "  residual of update : " << criterionValue << endl;
+                std::cout << "### Newton iteration : " << nlIts << "  residual of update : " << criterionValue << std::endl;
             if ( criterionValue < tol )
                 break;
         }
@@ -552,7 +566,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton(TimeProblem_Type &problem, double
 
     gmresIts/=nlIts;
     if (verbose)
-        cout << "### Total Newton iteration : " << nlIts << "  with average gmres its : " << gmresIts << endl;
+        std::cout << "### Total Newton iteration : " << nlIts << "  with average gmres its : " << gmresIts << std::endl;
     if ( problem.getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts",false) ) {
         TEUCHOS_TEST_FOR_EXCEPTION(nlIts == maxNonLinIts ,std::runtime_error,"Maximum nonlinear Iterations reached. Problem might have converged in the last step. Still we cancel here.");
     }
@@ -580,7 +594,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveExtrapolation(TimeProblem<SC,LO,GO,NO> &
     int	gmresIts = problem.solve( );
 
     if (verbose) {
-        cout << "### GMRES Its : " << gmresIts << endl;
+        std::cout << "### GMRES Its : " << gmresIts << std::endl;
     }
 }
 

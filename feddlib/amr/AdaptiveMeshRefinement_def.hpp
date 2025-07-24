@@ -20,7 +20,6 @@
 
  */
 
-using namespace std;
 using Teuchos::reduceAll;
 using Teuchos::REDUCE_SUM;
 using Teuchos::REDUCE_MAX;
@@ -98,7 +97,7 @@ domainsP1_(0)
 @param[in] parameterListAll Parameterlist as used as input parametersProblem.xml.
 */
 template <class SC, class LO, class GO, class NO>
-AdaptiveMeshRefinement<SC,LO,GO,NO>::AdaptiveMeshRefinement(string problemType, ParameterListPtr_Type parameterListAll ):
+AdaptiveMeshRefinement<SC,LO,GO,NO>::AdaptiveMeshRefinement(std::string problemType, ParameterListPtr_Type parameterListAll ):
 inputMeshP1_(),
 inputMeshP12_(),
 outputMesh_(),
@@ -142,7 +141,7 @@ domainsP1_(0)
 @param[in] exactSolFun Exact solution function.
 */
 template <class SC, class LO, class GO, class NO>
-AdaptiveMeshRefinement<SC,LO,GO,NO>::AdaptiveMeshRefinement(string problemType, ParameterListPtr_Type parameterListAll , Func_Type exactSolFunc ):
+AdaptiveMeshRefinement<SC,LO,GO,NO>::AdaptiveMeshRefinement(std::string problemType, ParameterListPtr_Type parameterListAll , Func_Type exactSolFunc ):
 inputMeshP1_(),
 inputMeshP12_(),
 outputMesh_(),
@@ -188,7 +187,7 @@ domainsP1_(0)
 @param[in] exactSolFunP Exact solution for velocity p.
 */
 template <class SC, class LO, class GO, class NO>
-AdaptiveMeshRefinement<SC,LO,GO,NO>::AdaptiveMeshRefinement(string problemType, ParameterListPtr_Type parameterListAll , Func_Type exactSolFuncU ,Func_Type exactSolFuncP ):
+AdaptiveMeshRefinement<SC,LO,GO,NO>::AdaptiveMeshRefinement(std::string problemType, ParameterListPtr_Type parameterListAll , Func_Type exactSolFuncU ,Func_Type exactSolFuncP ):
 inputMeshP1_(),
 inputMeshP12_(),
 outputMesh_(),
@@ -421,8 +420,8 @@ typename AdaptiveMeshRefinement<SC,LO,GO,NO>::DomainPtr_Type AdaptiveMeshRefinem
 	comm_ = domainP1 ->getComm();
 
 	if(this->comm_->getRank() == 0 && currentIter_ < maxIter_){
-			cout << " -- Adaptive Mesh Refinement --" << endl;
-			cout << " " << endl;
+			std::cout << " -- Adaptive Mesh Refinement --" << std::endl;
+			std::cout << " " << std::endl;
 	}
 
 	maxRank_ = std::get<1>(domainP1->getMesh()->rankRange_);
@@ -605,7 +604,7 @@ typename AdaptiveMeshRefinement<SC,LO,GO,NO>::DomainPtr_Type AdaptiveMeshRefinem
 	    exporterError_->closeExporter();
 	} 
 	else
-		cout << " -- done -- " << endl;
+		std::cout << " -- done -- " << std::endl;
 
     domainRefined->setMesh(outputMesh);
 	
@@ -690,7 +689,7 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::calcErrorNorms(MultiVectorConstPtr_Typ
 
 	// ---------------------------
 	// Calculating H1 Norm
-	errorH1.push_back(sqrt(problem_->calculateH1Norm(errorValues)));
+	errorH1.push_back(std::sqrt(problem_->calculateH1Norm(errorValues)));
 
 	// ---------------------------
 	// L2 Norm 
@@ -725,12 +724,12 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::calcErrorNorms(MultiVectorConstPtr_Typ
 
 	}
 
-	errorL2.push_back(sqrt(errorL2Tmp));
+	errorL2.push_back(std::sqrt(errorL2Tmp));
 
 	// -------------------------------
 	// Calculating Error bound epsilon
 	if(exactSolInput_ == true){
-		relError.push_back(sqrt(problem_->calculateH1Norm(errorValues)) / sqrt(problem_->calculateH1Norm(exactSolution)));
+		relError.push_back(std::sqrt(problem_->calculateH1Norm(errorValues)) / std::sqrt(problem_->calculateH1Norm(exactSolution)));
 	}
 
 	if(exactSolInput_ == true){
@@ -742,10 +741,10 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::calcErrorNorms(MultiVectorConstPtr_Typ
 				eta=errorElement[i];		
 		}
 		reduceAll<int, double> (*comm_, REDUCE_MAX, eta, outArg (eta));
-		//eta = pow(eta,2);
+		//eta = std::pow(eta,2);
 
 
-		eRelError.push_back(sqrt(eta)/ sqrt(problem_->calculateH1Norm(solutionP12)));
+		eRelError.push_back(std::sqrt(eta)/ std::sqrt(problem_->calculateH1Norm(solutionP12)));
 	}
 
 	// -------------------------------
@@ -774,7 +773,7 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::calcErrorNorms(MultiVectorConstPtr_Typ
 		Teuchos::ArrayView<GO> repIDsVecArray = Teuchos::arrayViewFromVector(repIDsVec);
 		// global Ids of Elements' Nodes
 		MapPtr_Type mapRepSystem =
-				Teuchos::rcp( new Map_Type( elementMap->getUnderlyingLib(), Teuchos::OrdinalTraits<GO>::invalid(), repIDsVecArray , 0, domainP12_->getComm()) );
+				Teuchos::rcp( new Map_Type(  Teuchos::OrdinalTraits<GO>::invalid(), repIDsVecArray , 0, domainP12_->getComm()) );
 
 		MultiVectorPtr_Type mvValuesError =  Teuchos::rcp( new MultiVector_Type( mapRepSystem, 1 ) );
 		Teuchos::ArrayRCP< SC > mvValuesErrorA  = mvValuesError->getDataNonConst(0);	
@@ -810,7 +809,7 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::calcErrorNorms(MultiVectorConstPtr_Typ
 
 			// global Ids of Elements' Nodes
 			MapPtr_Type mapNodeExport =
-				Teuchos::rcp( new Map_Type( elementMap->getUnderlyingLib(), Teuchos::OrdinalTraits<GO>::invalid(), globalNodeArray, 0, domainP12_->getComm()) );
+				Teuchos::rcp( new Map_Type(Teuchos::OrdinalTraits<GO>::invalid(), globalNodeArray, 0, domainP12_->getComm()) );
 					
 			MultiVectorPtr_Type notMV  =  Teuchos::rcp( new MultiVector_Type( mapNodeExport, 1 ) );
 			Teuchos::ArrayRCP<SC> notMVA = notMV->getDataNonConst(0);
@@ -823,7 +822,7 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::calcErrorNorms(MultiVectorConstPtr_Typ
 			double valueH1 = problem_->calculateH1Norm(mvValuesErrorUnique);
 			double valueL2 = 0; // problem_->calculateL2Norm(mvValuesErrorUnique);
 			if(elementMap->getLocalElement(k) != -1){
-				errorH1ElementsA[elementMap->getLocalElement(k)]= sqrt(valueH1 + valueL2);
+				errorH1ElementsA[elementMap->getLocalElement(k)]= std::sqrt(valueH1 + valueL2);
 			}
 		
 		}
@@ -896,7 +895,7 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::initExporter( ParameterListPtr_Type pa
 template <class SC, class LO, class GO, class NO>
 void AdaptiveMeshRefinement<SC,LO,GO,NO>::exportSolution(MeshUnstrPtr_Type mesh, MultiVectorConstPtr_Type exportSolutionMv, MultiVectorConstPtr_Type errorValues, MultiVectorConstPtr_Type exactSolutionMv,MultiVectorConstPtr_Type exportSolutionPMv,MultiVectorConstPtr_Type exactSolutionPMv){
 
-	string exporterType = "Scalar";
+	std::string exporterType = "Scalar";
 	if(dofs_ >1 )
 		exporterType = "Vector";
 
@@ -978,6 +977,9 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::exportError(MeshUnstrPtr_Type mesh, Mu
 template <class SC, class LO, class GO, class NO>
 void AdaptiveMeshRefinement<SC,LO,GO,NO>::writeRefinementInfo(){
 
+    using std::cout;
+    using std::endl;
+
 	vec_GO_Type globalProcs(0);
 	for (int i=0; i<= maxRank_; i++)
 			globalProcs.push_back(i);
@@ -989,11 +991,11 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::writeRefinementInfo(){
 	Teuchos::ArrayView<GO> localProcArray = Teuchos::arrayViewFromVector( localProc);
 
 	MapPtr_Type mapGlobalProc =
-		Teuchos::rcp( new Map_Type( domainP1_->getElementMap()->getUnderlyingLib(), Teuchos::OrdinalTraits<GO>::invalid(), globalProcArray, 0, comm_) );
+		Teuchos::rcp( new Map_Type(  Teuchos::OrdinalTraits<GO>::invalid(), globalProcArray, 0, comm_) );
 
 	// Global IDs of Procs
 	MapPtr_Type mapProc =
-		Teuchos::rcp( new Map_Type( domainP1_->getElementMap()->getUnderlyingLib(), Teuchos::OrdinalTraits<GO>::invalid(), localProcArray, 0, comm_) );
+		Teuchos::rcp( new Map_Type(  Teuchos::OrdinalTraits<GO>::invalid(), localProcArray, 0, comm_) );
 	
 	MultiVectorPtr_Type exportLocalEntry = Teuchos::rcp( new MultiVector_Type( mapProc, 1 ) );
 
@@ -1018,38 +1020,38 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::writeRefinementInfo(){
 			cout << " Summary of Mesh Refinement" << endl;
 			cout << "__________________________________________________________________________________________________________ " << endl;
 			cout << " " << endl;
-			cout << " Marking Strategy:	" << markingStrategy_ << endl;
-			cout << " Theta:			" << theta_ << endl;
+			cout << " Marking Strategy:\t" << markingStrategy_ << endl;
+			cout << " Theta:\t\t\t" << theta_ << endl;
 			cout << "__________________________________________________________________________________________________________ " << endl;
 			cout << " " << endl;
-			cout << " Tolerance:			" << tol_ << endl;
-			cout << " Max number of Iterations:	" <<  maxIter_ << endl;
-			cout << " Number of Processors:		" << maxRank_ +1 << endl;
-			cout << " Number of Refinements:		" << currentIter_ << endl;
+			cout << " Tolerance:\t\t\t" << tol_ << endl;
+			cout << " Max number of Iterations:\t" <<  maxIter_ << endl;
+			cout << " Number of Processors:\t\t\t" << maxRank_ +1 << endl;
+			cout << " Number of Refinements:\t\t" << currentIter_ << endl;
 			cout << "__________________________________________________________________________________________________________ " << endl;
 			cout << " " << endl;
-			cout << " Refinementlevel|| Elements	|| Nodes	|| Max. estimated error  " << endl;
+			cout << " Refinementlevel|| Elements\t|| Nodes\t|| Max. estimated error  " << endl;
 			cout << "__________________________________________________________________________________________________________ " << endl;
 			for(int i=0; i<= currentIter_; i++)
-				cout <<" "<< i << "		|| " << numElements[i] << "		|| " << numNodes[i]<< "		|| " << maxErrorEl[i]<<  endl;
+				cout <<" "<< i << "\t\t|| " << numElements[i] << "\t\t|| " << numNodes[i]<< "\t\t|| " << maxErrorEl[i]<<  endl;
 			cout << "__________________________________________________________________________________________________________ " << endl;
 			cout << " " << endl;
 			if(exactSolInput_ == true){
 				cout << " Maximal error in nodes after Refinement. " << endl;
 				for (int i=1; i<=currentIter_ ; i++)
-					cout <<" "<< i << ":	" << maxErrorKn[i] << endl;
+					cout <<" "<< i << ":\t" << maxErrorKn[i] << endl;
 				cout << "__________________________________________________________________________________________________________ " << endl;
-				cout << " || u-u_h ||_H1	||	|| u-u_h ||_L2  ||" ;
+				cout << " || u-u_h ||_H1\t||\t|| u-u_h ||_L2  ||" ;
 				if( calculatePressure_== true  && exactSolPInput_ == true  ){
-					cout << " 	|| p-p_h||_L2 " << endl;
+					cout << " \t|| p-p_h||_L2 " << endl;
 				}
 				else
 					cout << endl;
 				cout << "__________________________________________________________________________________________________________ " << endl;
 				for (int i=1; i<=currentIter_ ; i++){
-					cout <<" "<< i << ":	"<<  setprecision(5) << fixed << errorH1[i]<< "		||	" << errorL2[i] ;
+					std::cout <<" "<< i << ":\t"<<  std::setprecision(5) << std::fixed << errorH1[i]<< "\t\t||\t" << errorL2[i] ;
 					if( calculatePressure_== true  && exactSolPInput_ == true  ){
-						cout << " 	 	||	" << setprecision(5) << fixed <<  errorL2P[i] << endl;
+						std::cout << " \t \t||\t" << std::setprecision(5) << std::fixed <<  errorL2P[i] << std::endl;
 					}
 					else
 						cout << endl;
@@ -1057,16 +1059,16 @@ void AdaptiveMeshRefinement<SC,LO,GO,NO>::writeRefinementInfo(){
 			
 				cout << "__________________________________________________________________________________________________________ " << endl;
 			}
-			cout << " ||u-u_h||_H1 / ||u ||_H1 	||  eta / ||u_h ||_H1	" << endl;
+			cout << " ||u-u_h||_H1 / ||u ||_H1 \t||  eta / ||u_h ||_H1\t" << endl;
 			cout << "__________________________________________________________________________________________________________ " << endl;
 			for (int i=1; i<=currentIter_ ; i++){
-				cout <<" "<< i << ":	" << relError[i] << " 		||	" << eRelError[i]  << endl;
+				cout <<" "<< i << ":\t" << relError[i] << " \t\t||\t" << eRelError[i]  << endl;
 			}
 			cout << "__________________________________________________________________________________________________________ " << endl;
 			cout << " " << endl;
 			cout << "Distribution of elements on .. " << endl;
 			//for(int l=0; l< maxRank_ +1 ; l++)
-			cout <<" Max Number of Elements on Processors " << setprecision(0) << fixed <<   maxNumElementsOnProcs << endl; 
+			cout <<" Max Number of Elements on Processors " << std::setprecision(0) << std::fixed <<   maxNumElementsOnProcs << endl; 
 			cout <<" Min Number of Elements on Processors " <<  minNumElementsOnProcs << endl; 
 			cout << "__________________________________________________________________________________________________________ " << endl;
 			cout << "__________________________________________________________________________________________________________ " << endl;

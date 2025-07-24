@@ -6,8 +6,8 @@
 #include "feddlib/problems/specific/NonLinElasticity.hpp"
 #include "feddlib/problems/specific/Geometry.hpp"
 #include "feddlib/problems/Solver/TimeSteppingTools.hpp"
-#include "Xpetra_ThyraUtils.hpp"
-#include "Xpetra_CrsMatrixWrap.hpp"
+#include <Xpetra_ThyraUtils.hpp>
+#include <Xpetra_CrsMatrixWrap.hpp>
 #include <Thyra_PreconditionerBase.hpp>
 #include <Thyra_ModelEvaluatorBase_decl.hpp>
 namespace FEDD{
@@ -255,10 +255,10 @@ public:
     
 private:
     
-    virtual void evalModelImpl(
-                               const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,
-                               const ::Thyra::ModelEvaluatorBase::OutArgs<SC> &outArgs
-                               ) const;
+    // virtual void evalModelImpl(
+    //                            const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,
+    //                            const ::Thyra::ModelEvaluatorBase::OutArgs<SC> &outArgs
+    //                            ) const;
     
 //    void evalModelImplMonolithic(const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,
 //                                 const ::Thyra::ModelEvaluatorBase::OutArgs<SC> &outArgs) const;

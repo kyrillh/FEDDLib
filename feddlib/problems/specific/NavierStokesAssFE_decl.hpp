@@ -2,9 +2,8 @@
 #define NAVIERSTOKESASSFE_decl_hpp
 #include "feddlib/core/LinearAlgebra/BlockMap_decl.hpp"
 #include "feddlib/problems/abstract/NonLinearProblem.hpp"
-#include "Xpetra_ThyraUtils.hpp"
-#include "Xpetra_CrsMatrixWrap.hpp"
-#include <Teuchos_RCPDecl.hpp>
+#include <Xpetra_ThyraUtils.hpp>
+#include <Xpetra_CrsMatrixWrap.hpp>
 #include <Thyra_ProductVectorBase.hpp>
 #include <Thyra_PreconditionerBase.hpp>
 #include <Thyra_ModelEvaluatorBase_decl.hpp>
@@ -110,34 +109,12 @@ public:
 
     MultiVectorPtr_Type viscosity_element_; //In case of a generalized-Newtonian fluid one can compute viscosity for visualization
 
-private:
-    mutable bool stokesTekoPrecUsed_; //Help variable to signal that we constructed the initial preconditioner for NOX with the Stokes system and we do not need to compute it if fill_W_prec is called for the first time. However, the preconditioner is only correct if a Stokes system is solved in the first nonlinear iteration. This only affects the block preconditioners of Teko
-    /*####################*/
-
 public:
-
-    Teuchos::RCP< Thyra::LinearOpBase<SC> > create_W_op() const;
-    Teuchos::RCP< Thyra::LinearOpBase<SC> > create_W_op_Monolithic() const;
-#ifdef FEDD_HAVE_TEKO
-    Teuchos::RCP< Thyra::LinearOpBase<SC> > create_W_op_Block() const;
-#endif
-    Teuchos::RCP<Thyra::PreconditionerBase<SC> > create_W_prec() const;
 
     void reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) override;
 private:
 
-    virtual void evalModelImpl(
-                       const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,
-                       const ::Thyra::ModelEvaluatorBase::OutArgs<SC> &outArgs
-                       ) const;
 
-    void evalModelImplMonolithic(const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,
-                                 const ::Thyra::ModelEvaluatorBase::OutArgs<SC> &outArgs) const;
-
-#ifdef FEDD_HAVE_TEKO
-    void evalModelImplBlock(const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,
-                            const ::Thyra::ModelEvaluatorBase::OutArgs<SC> &outArgs) const;
-#endif
 
 };
 }

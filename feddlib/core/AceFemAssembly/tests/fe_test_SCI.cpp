@@ -3,7 +3,6 @@
 
 #include "feddlib/core/FE/Domain.hpp"
 #include "feddlib/core/FE/FE.hpp"
-// #include "feddlib/core/AceFemAssembly/TestFE/FE_Test.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMultiVector.hpp"
@@ -55,8 +54,6 @@ int main(int argc, char *argv[]) {
     // Command Line Parameters
 	ParameterListPtr_Type params = Teuchos::getParametersFromXmlFile("parametersProblemDeformDiffu.xml");
     Teuchos::CommandLineProcessor myCLP;
-    string ulib_str = "Tpetra";
-    myCLP.setOption("ulib",&ulib_str,"Underlying lib");
     int dim = params->sublist("Parameter").get("Dimension",3);
     myCLP.setOption("dim",&dim,"dim");
     int m = 2;

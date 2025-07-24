@@ -158,29 +158,9 @@ public:
 
     void getTriangles(int vertex1ID, int vertex2ID, vec_int_Type &vertices3ID);
 
-    SurfaceElementsPtr_Type getSurfaceTriangleElements() { return surfaceTriangleElements_; }
-
-    void findSurfaces(const vec_int_Type &elementNodeList, vec_int_Type numbering,
-                      vec2D_int_Type &localSurfaceNodeList_vec, vec_int_Type &locSurfaces, bool critical = false);
-
-    /*!
-            \brief Determine which edges belong to an element
-            @param[in] elementNodeList local node IDs of one element
-            @param[in] numbering
-            @param[in] localEdgeNodeList_vec local node IDs of edges
-            @param[in] locEdges vector that stores the local IDs of edges belonging to element of elementNodeList
-    */
-    void findEdges(const vec_int_Type &elementNodeList, vec_int_Type numbering, vec2D_int_Type &localEdgeNodeList_vec,
-                   vec_int_Type &locEdges);
-
-    /*!
-            \brief Get mesh interface
-            \return meshInterface_
-    */
-    MeshInterfacePtr_Type getMeshInterface();
-
-    void buildMeshInterfaceParallelAndDistance(MeshUnstrPtr_Type mesh, vec_int_Type flag_vec,
-                                               vec_dbl_ptr_Type &distancesToInterface);
+    SurfaceElementsPtr_Type getSurfaceTriangleElements(){return surfaceTriangleElements_;}
+    
+    void findSurfaces( const vec_int_Type& elementNodeList, vec_int_Type numbering,  vec2D_int_Type& localSurfaceNodeList_vec, vec_int_Type& locSurfaces, bool critical = false );
 
     void partitionInterface();
 
@@ -211,12 +191,12 @@ public:
             \brief Reading the .mesh files entities
             @param[in] entityType i.e. nodes, edges, elements...
     */
-    void readMeshEntity(string entityType);
+    void readMeshEntity(std::string entityType);
 
     /*!
             \brief Set the .mesh file name
     */
-    void setMeshFileName(string meshFileName, string delimiter);
+    void setMeshFileName(std::string meshFileName, std::string delimiter);
 
     /*!
             \brief Get global number of nodes
@@ -241,7 +221,7 @@ public:
 		@param[in] exportSurfaces whether to export surfaces or not
 
 	*/
-	void exportMesh(MapConstPtr_Type mapUnique, MapConstPtr_Type mapRep, bool exportEdges=false, bool exportSurface=false ,string meshName="export.mesh");
+	void exportMesh(MapConstPtr_Type mapUnique, MapConstPtr_Type mapRep, bool exportEdges=false, bool exportSurface=false, std::string meshName="export.mesh");
 
 	/*!
 	
@@ -270,8 +250,8 @@ public:
     ElementsPtr_Type surfaceEdgeElements_;
     SurfaceElementsPtr_Type surfaceTriangleElements_;
 
-    string meshFileName_;
-    string delimiter_;
+ 	std::string meshFileName_;
+    std::string delimiter_;
 
     int numSurfaces_;
     int numEdges_;

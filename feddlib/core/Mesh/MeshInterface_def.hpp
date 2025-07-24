@@ -12,14 +12,13 @@
  */
 
 
-using namespace std;
 //search all code for these functions and move them to Tools file.
 template <typename T>
-vector<T> sort_from_ref(
-                        vector<T> const& in,
-                        vector<int> const& reference
+std::vector<T> sort_from_ref(
+                        std::vector<T> const& in,
+                        std::vector<int> const& reference
                         ) {
-    vector<T> ret(in.size());
+    std::vector<T> ret(in.size());
 
     int const size = in.size();
     for (int i = 0; i < size; ++i)
@@ -29,11 +28,11 @@ vector<T> sort_from_ref(
 };
 
 template <typename T>
-vector<T> sort_from_ref(
-                        vector<T> const& in,
-                        vector<long long> const& reference
+std::vector<T> sort_from_ref(
+                        std::vector<T> const& in,
+                        std::vector<long long> const& reference
                         ) {
-    vector<T> ret(in.size());
+    std::vector<T> ret(in.size());
 
     int const size = in.size();
     for (long long i = 0; i < size; ++i)
@@ -245,20 +244,20 @@ void MeshInterface<SC,LO,GO,NO>::determineInterfaceParallelAndDistance( vec2D_db
 
         Teuchos::reduceAll( *this->comm_, Teuchos::REDUCE_SUM, (GO) indexGlobalCommOther.size(), Teuchos::ptrFromRef( numInterfaceGlobalOther ) );
         
-        MapPtr_Type mapThis = Teuchos::rcp( new Map_Type( mapUniThis->getUnderlyingLib(), -1, Teuchos::arrayViewFromVector( indexGlobalCommThis ), 0, this->comm_ ) );
+        MapPtr_Type mapThis = Teuchos::rcp( new Map_Type( -1, Teuchos::arrayViewFromVector( indexGlobalCommThis ), 0, this->comm_ ) );
 
-        MapPtr_Type mapOther = Teuchos::rcp( new Map_Type( mapUniThis->getUnderlyingLib(), -1, Teuchos::arrayViewFromVector( indexGlobalCommOther ), 0, this->comm_ ) );
+        MapPtr_Type mapOther = Teuchos::rcp( new Map_Type(  -1, Teuchos::arrayViewFromVector( indexGlobalCommOther ), 0, this->comm_ ) );
         
-       std::cout << "numInterfaceGlobalThis:" << numInterfaceGlobalThis << std::endl;
-       std::cout << "numInterfaceGlobalOther:" << numInterfaceGlobalOther << std::endl;
+        std::cout << "numInterfaceGlobalThis:" << numInterfaceGlobalThis << std::endl;
+        std::cout << "numInterfaceGlobalOther:" << numInterfaceGlobalOther << std::endl;
         TEUCHOS_TEST_FOR_EXCEPTION( numInterfaceGlobalThis != numInterfaceGlobalOther, std::runtime_error, "DetermineInterfaceInParallel failed. ThisMesh and OtherMesh seem to have different numbers of interface nodes." );
         
         std::vector<GO> gatherAllIndices(numInterfaceGlobalThis);
         std::iota ( std::begin( gatherAllIndices ), std::end( gatherAllIndices ), 0 );
 
-        MapPtr_Type linearMapThis = Teuchos::rcp( new Map_Type( mapUniThis->getUnderlyingLib(), numInterfaceGlobalThis, indexGlobalCommThis.size(), 0, this->comm_ ) );
-        MapPtr_Type linearMapOther = Teuchos::rcp( new Map_Type( mapUniThis->getUnderlyingLib(), numInterfaceGlobalThis, indexGlobalCommOther.size(), 0, this->comm_ ) );
-        MapPtr_Type gatherAllMap = Teuchos::rcp( new Map_Type( mapUniThis->getUnderlyingLib(), invalid, Teuchos::arrayViewFromVector( gatherAllIndices ), 0, this->comm_ ) );
+        MapPtr_Type linearMapThis = Teuchos::rcp( new Map_Type(  numInterfaceGlobalThis, indexGlobalCommThis.size(), 0, this->comm_ ) );
+        MapPtr_Type linearMapOther = Teuchos::rcp( new Map_Type(numInterfaceGlobalThis, indexGlobalCommOther.size(), 0, this->comm_ ) );
+        MapPtr_Type gatherAllMap = Teuchos::rcp( new Map_Type(  invalid, Teuchos::arrayViewFromVector( gatherAllIndices ), 0, this->comm_ ) );
 
         // We would like to use the Teuchos version of MPI_Allgatherv, which does not exist. Therefore we gatherv on a root and broadcast afterwards
         // Gather local lengths first
@@ -302,8 +301,8 @@ void MeshInterface<SC,LO,GO,NO>::determineInterfaceParallelAndDistance( vec2D_db
         Teuchos::broadcast<int,GO>( *this->comm_, root, Teuchos::arrayViewFromVector( gatheredThis ) );
         Teuchos::broadcast<int,GO>( *this->comm_, root, Teuchos::arrayViewFromVector( gatheredOther ) );
 
-        MapPtr_Type mapAllThis = Teuchos::rcp( new Map_Type( mapUniThis->getUnderlyingLib(), invalid, Teuchos::arrayViewFromVector( gatheredThis ), 0, this->comm_ ) );
-        MapPtr_Type mapAllOther = Teuchos::rcp( new Map_Type( mapUniThis->getUnderlyingLib(), invalid, Teuchos::arrayViewFromVector( gatheredOther ), 0, this->comm_ ) );
+        MapPtr_Type mapAllThis = Teuchos::rcp( new Map_Type(invalid, Teuchos::arrayViewFromVector( gatheredThis ), 0, this->comm_ ) );
+        MapPtr_Type mapAllOther = Teuchos::rcp( new Map_Type( invalid, Teuchos::arrayViewFromVector( gatheredOther ), 0, this->comm_ ) );
 
         bool meshOnRank = false;
         if (pointsUniThis->size() > 0)
@@ -481,11 +480,11 @@ void MeshInterface<SC,LO,GO,NO>::calculateDistancesToInterfaceParallel( vec_dbl_
         {
             for(int k = 0; k < dim; k++)
             {
-                distance = distance + pow( sourceNodesRep->at(i).at(k) - endNodesRep->at(j).at(k), 2.0 );
+                distance = distance + std::pow( sourceNodesRep->at(i).at(k) - endNodesRep->at(j).at(k), 2.0 );
             }
             
             // Noch die Wurzel ziehen
-            distance = sqrt(distance);
+            distance = std::sqrt(distance);
             
             if(distancesToInterface->at(i) > distance)
                 distancesToInterface->at(i) = distance;
@@ -530,7 +529,7 @@ void MeshInterface<SC,LO,GO,NO>::print(CommConstPtr_Type comm){
 
     for (int i=0; i<indicesGlobalMatched_->size(); i++) {
         for (int j=0; j<indicesGlobalMatched_->at(i).at(0).size(); j++) {
-            cout <<  comm->getRank()<<" Matched IDs for flag " << i << " :" << indicesGlobalMatched_->at(i).at(0).at(j) << " - " << indicesGlobalMatched_->at(i).at(0).at(j) << endl;
+            std::cout <<  comm->getRank()<<" Matched IDs for flag " << i << " :" << indicesGlobalMatched_->at(i).at(0).at(j) << " - " << indicesGlobalMatched_->at(i).at(0).at(j) << std::endl;
         }
     }
 }

@@ -1,6 +1,5 @@
 #ifndef FEDDCORE_hpp
 #define FEDDCORE_hpp
-#define UNDERLYING_LIB_TPETRA
 
 #define FEDD_TIMER
 #define FEDD_DETAIL_TIMER
@@ -19,12 +18,12 @@
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/core/General/SmallMatrix.hpp"
 
-#include "Teuchos_RCPDecl.hpp"
-#include "Teuchos_RCPBoostSharedPtrConversions.hpp"
-#include "Teuchos_ParameterList.hpp"
-#include "Teuchos_XMLParameterListHelpers.hpp"
-#include "Teuchos_TimeMonitor.hpp"
-#include "Teuchos_CommandLineProcessor.hpp"
+#include <Teuchos_RCPDecl.hpp>
+#include <Teuchos_RCPBoostSharedPtrConversions.hpp>
+#include <Teuchos_ParameterList.hpp>
+#include <Teuchos_XMLParameterListHelpers.hpp>
+#include <Teuchos_TimeMonitor.hpp>
+#include <Teuchos_CommandLineProcessor.hpp>
 
 #include <boost/function.hpp>
 namespace FEDD {
@@ -56,6 +55,10 @@ namespace FEDD {
 //#ifndef FEDD_TIMER_STOP
 //#define FEDD_TIMER_STOP(A) A.reset();
 //#endif
+
+#define FEDDLIB_WARNING(CLASS,VERBOSE,OUTPUT) if (VERBOSE) std::cerr << std::setw(5) << " " << "[WARNING] " << CLASS << ": " << OUTPUT << std::endl;
+
+#define FEDDLIB_NOTIFICATION(CLASS,VERBOSE,OUTPUT) if (VERBOSE) std::cerr << std::setw(5) << " " << "[NOTIFICATION] " << CLASS << ": " << OUTPUT << std::endl;
 
     
 typedef unsigned UN;

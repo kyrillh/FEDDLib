@@ -76,21 +76,10 @@ public:
     
     void computeValuesOfInterestAndExport() override {}
     
-//    virtual void assembleExternal( std::string type ){}
-    
-    Teuchos::RCP< Thyra::LinearOpBase<SC> > create_W_op() const override;
-    
-    Teuchos::RCP<Thyra::PreconditionerBase<SC> > create_W_prec() const override;
-    
     void reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) override;
 
 private:
     
-    void evalModelImpl(
-                               const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,
-                               const ::Thyra::ModelEvaluatorBase::OutArgs<SC> &outArgs
-                               ) const override;
-
     mutable MultiVectorPtr_Type u_rep_;
     double E_;
     double mue_;

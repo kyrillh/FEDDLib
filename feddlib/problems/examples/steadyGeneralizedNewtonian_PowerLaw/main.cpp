@@ -6,18 +6,19 @@
 #define MAIN_TIMER_STOP(A) A.reset();
 #endif
 
+#include <Tpetra_Core.hpp>
+
 #include "feddlib/core/FEDDCore.hpp"
+#include "feddlib/core/General/DefaultTypeDefs.hpp"
+
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/core/FE/Domain.hpp"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 #include "feddlib/problems/specific/NavierStokesAssFE.hpp"
 
-#include <Teuchos_GlobalMPISession.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
 
 /*!
  Main of steady-state Generalized Newtonian fluid flow problem with generalized Newtonian shear stress tensor assumption
@@ -145,7 +146,7 @@ void inflowPowerLaw2D(double *x, double *res, double t, const double *parameters
     double dp = parameters[3]; // dp/dx constant pressure gradient along channel
 
     // This corresponds to the analytical solution of a Poiseuille like Plug-flow of a Power-Law fluid
-    res[0] = (n / (n + 1.0)) * pow(dp / (K), 1.0 / n) * (pow(H / (2.0), (n + 1.0) / n) - pow(abs((H / 2.0) - x[1]), (n + 1.0) / n));
+    res[0] = (n / (n + 1.0)) * std::pow(dp / (K), 1.0 / n) * (std::pow(H / (2.0), (n + 1.0) / n) - std::pow(std::abs((H / 2.0) - x[1]), (n + 1.0) / n));
     res[1] = 0.;
 
     return;
@@ -160,7 +161,7 @@ void inflowPowerLaw2D_y(double *x, double *res, double t, const double *paramete
     double H = parameters[2];
     double dp = parameters[3];
 
-    res[1] = (n / (n + 1.0)) * pow(dp / (K), 1.0 / n) * (pow(H / (2.0), (n + 1.0) / n) - pow(abs((H / 2.0) - x[0]), (n + 1.0) / n));
+    res[1] = (n / (n + 1.0)) * std::pow(dp / (K), 1.0 / n) * (std::pow(H / (2.0), (n + 1.0) / n) - std::pow(std::abs((H / 2.0) - x[0]), (n + 1.0) / n));
     res[0] = 0.;
 
     return;
@@ -235,10 +236,11 @@ int main(int argc, char *argv[])
     typedef Matrix<SC, LO, GO, NO> Matrix_Type;
     typedef Teuchos::RCP<Matrix_Type> MatrixPtr_Type;
 
-    Teuchos::oblackholestream blackhole;
-    Teuchos::GlobalMPISession mpiSession(&argc, &argv, &blackhole);
+    // MPI boilerplate
+    Tpetra::ScopeGuard tpetraScope (&argc, &argv); // initializes MPI
+    {
+    Teuchos::RCP<const Teuchos::Comm<int> > comm = Tpetra::getDefaultComm();
 
-    Teuchos::RCP<const Teuchos::Comm<int>> comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
     bool verbose(comm->getRank() == 0);
 
     if (verbose)
@@ -270,8 +272,7 @@ int main(int argc, char *argv[])
     Teuchos::CommandLineProcessor::EParseCommandLineReturn parseReturn = myCLP.parse(argc, argv);
     if (parseReturn == Teuchos::CommandLineProcessor::PARSE_HELP_PRINTED)
     {
-        MPI_Finalize();
-        return 0;
+        return EXIT_SUCCESS;
     }
     // Einlesen von Parameterwerten
     {
@@ -419,6 +420,7 @@ int main(int argc, char *argv[])
                 exParaViscsoity->setup("viscosity", domV->getMesh(), "P0"); // Viscosity averaged therefore P0 value
                 exParaViscsoity->addVariable(exportSolutionViscosityAssFE, "viscosityAssFE", "Scalar", 1, domV->getElementMap());
                 exParaViscsoity->save(0.0);
+		exParaViscsoity->closeExporter();
             }
 
             //****************************************************************************************
@@ -441,6 +443,9 @@ int main(int argc, char *argv[])
             exParaVelocity->save(0.0);
             exParaPressure->save(0.0);
 
+	    exParaVelocity->closeExporter();
+	    exParaPressure->closeExporter();
+
             //*************************** FLAGS *************************************
             Teuchos::RCP<ExporterParaView<SC, LO, GO, NO>> exParaF(new ExporterParaView<SC, LO, GO, NO>());
             Teuchos::RCP<MultiVector<SC, LO, GO, NO>> exportSolution(new MultiVector<SC, LO, GO, NO>(domainVelocity->getMapUnique()));
@@ -454,6 +459,7 @@ int main(int argc, char *argv[])
             exParaF->setup("Flags", domainVelocity->getMesh(), domainVelocity->getFEType());
             exParaF->addVariable(exportSolutionConst, "Flags", "Scalar", 1, domainVelocity->getMapUnique());
             exParaF->save(0.0);
+	    exParaF->closeExporter();
 
             //**************************** Plot Subdomains without overlap ****************************************
             if (parameterListAll->sublist("General").get("ParaView export subdomains", false))
@@ -500,6 +506,7 @@ int main(int argc, char *argv[])
                     cout << "##################### Start Navier-Stokes Newtonian Solver ####################" << endl;
                     cout << "###############################################################" << endl;
                 }
+
 
                 NavierStokesAssFE<SC, LO, GO, NO> navierStokesAssFEModel2(domainVelocity, discVelocity, domainPressure, discPressure, parameterListAll);
                 {
@@ -554,6 +561,9 @@ int main(int argc, char *argv[])
                 exParaVelocityModel2->save(0.0);
                 exParaPressureModel2->save(0.0);
 
+		exParaVelocityModel2->closeExporter();
+		exParaPressureModel2->closeExporter();
+
                 // Error comparison
                 Teuchos::Array<SC> norm(1);
                 errorValues->norm2(norm); // const Teuchos::ArrayView<typename Teuchos::ScalarTraits<SC>::magnitudeType> &norms);
@@ -587,12 +597,12 @@ int main(int argc, char *argv[])
 
                         for (int j = 0; j < values.size(); j++)
                         {
-                            if (fabs(values[j]) > res)
-                                res = fabs(values[j]);
+                            if (std::fabs(values[j]) > res)
+                                res = std::fabs(values[j]);
                         }
                     }
                 }
-                res = fabs(res);
+                res = std::fabs(res);
                 reduceAll<int, double>(*comm, REDUCE_MAX, res, outArg(res));
                 if (comm->getRank() == 0)
                     cout << "Inf Norm of Difference between Block A: " << res << endl;
@@ -608,10 +618,10 @@ int main(int argc, char *argv[])
                     Sum1->getGlobalRowView(row, indices, values);
                     for (int j = 0; j < values.size(); j++)
                     {
-                        res += fabs(values[j]);
+                        res += std::fabs(values[j]);
                     }
                 }
-                res = fabs(res);
+                res = std::fabs(res);
                 reduceAll<int, double>(*comm, REDUCE_SUM, res, outArg(res));
                 if (comm->getRank() == 0)
                     cout << " Norm of Difference between Block B: " << res << endl;
@@ -619,5 +629,7 @@ int main(int argc, char *argv[])
         }
     }
     Teuchos::TimeMonitor::report(cout);
-    return (EXIT_SUCCESS);
+    }
+    
+    return EXIT_SUCCESS;
 }

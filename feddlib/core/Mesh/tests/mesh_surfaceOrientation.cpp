@@ -47,8 +47,6 @@ int main(int argc, char *argv[]) {
 
     // Command Line Parameters
     Teuchos::CommandLineProcessor myCLP;
-    string ulib_str = "Tpetra"; //this does nothing atm
-    myCLP.setOption("ulib",&ulib_str,"Underlying lib");
     string filename = "cube_tetr6_struct_h=0_2.mesh";
     myCLP.setOption("file",&filename,"Mesh filename");
     int dim = 3;
@@ -127,9 +125,9 @@ int main(int argc, char *argv[]) {
 					v_E[1] = p1[2]*p2[0] - p1[0]*p2[2];
 					v_E[2] = p1[0]*p2[1] - p1[1]*p2[0];
 		            
-				    norm_v_E = sqrt(pow(v_E[0],2)+pow(v_E[1],2)+pow(v_E[2],2));
+				    norm_v_E = std::sqrt(std::pow(v_E[0],2)+std::pow(v_E[1],2)+std::pow(v_E[2],2));
 
-                    norm_v_E = sqrt(pow(v_E[0],2) + pow(v_E[1],2) + pow(v_E[2],2));
+                    norm_v_E = std::sqrt(std::pow(v_E[0],2) + std::pow(v_E[1],2) + std::pow(v_E[2],2));
                     sum_v_E = v_E[0] + v_E[1] + v_E[2]; // as we are looking at a cube, all surface normals have on entry, either positive or negative
                    
                     value[T] = sum_v_E/norm_v_E; 
@@ -139,7 +137,7 @@ int main(int argc, char *argv[]) {
         
         Teuchos::RCP<ExporterParaView<SC,LO,GO,NO> > exPara(new ExporterParaView<SC,LO,GO,NO>());
         
-        exPara->setup( "surfaceNnormalDirectionOnSurface", domainP1->getMesh(), "P0" );
+        exPara->setup( "surfaceNormalDirectionOnSurface", domainP1->getMesh(), "P0" );
         MultiVectorConstPtr_Type mvFlagConst = mvFlag;
         exPara->addVariable( mvFlagConst, "flag", "Scalar", 1, domainP1->getElementMap());
         

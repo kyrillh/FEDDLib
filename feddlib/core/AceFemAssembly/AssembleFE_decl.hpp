@@ -126,7 +126,7 @@ namespace FEDD {
          \brief Update the parameter read from the ParameterList.
          @param[in] Parameter as read from the xml file
         */
-        virtual void updateParameter(string type, double value) {}
+        virtual void updateParameter(std::string type, double value) {}
         /*!
          \brief This function is called every time the FEDDLib proceeds from one to the next time step. The size of the time step will always be provided as input.
          @param[in] dt Timestepping length
@@ -210,8 +210,7 @@ namespace FEDD {
         /*!
         \brief E.g. In case of non-newtonian fluids the viscosity is not constant - Compute the viscosity for an element depending on the known velocity solution
         */
-	    virtual void computeLocalconstOutputField() {TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "computeLocalconstOutputField not yet implemented")}
-          /*!
+        virtual void computeLocalconstOutputField() {TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "computeLocalconstOutputField not yet implemented")}
 
         /*!
          \brief Obtain value of resulting postprocessing field at nodes/ inside an element

@@ -13,12 +13,9 @@ Definition of Mesh
 @version 1.0
 @copyright CH
 */
-using Teuchos::reduceAll;
-using Teuchos::REDUCE_SUM;
-using Teuchos::outArg;
 
-using namespace std;
 namespace FEDD {
+
 template <class SC, class LO, class GO, class NO>
 Mesh<SC, LO, GO, NO>::Mesh()
     : dim_(-1), numElementsGlob_(0), FEType_("P1"), mapUnique_(), mapRepeated_(), pointsRep_(), pointsUni_(),
@@ -88,7 +85,6 @@ typename Mesh<SC,LO,GO,NO>::MapConstPtr_Type Mesh<SC,LO,GO,NO>::getElementMap() 
     TEUCHOS_TEST_FOR_EXCEPTION( elementMap_.is_null(), std::runtime_error, "Element map of mesh does not exist." );
     return elementMap_;
 }
-
 
 // edgeMap
 template <class SC, class LO, class GO, class NO>
@@ -192,7 +188,7 @@ int Mesh<SC,LO,GO,NO>::getOrderElement(){
             else if( !FEType_.compare("P2-CR") )
                 return 15;
             else if( !FEType_.compare("Q2-20") )
-                return 20;
+                return 20;  // Q2 Serendipity (missing interior volume node and missing interior face nodes gives 20 nodes)
             else if( !FEType_.compare("Q2") )
                 return 27;
             break;
@@ -273,7 +269,7 @@ void Mesh<SC,LO,GO,NO>::moveMesh( MultiVectorPtr_Type displacementUnique, MultiV
             // und anschliessend mit [] auf den Wert des Arrays.
             // Beachte falls x ein Array ist (also z.B. double *), dann ist x[i] := *(x+i)!!!
             // Liefert also direkt den Wert und keinen Pointer auf einen double.
-            // Achtung: MultiVector[] liefert double* wohingegen MultiVector() Epetra_Vector* zurueck liefert
+            // Achtung: MultiVector[] liefert double* wohingegen MultiVector() Tpetra_Vector* zurueck liefert
             pointsUni_->at(i).at(j) = pointsUniRef_->at(i).at(j) + values[dim_*i+j];
         }
     }
@@ -315,16 +311,16 @@ vec_int_ptr_Type Mesh<SC,LO,GO,NO>::findElemsForPoints(
     }
 
     // Query the AABBTree
-    map<int, list<int> > treeToItem;
-    map<int, list<int> > itemToTree;
+    std::map<int, std::list<int> > treeToItem;
+    std::map<int, std::list<int> > itemToTree;
     tie(treeToItem, itemToTree) = AABBTree_->scanTree(queryPoints, false);
 
     // FIXME: put this in a function of AABBTree?
     // unnest the returned answer for each query_point
     int point = -1;
     bool found = false;
-    list<int> rectangles;
-    list<int> elements;
+    std::list<int> rectangles;
+    std::list<int> elements;
     for (auto keyValue: itemToTree){
         // FIXME: put this in a function of AABBTree?
         // rectangles is a list<int> of all rectangles point is in
@@ -467,15 +463,15 @@ void Mesh<SC,LO,GO,NO>::correctNormalDirections(){
             }
         }
     }
-    reduceAll<int, int> (*this->getComm(), REDUCE_SUM, inwardNormals, outArg (inwardNormals));
-    reduceAll<int, int> (*this->getComm(), REDUCE_SUM, outwardNormals, outArg (outwardNormals));
+    Teuchos::reduceAll<int, int> (*this->getComm(), Teuchos::REDUCE_SUM, inwardNormals, Teuchos::outArg (inwardNormals));
+    Teuchos::reduceAll<int, int> (*this->getComm(), Teuchos::REDUCE_SUM, outwardNormals, Teuchos::outArg (outwardNormals));
 
     if(this->getComm()->getRank() == 0){
-        cout << " ############################################ " << endl;
-        cout << " Mesh Orientation Statistic " << endl;
-        cout << " Number of outward normals " << outwardNormals << endl;
-        cout << " Number of inward normals " << inwardNormals << endl;
-        cout << " ############################################ " << endl;
+        std::cout << " ############################################ " << std::endl;
+        std::cout << " Mesh Orientation Statistic " << std::endl;
+        std::cout << " Number of outward normals " << outwardNormals << std::endl;
+        std::cout << " Number of inward normals " << inwardNormals << std::endl;
+        std::cout << " ############################################ " << std::endl;
     }
 
 }
@@ -503,16 +499,15 @@ void Mesh<SC,LO,GO,NO>::correctElementOrientation(){
             flipElement(elementsC_,T); 
 
     }
-    cout << " Finished " << endl;
-    reduceAll<int, int> (*this->getComm(), REDUCE_SUM, negDet, outArg (negDet));
-    reduceAll<int, int> (*this->getComm(), REDUCE_SUM, posDet, outArg (posDet));
+    Teuchos::reduceAll<int, int> (*this->getComm(), Teuchos::REDUCE_SUM, negDet, Teuchos::outArg (negDet));
+    Teuchos::reduceAll<int, int> (*this->getComm(), Teuchos::REDUCE_SUM, posDet, Teuchos::outArg (posDet));
 
     if(this->getComm()->getRank() == 0){
-        cout << " ############################################ " << endl;
-        cout << " Mesh Orientation Statistic " << endl;
-        cout << " Number of positive dets " << posDet << endl;
-        cout << " Number of negative dets " << negDet << endl;
-        cout << " ############################################ " << endl;
+        std::cout << " ############################################ " << std::endl;
+        std::cout << " Mesh Orientation Statistic " << std::endl;
+        std::cout << " Number of positive dets " << posDet << std::endl;
+        std::cout << " Number of negative dets " << negDet << std::endl;
+        std::cout << " ############################################ " << std::endl;
     }
 
 }

@@ -1,3 +1,5 @@
+#include <Tpetra_Core.hpp>
+
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 
@@ -5,9 +7,8 @@
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
+
 #include "feddlib/problems/specific/DiffusionReaction.hpp"
-#include <Teuchos_GlobalMPISession.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
 #include "feddlib/problems/Solver/DAESolverInTime.hpp"
 
 /*!
@@ -59,7 +60,7 @@ void inflowChem(double* x, double* res, double t, const double* parameters)
 
 void reactionFunc(double* x, double* res, double* parameters){
 	
-    double m = 0.;	
+    double m = 1.;	
     res[0] = m * x[0];
 
 }
@@ -77,24 +78,20 @@ int main(int argc, char *argv[]) {
 	typedef MultiVector<SC,LO,GO,NO> MultiVector_Type;
 	typedef Teuchos::RCP<MultiVector_Type> MultiVectorPtr_Type;
 
-    Teuchos::oblackholestream blackhole;
-    Teuchos::GlobalMPISession mpiSession(&argc,&argv,&blackhole);
-
-    Teuchos::RCP<const Teuchos::Comm<int> > comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    // MPI boilerplate
+    Tpetra::ScopeGuard tpetraScope (&argc, &argv); // initializes MPI
+    Teuchos::RCP<const Teuchos::Comm<int> > comm = Tpetra::getDefaultComm();
 
     // Command Line Parameters
     Teuchos::CommandLineProcessor myCLP;
-    string ulib_str = "Tpetra";
-    myCLP.setOption("ulib",&ulib_str,"Underlying lib");
-
 
     std::string vectorLaplace = "false";
     myCLP.setOption("vectorLaplace",&vectorLaplace,"vectorLaplace");
-    string xmlProblemFile = "parametersProblem.xml";
+    std::string xmlProblemFile = "parametersProblem.xml";
     myCLP.setOption("problemfile",&xmlProblemFile,".xml file with Inputparameters.");
-    string xmlPrecFile = "parametersPrec.xml";
+    std::string xmlPrecFile = "parametersPrec.xml";
     myCLP.setOption("precfile",&xmlPrecFile,".xml file with Inputparameters.");
-    string xmlSolverFile = "parametersSolver.xml";
+    std::string xmlSolverFile = "parametersSolver.xml";
     myCLP.setOption("solverfile",&xmlSolverFile,".xml file with Inputparameters.");
     double length = 4.;
     myCLP.setOption("length",&length,"length of domain.");
@@ -103,8 +100,7 @@ int main(int argc, char *argv[]) {
     myCLP.throwExceptions(false);
     Teuchos::CommandLineProcessor::EParseCommandLineReturn parseReturn = myCLP.parse(argc,argv);
     if(parseReturn == Teuchos::CommandLineProcessor::PARSE_HELP_PRINTED) {
-        mpiSession.~GlobalMPISession();
-        return 0;
+        return EXIT_SUCCESS;
     }
     bool vL ( !vectorLaplace.compare("true") );
     
@@ -167,32 +163,22 @@ int main(int argc, char *argv[]) {
 
         // ####################
         Teuchos::RCP<BCBuilder<SC,LO,GO,NO> > bcFactory(new BCBuilder<SC,LO,GO,NO>( ));
-        
+
         if(dim==3){
-       // bcFactory->addBC(threeBC, 1, 0, domain, "Dirichlet", 1);
-      // bcFactory->addBC(zeroBC, 4, 0, domain, "Dirichlet", 1);
-      //  bcFactory->addBC(zeroBC, 2, 0, domain, "Dirichlet", 1);
-        //bcFactory->addBC(zeroBC, 3, 0, domain, "Dirichlet", 1);
-		bcFactory->addBC(inflowChem, 0, 0, domain, "Dirichlet", 1); // inflow of Chem
-		bcFactory->addBC(inflowChem, 1, 0, domain, "Dirichlet", 1); // inflow of Chem
-		bcFactory->addBC(inflowChem, 7, 0, domain, "Dirichlet", 1);            		
-		//bcFactory->addBC(zeroDirichlet, 8, 1, domainChem, "Dirichlet", 1);
-		bcFactory->addBC(inflowChem, 9, 0, domain, "Dirichlet", 1);
-		/*bcFactory->addBC(zeroDirichlet, 2, 1, domainChem, "Dirichlet", 1);
-		bcFactory->addBC(zeroDirichlet, 3, 1, domainChem, "Dirichlet", 1);            
-		bcFactory->addBC(zeroDirichlet, 4, 1, domainChem, "Dirichlet", 1);            
-		bcFactory->addBC(zeroDirichlet, 5, 1, domainChem, "Dirichlet", 1);            
-		// bcFactory->addBC(zeroDirichlet, 6, 1, domainChem, "Dirichlet", 1);            
-		*/
+            // Inflow through one surface. Some flags represent edge components.
+            bcFactory->addBC(inflowChem, 0, 0, domain, "Dirichlet", 1); // inflow of Chem
+            bcFactory->addBC(inflowChem, 1, 0, domain, "Dirichlet", 1); // inflow of Chem
+            bcFactory->addBC(inflowChem, 7, 0, domain, "Dirichlet", 1);            		
+            bcFactory->addBC(inflowChem, 9, 0, domain, "Dirichlet", 1);
+           
 		}
 		else if(dim==2){
-		bcFactory->addBC(inflowChem, 2, 0, domain, "Dirichlet", 1); // inflow of Chem
-		  		
-		
+            // Inflow on one side / edge
+		    bcFactory->addBC(inflowChem, 2, 0, domain, "Dirichlet", 1); // inflow of Chem
 		}
 	
         
-
+        // We construct the diffusion tensor. In general it is a scale unit matrix. 
 	    vec2D_dbl_Type diffusionTensor(dim,vec_dbl_Type(dim));
         double D0 = parameterListAll->sublist("Parameter").get("D0",1.);
         for(int i=0; i<dim; i++){
@@ -215,8 +201,9 @@ int main(int argc, char *argv[]) {
 
                 diffusionReaction.addBoundaries( bcFactory );
 
-                //diffusionReaction.addRhsFunction( zeroFunc );
-     
+                // diffusionReaction.addRhsFunction( zeroFunc );
+                // diffusionReaction.addParemeterRhs( parameterListProblem->sublist("Parameter").get("Metabolic Rate",0.0) );
+
                 diffusionReaction.initializeProblem();
                 diffusionReaction.assemble();
                                     
@@ -267,5 +254,5 @@ int main(int argc, char *argv[]) {
 
        
     }
-    return(EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }

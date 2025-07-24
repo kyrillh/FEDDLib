@@ -48,7 +48,6 @@
  @copyright CH
  */
 
-using namespace std;
 namespace FEDD {
 template <class SC, class LO, class GO, class NO> MeshPartitioner<SC, LO, GO, NO>::MeshPartitioner() {}
 
@@ -66,22 +65,22 @@ MeshPartitioner<SC, LO, GO, NO>::MeshPartitioner(DomainPtrArray_Type domains, Pa
 
 template <class SC, class LO, class GO, class NO> MeshPartitioner<SC, LO, GO, NO>::~MeshPartitioner() {}
 
-template <class SC, class LO, class GO, class NO> void MeshPartitioner<SC, LO, GO, NO>::readAndPartition(int volumeID) {
-    if (volumeID != 10) {
-        if (this->comm_->getRank() == 0) {
-            cout << " #### WARNING: The volumeID was set manually and is no longer 10. Please make sure your volumeID "
-                    "corresponds to the volumeID in your mesh file. #### "
-                 << endl;
-        }
-    }
-    // Read
-    string delimiter = pList_->get("Delimiter", " ");
-    for (int i = 0; i < domains_.size(); i++) {
-        std::string meshName = pList_->get("Mesh " + std::to_string(i + 1) + " Name", "noName");
-        TEUCHOS_TEST_FOR_EXCEPTION(meshName == "noName", std::runtime_error, "No mesh name given.");
-        domains_[i]->initializeUnstructuredMesh(domains_[i]->getDimension(), "P1",
-                                                volumeID); // we only allow to read P1 meshes.
-        domains_[i]->readMeshSize(meshName, delimiter);
+    
+template <class SC, class LO, class GO, class NO>
+void MeshPartitioner<SC,LO,GO,NO>::readAndPartition( int volumeID)
+{
+	if(volumeID != 10 ){
+		if(this->comm_->getRank()==0){
+			std::cout << " #### WARNING: The volumeID was set manually and is no longer 10. Please make sure your volumeID corresponds to the volumeID in your mesh file. #### " << std::endl;
+		}
+	}
+    //Read
+    std::string delimiter = pList_->get( "Delimiter", " " );
+    for (int i=0; i<domains_.size(); i++) {
+        std::string meshName = pList_->get( "Mesh " + std::to_string(i+1) + " Name", "noName" );
+        TEUCHOS_TEST_FOR_EXCEPTION( meshName == "noName", std::runtime_error, "No mesh name given.");
+        domains_[i]->initializeUnstructuredMesh( domains_[i]->getDimension(), "P1",volumeID ); //we only allow to read P1 meshes.
+        domains_[i]->readMeshSize( meshName, delimiter );
     }
 
     this->determineRanks();
@@ -124,11 +123,10 @@ template <class SC, class LO, class GO, class NO> void MeshPartitioner<SC, LO, G
             std::cout << "\t --- ---------------- ---" << std::endl;
             std::cout << "\t --- Mesh Partitioner ---" << std::endl;
             std::cout << "\t --- ---------------- ---" << std::endl;
-            std::cout << "\t --- Automatic partition for " << comm_->getSize() << " ranks" << std::endl;
-            for (int i = 0; i < domains_.size(); i++) {
-                std::cout << "\t --- Fraction mesh " << to_string(i + 1) << " : " << fractions[i]
-                          << " of 100; rank range: " << get<0>(rankRanges_[i]) << " to " << get<1>(rankRanges_[i])
-                          << std::endl;
+            std::cout << "\t --- Automatic partition for "<< comm_->getSize() <<" ranks" << std::endl;
+            for (int i=0; i<domains_.size(); i++) {
+                std::cout << "\t --- Fraction mesh "<<std::to_string(i+1) << " : " << fractions[i] <<
+                            " of 100; rank range: " << std::get<0>( rankRanges_[i] )<< " to "<< std::get<1>( rankRanges_[i] ) << std::endl;
             }
         }
 
@@ -144,11 +142,10 @@ template <class SC, class LO, class GO, class NO> void MeshPartitioner<SC, LO, G
             std::cout << "\t --- ---------------- ---" << std::endl;
             std::cout << "\t --- Mesh Partitioner ---" << std::endl;
             std::cout << "\t --- ---------------- ---" << std::endl;
-            std::cout << "\t --- Fraction partition for " << comm_->getSize() << " ranks" << std::endl;
-            for (int i = 0; i < domains_.size(); i++) {
-                std::cout << "\t --- Fraction mesh " << to_string(i + 1) << " : " << fractions[i]
-                          << " of 100; rank range: " << get<0>(rankRanges_[i]) << " to " << get<1>(rankRanges_[i])
-                          << std::endl;
+            std::cout << "\t --- Fraction partition for "<< comm_->getSize() <<" ranks" << std::endl;
+            for (int i=0; i<domains_.size(); i++) {
+                std::cout << "\t --- Fraction mesh "<<std::to_string(i+1) << " : " << fractions[i] <<
+                " of 100; rank range: " << std::get<0>( rankRanges_[i] )<< " to "<< std::get<1>( rankRanges_[i] ) << std::endl;
             }
         }
     } else if (autoPartition == false && pList_->get("Mesh 1 fraction ranks", -1) < 0 &&
@@ -165,10 +162,9 @@ template <class SC, class LO, class GO, class NO> void MeshPartitioner<SC, LO, G
             std::cout << "\t --- ---------------- ---" << std::endl;
             std::cout << "\t --- Mesh Partitioner ---" << std::endl;
             std::cout << "\t --- ---------------- ---" << std::endl;
-            std::cout << "\t --- Rank number partition for " << comm_->getSize() << " ranks" << std::endl;
-            for (int i = 0; i < domains_.size(); i++) {
-                std::cout << "\t --- Rank range mesh " << to_string(i + 1) << " :" << get<0>(rankRanges_[i]) << " to "
-                          << get<1>(rankRanges_[i]) << std::endl;
+            std::cout << "\t --- Rank number partition for "<< comm_->getSize() <<" ranks" << std::endl;
+            for (int i=0; i<domains_.size(); i++) {
+                std::cout << "\t --- Rank range mesh "<<std::to_string(i+1) << " :" << std::get<0>( rankRanges_[i] )<< " to "<< std::get<1>( rankRanges_[i] ) << std::endl;
             }
         }
 
@@ -264,13 +260,9 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
 
     typedef Teuchos::OrdinalTraits<GO> OTGO;
 
-#ifdef UNDERLYING_LIB_TPETRA
-    string underlyingLib = "Tpetra";
-#endif
-
-    MeshUnstrPtr_Type meshUnstr = Teuchos::rcp_dynamic_cast<MeshUnstr_Type>(domains_[meshNumber]->getMesh());
-
-    // Reading nodes
+    MeshUnstrPtr_Type meshUnstr = Teuchos::rcp_dynamic_cast<MeshUnstr_Type>( domains_[meshNumber]->getMesh() );
+    
+	// Reading nodes
     meshUnstr->readMeshEntity("node");
     // We delete the point at this point. We only need the flags to determine surface elements. We will load them again
     // later.
@@ -346,32 +338,32 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
 
     // Partitioning elements with metis
     if (verbose)
-        cout << "-- Start partitioning with Metis ... " << flush;
-
+        std::cout << "-- Start partitioning with Metis ... " << std::flush;
+    
     {
         FEDD_TIMER_START(partitionTimer, " : MeshPartitioner : Partition Elements");
         idx_t nparts = std::get<1>(rankRanges_[meshNumber]) - std::get<0>(rankRanges_[meshNumber]) + 1;
         if (nparts > 1) {
             int rank = this->comm_->getRank();
             // upperRange - lowerRange +1
-            idx_t returnCode = METIS_PartMeshDual(&ne, &nn, eptr, eind, NULL, NULL, &ncommon, &nparts, NULL, options,
-                                                  &objval, &epart[0], &npart[0]);
-            if (verbose)
-                cout << "\n--\t Metis return code: " << returnCode;
-        } else {
-            for (int i = 0; i < ne; i++)
+            idx_t returnCode = METIS_PartMeshDual(&ne, &nn, eptr, eind, NULL, NULL, &ncommon, &nparts, NULL, options, &objval, &epart[0], &npart[0]);
+            if ( verbose )
+                std::cout << "\n--\t Metis return code: " << returnCode;
+        }
+        else{
+            for (int i=0; i<ne; i++)
                 epart[i] = 0;
         }
     }
 
-    if (verbose) {
-        cout << "\n--\t objval: " << objval << endl;
-        cout << "-- done!" << endl;
+    if (verbose){
+        std::cout << "\n--\t objval: " << objval << std::endl;
+        std::cout << "-- done!" << std::endl;
     }
 
     if (verbose)
-        cout << "-- Set Elements ... " << flush;
-
+        std::cout << "-- Set Elements ... " << std::flush;
+    
     vec_GO_Type locepart(0);
     vec_GO_Type pointsRepIndices(0);
     // Global Edge IDs of local elements
@@ -392,12 +384,11 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
     // Sorting ids with global and corresponding local values to create repeated map
     make_unique(pointsRepIndices);
     if (verbose)
-        cout << "done!" << endl;
-
+        std::cout << "done!" << std::endl;
+    
     //  Building repeated node map
-    Teuchos::ArrayView<GO> pointsRepGlobMapping = Teuchos::arrayViewFromVector(pointsRepIndices);
-    meshUnstr->mapRepeated_.reset(
-        new Map<LO, GO, NO>(underlyingLib, OTGO::invalid(), pointsRepGlobMapping, 0, this->comm_));
+    Teuchos::ArrayView<GO> pointsRepGlobMapping =  Teuchos::arrayViewFromVector( pointsRepIndices );
+    meshUnstr->mapRepeated_.reset( new Map<LO,GO,NO>(OTGO::invalid(), pointsRepGlobMapping, 0, this->comm_) );
     MapConstPtr_Type mapRepeated = meshUnstr->mapRepeated_;
 
     // We keep the global elements if we want to build edges later. Otherwise they will be deleted
@@ -409,8 +400,8 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
         Teuchos::ArrayView<GO> elementsGlobalMapping = Teuchos::arrayViewFromVector(locepart);
         // elementsGlobalMapping -> elements per Processor
 
-        meshUnstr->elementMap_.reset(new Map<LO, GO, NO>(underlyingLib, (GO)-1, elementsGlobalMapping, 0, this->comm_));
-
+        meshUnstr->elementMap_.reset(new Map<LO,GO,NO>( (GO) -1, elementsGlobalMapping, 0, this->comm_) );
+        
         {
             int localSurfaceCounter = 0;
             for (int i = 0; i < locepart.size(); i++) {
@@ -441,14 +432,14 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
     meshUnstr->readMeshEntity("node"); // We reread the nodes, as they were deleted earlier
 
     if (verbose)
-        cout << "-- Build Repeated Points Volume ... " << flush;
-
+        std::cout << "-- Build Repeated Points Volume ... " << std::flush;
+            
     // building the unique map
     meshUnstr->mapUnique_ = meshUnstr->mapRepeated_->buildUniqueMap(rankRanges_[meshNumber]);
 
     // free(epart);
     if (verbose)
-        cout << "-- Building unique & repeated points ... " << flush;
+        std::cout << "-- Building unique & repeated points ... " << std::flush;
     {
         vec2D_dbl_Type points = *meshUnstr->getPointsRepeated();
         vec_int_Type flags = *meshUnstr->getBCFlagRepeated();
@@ -487,24 +478,24 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
 
     locepart.erase(locepart.begin(), locepart.end());
     if (verbose)
-        cout << "done!" << endl;
-
-    if (buildSurfaces) {
-        this->setEdgesToSurfaces(
-            meshNumber); // Adding edges as subelements in the 3D case. All dim-1-Subelements were already set
-    } else
+        std::cout << "done!" << std::endl;
+        
+    if (buildSurfaces){
+        this->setEdgesToSurfaces( meshNumber ); // Adding edges as subelements in the 3D case. All dim-1-Subelements were already set
+		}
+    else
         meshUnstr->deleteSurfaceElements();
 
     if (buildEdges) {
         if (verbose)
-            cout << "-- Build edge element list ... \n" << flush;
-
-        buildEdgeListParallel(meshUnstr, elementsGlobal);
-
+            std::cout << "-- Build edge element list ... " << std::endl << std::flush;
+                
+        buildEdgeListParallel( meshUnstr, elementsGlobal );
+        
         if (verbose)
-            cout << "\n done!" << endl;
-
-        MapConstPtr_Type elementMap = meshUnstr->getElementMap();
+            std::cout << std::endl << " done!"<< std::endl;
+        
+        MapConstPtr_Type elementMap =  meshUnstr->getElementMap();
 
         FEDD_TIMER_START(partitionEdgesTimer, " : MeshPartitioner : Partition Edges");
         meshUnstr->getEdgeElements()->partitionEdges(elementMap, mapRepeated);
@@ -516,19 +507,20 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
         }
 
         // Setup for the EdgeMap
-        Teuchos::ArrayView<GO> edgesGlobalMapping = Teuchos::arrayViewFromVector(locedpart);
-        meshUnstr->edgeMap_.reset(new Map<LO, GO, NO>(underlyingLib, (GO)-1, edgesGlobalMapping, 0, this->comm_));
+        Teuchos::ArrayView<GO> edgesGlobalMapping =  Teuchos::arrayViewFromVector( locedpart );
+        meshUnstr->edgeMap_.reset(new Map<LO,GO,NO>( (GO) -1, edgesGlobalMapping, 0, this->comm_) );
     }
 
     if (verbose)
-        cout << "done!" << endl;
-
+        std::cout << "done!" << std::endl;
+    
     if (verbose)
-        cout << "-- Partition interface ... " << flush;
+        std::cout << "-- Partition interface ... " << std::flush;
     meshUnstr->partitionInterface();
 
     if (verbose)
-        cout << "done!" << endl;
+        std::cout << "done!" << std::endl;
+    
 }
 
 /// Function that (addionally) adds edges as subelements in the 3D case. This is relevant when the .mesh file also
@@ -540,9 +532,9 @@ void MeshPartitioner<SC, LO, GO, NO>::setEdgesToSurfaces(int meshNumber) {
     ElementsPtr_Type elementsMesh = meshUnstr->getElementsC();
     MapConstPtr_Type mapRepeated = meshUnstr->mapRepeated_;
     if (verbose)
-        cout << "-- Set edges of surfaces of elements ... " << flush;
-
-    FEDD_TIMER_START(surfacesTimer, " : MeshPartitioner : Set Surfaces of Edge Elements");
+        std::cout << "-- Set edges of surfaces of elements ... " << std::flush;
+    
+    FEDD_TIMER_START(surfacesTimer," : MeshPartitioner : Set Surfaces of Edge Elements");
     vec2D_int_Type localEdgeIDPermutation;
     setLocalSurfaceEdgeIndices(localEdgeIDPermutation, meshUnstr->getEdgeElementOrder());
 
@@ -578,7 +570,7 @@ void MeshPartitioner<SC, LO, GO, NO>::setEdgesToSurfaces(int meshNumber) {
         }
     }
     if (verbose)
-        cout << "done!" << endl;
+        std::cout << "done!" << std::endl;
 }
 
 /// Adding surfaces as subelements to the corresponding elements. This adresses surfaces in 3D or edges in 2D.
@@ -591,10 +583,10 @@ void MeshPartitioner<SC, LO, GO, NO>::setSurfacesToElements(int meshNumber) {
     ElementsPtr_Type elementsMesh = meshUnstr->getElementsC(); // Previously read Elements
 
     if (verbose)
-        cout << "-- Set surfaces of elements ... " << flush;
-
-    FEDD_TIMER_START(surfacesTimer, " : MeshPartitioner : Set Surfaces of Elements");
-
+            std::cout << "-- Set surfaces of elements ... " << std::flush;
+    
+    FEDD_TIMER_START(surfacesTimer," : MeshPartitioner : Set Surfaces of Elements");
+    
     vec2D_int_Type localSurfaceIDPermutation;
     // get permutations
     setLocalSurfaceIndices(localSurfaceIDPermutation, meshUnstr->getSurfaceElementOrder());
@@ -664,7 +656,7 @@ void MeshPartitioner<SC, LO, GO, NO>::setSurfacesToElements(int meshNumber) {
     }
 
     if (verbose)
-        cout << "done!" << endl;
+        std::cout << "done!" << std::endl;
 }
 
 /// Function that sets edges (2D) or surfaces(3D) to the corresponding element. It determines for the specific element
