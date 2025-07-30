@@ -85,7 +85,7 @@ void meshReadData ( const std::string& mesh_filename, const std::string& type, c
     
     std::ifstream file;
     int lineLength;
-    string text;
+    std::string text;
     file.open ( mesh_filename.c_str ( ) );
     for ( ; ; )
     {

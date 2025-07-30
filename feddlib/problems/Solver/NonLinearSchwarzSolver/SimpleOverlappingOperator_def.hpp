@@ -29,7 +29,7 @@ namespace FROSch {
 template <class SC, class LO, class GO, class NO>
 SimpleOverlappingOperator<SC, LO, GO, NO>::SimpleOverlappingOperator(NonLinearProblemPtrFEDD problem,
                                                                      ParameterListPtr parameterList)
-    : OverlappingOperator<SC, LO, GO, NO>(problem->system_->getMergedMatrix()->getXpetraMatrix(), parameterList),
+    : OverlappingOperator<SC, LO, GO, NO>(FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
       uniqueMap_(), importerUniqueToGhosts_(), x_Ghosts_(), y_unique_(), y_Ghosts_(), bcFlagOverlappingGhostsVec_(),
       problem_(problem) {
     // Override the combine mode of the FROSch operator base object from the nonlinear Schwarz configuration

@@ -482,7 +482,7 @@ void FE<SC,LO,GO,NO>::assemblyNonLinearElasticity(int dim,
 
     int neoHookeNum = params->sublist("Parameter").get("Neo-Hooke Modell",1);
 
-    string nonLinElasModell = "NonLinearElasticity2D";
+    std::string nonLinElasModell = "NonLinearElasticity2D";
     if (dim == 3){
         nonLinElasModell = "NonLinearElasticity2";
         if(neoHookeNum == 1) {

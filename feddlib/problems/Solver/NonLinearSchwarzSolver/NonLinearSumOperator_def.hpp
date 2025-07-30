@@ -20,11 +20,11 @@ NonLinearSumOperator<SC, LO, GO, NO>::NonLinearSumOperator(CommPtr comm) : NonLi
 
 // Y = alpha * A^mode * X + beta * Y
 template <class SC, class LO, class GO, class NO>
-void NonLinearSumOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, SC alpha, SC beta) {
+void NonLinearSumOperator<SC, LO, GO, NO>::apply(TMultiVector &x, TMultiVector &y, SC alpha, SC beta) {
     if (this->NonLinearOperatorVector_.size() > 0) {
-        if (this->XTmp_.is_null())
-            this->XTmp_ = MultiVectorFactory<SC, LO, GO, NO>::Build(x.getMap(), x.getNumVectors());
-        *this->XTmp_ = x; // Incase x=y
+        if (this->XTmpTpetra_.is_null())
+            this->XTmpTpetra_ = Teuchos::rcp(new Tpetra::MultiVector<SC, LO, GO, NO>(x.getMap(), x.getNumVectors()));
+        *this->XTmpTpetra_ = x; // Incase x=y
         bool firstOp = true;
         for (UN i = 0; i < this->NonLinearOperatorVector_.size(); i++) {
             if (this->EnableNonLinearOperators_[i]) {
@@ -32,9 +32,9 @@ void NonLinearSumOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVe
                 // We need to dynamic_cast here anyway because NonLinearOperator and SchwarzOperator are not related
                 // This could be changed by modifying FROSch to allow virtual inheritance
                 rcp_dynamic_cast<NonLinearOperator<SC, LO, GO, NO>>(this->NonLinearOperatorVector_[i])
-                    ->apply(*this->XTmp_, y, alpha, beta);
+                    ->apply(*this->XTmpTpetra_, y, alpha, beta);
                 if (firstOp) {
-                    beta = ScalarTraits<SC>::one();
+                    beta = ST::one();
                     firstOp = false;
                 }
             }

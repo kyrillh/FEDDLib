@@ -139,6 +139,10 @@ public:
 
     MultiVectorConstPtr_Type getMergedVector();
 
+    // TODO: [KH] 29.07.25 delete this as soon as FROSch migrates to Tpetra. 
+    // Only need this because the toXpetra() function cannot handle RCP<const MultiVector>.
+    MultiVectorPtr_Type getMergedVectorNonConst();
+
 private:
 
     Teuchos::Array<MultiVectorPtr_Type> blockMultiVector_;

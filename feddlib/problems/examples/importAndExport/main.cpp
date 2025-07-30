@@ -15,15 +15,11 @@
 #include <Tpetra_CombineMode.hpp>
 #include <Tpetra_Core.hpp>
 #include <Tpetra_MultiVector_decl.hpp>
-#include <Xpetra_ConfigDefs.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
-#include <Xpetra_ExportFactory.hpp>
-#include <Xpetra_ImportFactory.hpp>
-#include <Xpetra_MapFactory_decl.hpp>
-#include <Xpetra_MatrixFactory.hpp>
 #include <cmath>
 #include <cstdlib>
+#include <ostream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 typedef unsigned UN;
@@ -36,87 +32,16 @@ using namespace FEDD;
 using namespace Teuchos;
 
 /**
- * xpetraImportExport() and feddlibImportExport() are basic setups for testing/understanding import and export behaviour
- * of distributed matrices in the Xpetra and the FEDDLib implmentations respectively. Most testing is done in
- * tpetraImportExport as this gives access to REPLACE, ADD, INSERT, ABSMAX, ZERO, ADD_ASSIGN, while Xpetra only
- * defines ADD and INSERT
+ * Some basic tests to help understand what the various export/import modes REPLACE, ADD, INSERT, ABSMAX, ZERO, ADD_ASSIGN, do
  */
-void xpetraImportExport(int argc, char *argv[]) {
-
-    const Xpetra::UnderlyingLib lib = Xpetra::UseTpetra;
-    Teuchos::oblackholestream blackhole;
-    const Teuchos::GlobalMPISession mpiSession(&argc, &argv, &blackhole);
-    const auto out = Teuchos::VerboseObjectBase::getDefaultOStream();
-
-    const Teuchos::RCP<const Teuchos::Comm<int>> comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
-    const int size = comm->getSize();
-    TEUCHOS_TEST_FOR_EXCEPTION(size > 2, std::runtime_error, "This test requires one or two ranks");
-
-    const auto myRank = comm->getRank();
-    const auto zero = Teuchos::implicit_cast<GO>(0);
-    const auto four = Teuchos::implicit_cast<GO>(4);
-
-    // Element lists for overlapping map
-    auto elementList = Teuchos::ArrayRCP<GO>(3);
-    for (auto i = 0; i < elementList.size(); i++) {
-        elementList[i] = i + myRank;
-    }
-    Teuchos::ArrayView<const GO> elementListConstView = elementList();
-
-    // One-to-one map
-    Teuchos::RCP<const Xpetra::Map<LO, GO, NO>> uniqueMap =
-        Xpetra::MapFactory<LO, GO, NO>::createUniformContigMap(lib, four, comm);
-    // Both middle rows are owned by both processes
-    Teuchos::RCP<const Xpetra::Map<LO, GO, NO>> overlappingMap =
-        Xpetra::MapFactory<LO, GO, NO>::Build(lib, four, elementListConstView, zero, comm);
-
-    // Build importer and exporter
-    const auto uniqueToOverlappingImporter = Xpetra::ImportFactory<LO, GO, NO>::Build(uniqueMap, overlappingMap);
-    const auto overlappingToUniqueExporter = Xpetra::ExportFactory<LO, GO, NO>::Build(overlappingMap, uniqueMap);
-    // Values for prefilling matrices
-    auto colidxVec = std::vector<GO>{0, 1, 2, 3};
-    auto colidx = Teuchos::ArrayRCP<const GO>(colidxVec.data(), 0, 4, false);
-    auto valZeroVec = std::vector<SC>{0, 0, 0, 0};
-    auto valZero = Teuchos::ArrayRCP<SC>(valZeroVec.data(), 0, 4, false);
-    auto valOneVec = std::vector<SC>{1, 1, 1, 1};
-    auto valOne = Teuchos::ArrayRCP<SC>(valOneVec.data(), 0, 4, false);
-
-    /* auto zerosOverlapping = rcp(new Xpetra::TpetraCrsMatrix<SC, LO, GO, NO>(overlappingMap, 4)); */
-    auto zerosOverlapping = Xpetra::MatrixFactory<SC, LO, GO, NO>::Build(overlappingMap, 4);
-    for (int i = 0; i < 3; i++) {
-        zerosOverlapping->insertGlobalValues(i + myRank, colidx(), valOne());
-    }
-    /* zerosOverlapping->fillComplete(); */
-
-    /* auto onesUnique = rcp(new Xpetra::TpetraCrsMatrix<SC, LO, GO, NO>(uniqueMap, 4)); */
-    auto onesUnique = Xpetra::MatrixFactory<SC, LO, GO, NO>::Build(uniqueMap, 4);
-    for (int i = 0; i < 2; i++) {
-        onesUnique->insertGlobalValues(i + 2 * myRank, colidx(), valZero());
-    }
-    onesUnique->fillComplete();
-    onesUnique->describe(*out, Teuchos::VERB_EXTREME);
-
-    // Test 1: Import from unique to overlapping distributions
-    // Does not work after calling fillComplete() followed by resumeFill()
-    // Xpetra::ADD and INSERT show the same behaviour
-    /* zerosOverlapping->describe(*out, Teuchos::VERB_EXTREME); */
-    /* zerosOverlapping->resumeFill(); */
-    zerosOverlapping->doImport(*onesUnique, *uniqueToOverlappingImporter, Xpetra::INSERT);
-    zerosOverlapping->fillComplete();
-    zerosOverlapping->describe(*out, Teuchos::VERB_EXTREME);
-
-    std::cout << "Size of communicator: " << size << std::endl;
-}
 
 void feddlibImportExport(int argc, char *argv[]) {
 
-    const Xpetra::UnderlyingLib lib = Xpetra::UseTpetra;
-    const string libString = "Tpetra";
     Teuchos::oblackholestream blackhole;
     const Teuchos::GlobalMPISession mpiSession(&argc, &argv, &blackhole);
     const auto out = Teuchos::VerboseObjectBase::getDefaultOStream();
 
-    const Teuchos::RCP<const Teuchos::Comm<int>> comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    const Teuchos::RCP<const Teuchos::Comm<int>> comm = Tpetra::getDefaultComm();
     const int size = comm->getSize();
     TEUCHOS_TEST_FOR_EXCEPTION(size > 2, std::runtime_error, "This test requires one or two ranks");
 
@@ -133,9 +58,9 @@ void feddlibImportExport(int argc, char *argv[]) {
     Teuchos::ArrayView<const GO> elementListConstView = elementList();
 
     // One-to-one map
-    auto uniqueMap = rcp(new Map<LO, GO, NO>(libString, four, two, zero, comm));
+    auto uniqueMap = rcp(new Map<LO, GO, NO>(four, two, zero, comm));
     // Both middle rows are owned by both processes
-    auto overlappingMap = rcp(new Map<LO, GO, NO>(libString, four, elementListConstView, zero, comm));
+    auto overlappingMap = rcp(new Map<LO, GO, NO>(four, elementListConstView, zero, comm));
 
     // Values for prefilling matrices
     auto colidxVec = std::vector<GO>{0, 1, 2, 3};
@@ -145,7 +70,6 @@ void feddlibImportExport(int argc, char *argv[]) {
     auto valOneVec = std::vector<SC>{1, 1, 1, 1};
     auto valOne = Teuchos::ArrayRCP<SC>(valOneVec.data(), 0, 4, false);
 
-    /* auto zerosOverlapping = rcp(new Xpetra::TpetraCrsMatrix<SC, LO, GO, NO>(overlappingMap, 4)); */
     auto zerosOverlapping = rcp(new Matrix<SC, LO, GO, NO>(overlappingMap, 4));
     /* for (int i = 0; i < 3; i++) { */
     /*     zerosOverlapping->insertGlobalValues(Teuchos::implicit_cast<GO>(i + myRank), colidx(), valOne()); */
@@ -374,7 +298,6 @@ void tpetraImportExport(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-    /* xpetraImportExport(argc, argv); */
     /* feddlibImportExport(argc, argv); */
     tpetraImportExport(argc, argv);
     return (EXIT_SUCCESS);

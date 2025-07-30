@@ -21,7 +21,6 @@ class CombineOperator : public SchwarzOperator<SC, LO, GO, NO> {
   protected:
     using CommPtr = typename SchwarzOperator<SC, LO, GO, NO>::CommPtr;
 
-    using XMapPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMapPtr;
     using ConstXMapPtr = typename SchwarzOperator<SC, LO, GO, NO>::ConstXMapPtr;
 
     using XMultiVector = typename SchwarzOperator<SC, LO, GO, NO>::XMultiVector;
@@ -32,7 +31,7 @@ class CombineOperator : public SchwarzOperator<SC, LO, GO, NO> {
     using SchwarzOperatorPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtrVecPtr;
 
     using UN = typename SchwarzOperator<SC, LO, GO, NO>::UN;
-
+    using ST = typename Teuchos::ScalarTraits<SC>;
     using BoolVec = typename SchwarzOperator<SC, LO, GO, NO>::BoolVec;
 
   public:
@@ -49,7 +48,7 @@ class CombineOperator : public SchwarzOperator<SC, LO, GO, NO> {
     virtual int compute();
 
     virtual void apply(const XMultiVector &x, XMultiVector &y, bool usePreconditionerOnly, ETransp mode = NO_TRANS,
-                       SC alpha = ScalarTraits<SC>::one(), SC beta = ScalarTraits<SC>::zero()) const = 0;
+                       SC alpha = ST::one(), SC beta = ST::zero()) const = 0;
 
     virtual const ConstXMapPtr getDomainMap() const;
 

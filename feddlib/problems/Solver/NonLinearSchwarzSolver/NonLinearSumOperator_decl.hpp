@@ -11,7 +11,6 @@
 #include <Teuchos_ScalarTraitsDecl.hpp>
 #include <Teuchos_TestForException.hpp>
 #include <Teuchos_VerbosityLevel.hpp>
-#include <Xpetra_Matrix.hpp>
 
 #include <FROSch_SumOperator_decl.hpp>
 /*!
@@ -34,16 +33,8 @@ template <class SC = default_sc, class LO = default_lo, class GO = default_go, c
 class NonLinearSumOperator : public NonLinearCombineOperator<SC, LO, GO, NO> {
 
   protected:
-    using SchwarzOperatorPtr = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtr;
-    using SchwarzOperatorPtrVec = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtrVec;
-    using SchwarzOperatorPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtrVecPtr;
-    using NonLinearOperatorPtr = Teuchos::RCP<NonLinearOperator<SC, LO, GO, NO>>;
-    using NonLinearOperatorPtrVec = Array<NonLinearOperatorPtr>;
-    using NonLinearOperatorPtrVecPtr = ArrayRCP<NonLinearOperatorPtr>;
-
     using CommPtr = typename NonLinearCombineOperator<SC, LO, GO, NO>::CommPtr;
-    using BoolVec = typename NonLinearCombineOperator<SC, LO, GO, NO>::BoolVec;
-    using XMultiVector = typename NonLinearCombineOperator<SC, LO, GO, NO>::XMultiVector;
+    using TMultiVector = typename NonLinearCombineOperator<SC, LO, GO, NO>::TMultiVector;
     using UN = typename NonLinearCombineOperator<SC, LO, GO, NO>::UN;
     using ST = typename Teuchos::ScalarTraits<SC>;
 
@@ -52,8 +43,8 @@ class NonLinearSumOperator : public NonLinearCombineOperator<SC, LO, GO, NO> {
 
     ~NonLinearSumOperator() = default;
 
-    void apply(const XMultiVector &x, XMultiVector &y, SC alpha = ScalarTraits<SC>::one(),
-               SC beta = ScalarTraits<SC>::zero()) override;
+    void apply(TMultiVector &x, TMultiVector &y, SC alpha = ST::one(),
+               SC beta = ST::zero()) override;
 };
 } // namespace FROSch
 

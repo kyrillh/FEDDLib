@@ -2,9 +2,12 @@
 #define FEDDUTILS_hpp
 
 #include "feddlib/core/FEDDCore.hpp"
-#include <Xpetra_CrsGraphFactory.hpp>
-#include <Xpetra_Map.hpp>
-#include <Xpetra_ImportFactory.hpp>
+#include <Teuchos_RCPDecl.hpp>
+#include <Tpetra_CrsGraph_decl.hpp>
+#include <Tpetra_CrsMatrix_decl.hpp>
+#include <Xpetra_CrsMatrixWrap_decl.hpp>
+#include <Xpetra_Matrix_decl.hpp>
+#include <Xpetra_TpetraCrsMatrix_decl.hpp>
 #include <fstream>
 #include <iomanip>
 #include <ios>
@@ -230,20 +233,25 @@ void make_unique( std::vector<T>& in )
 
 // ################# Nonlinear Schwarz related functions
 template <class LO, class GO, class NO>
-int ExtendOverlapByOneLayer(Teuchos::RCP<const Xpetra::CrsGraph<LO, GO, NO>> inputGraph,
-                            Teuchos::RCP<const Xpetra::CrsGraph<LO, GO, NO>> &outputGraph) {
+int ExtendOverlapByOneLayer(Teuchos::RCP<const Tpetra::CrsGraph<LO, GO, NO>> inputGraph,
+                            Teuchos::RCP<const Tpetra::CrsGraph<LO, GO, NO>> &outputGraph) {
     // In the adjacency matrix of the graph, connectivity of node i is given by row i. The column map of row i
     // corresponds to the connectivity and by assigning ownership of all rows referenced by the column map to the rank,
     // the local subdomain is extended by one layer of connectivity
-    Teuchos::RCP<Xpetra::CrsGraph<LO, GO, NO>> tmpGraph =
-        Xpetra::CrsGraphFactory<LO, GO, NO>::Build(inputGraph->getColMap(), inputGraph->getGlobalMaxNumRowEntries());
-    Teuchos::RCP<Xpetra::Import<LO, GO, NO>> scatter =
-        Xpetra::ImportFactory<LO, GO, NO>::Build(inputGraph->getRowMap(), inputGraph->getColMap());
-    tmpGraph->doImport(*inputGraph, *scatter, Xpetra::INSERT);
+    auto tmpGraph = Teuchos::rcp(
+        new Tpetra::CrsGraph<LO, GO, NO>(inputGraph->getColMap(), inputGraph->getGlobalMaxNumRowEntries()));
+    auto scatter = Tpetra::Import<LO, GO, NO>(inputGraph->getRowMap(), inputGraph->getColMap());
+    tmpGraph->doImport(*inputGraph, scatter, Tpetra::INSERT);
     tmpGraph->fillComplete(inputGraph->getDomainMap(), inputGraph->getRangeMap());
 
     outputGraph = tmpGraph.getConst();
     return 0;
+}
+
+template <typename SC, typename LO, typename GO, typename NO>
+inline Teuchos::RCP<Xpetra::Matrix<SC, LO, GO, NO>> toXpetraMatrix(const Teuchos::RCP<Tpetra::CrsMatrix<SC, LO, GO, NO>> tpetraMat) {
+    auto wrappedTpetraMat = Teuchos::rcp(new Xpetra::TpetraCrsMatrix<SC, LO, GO, NO>(tpetraMat));
+    return Teuchos::rcp(new Xpetra::CrsMatrixWrap<SC, LO, GO, NO>(Teuchos::rcp_static_cast<Xpetra::CrsMatrix<SC, LO, GO, NO>>(wrappedTpetraMat)));
 }
 
 template <typename T> void waitForGdbAttach() {

@@ -2,7 +2,6 @@
 #define Mesh_decl_hpp
 
 #include "feddlib/core/LinearAlgebra/Map_decl.hpp"
-#include <Xpetra_CrsGraphFactory.hpp>
 #define FULL_Mesh_TIMER
 
 #include "feddlib/core/FE/Elements.hpp"
@@ -47,9 +46,8 @@ template <class SC = default_sc, class LO = default_lo, class GO = default_go, c
 
     typedef MultiVector<SC, LO, GO, NO> MultiVector_Type;
     typedef Teuchos::RCP<MultiVector_Type> MultiVectorPtr_Type;
-    typedef Xpetra::CrsGraph<LO, GO, NO> Graph_Type;
+    typedef Tpetra::CrsGraph<LO, GO, NO> Graph_Type;
     typedef Teuchos::RCP<Graph_Type> GraphPtr_Type;
-    typedef Xpetra::CrsGraphFactory<LO, GO, NO> GraphFactory_Type;
 
     typedef AABBTree<SC, LO, GO, NO> AABBTree_Type;
     typedef Teuchos::RCP<AABBTree_Type> AABBTreePtr_Type;

@@ -348,6 +348,11 @@ typename  Matrix<SC,LO,GO,NO>::TpetraMatrixConstPtr_Type Matrix<SC,LO,GO,NO>::ge
 }
 
 template <class SC, class LO, class GO, class NO>
+typename  Matrix<SC,LO,GO,NO>::TpetraMatrixPtr_Type Matrix<SC,LO,GO,NO>::getTpetraMatrixNonConst() const{
+    return matrix_;
+}
+
+template <class SC, class LO, class GO, class NO>
 void Matrix<SC,LO,GO,NO>::apply(const MultiVector_Type& X,
                                 MultiVector_Type& Y,
                                 Teuchos::ETransp mode,

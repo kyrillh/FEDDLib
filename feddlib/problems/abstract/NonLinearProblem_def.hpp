@@ -308,8 +308,6 @@ namespace FEDD
 
         BlockMapPtr_Type map = Teuchos::rcp_const_cast<BlockMap_Type>(this->solution_->getMap());
 
-       // Teuchos::RCP<const XTpetra_Type> xTpetraMap = Teuchos::rcp_dynamic_cast<const XTpetra_Type>(map->getMergedMap()->getXpetraMap()->getMap());
-
         TpetraMapConstPtr_Type tpetraMap = map->getMergedMap()->getTpetraMap();
 
         this->xSpace_ = Thyra::createVectorSpace<SC, LO, GO, NO>(tpetraMap);
@@ -333,8 +331,6 @@ namespace FEDD
         Teuchos::Array<ThyraVecSpaceConstPtr_Type> vecSpaceArray(map->size());
         for (int i = 0; i < map->size(); i++)
         {
-            //Teuchos::RCP<const XTpetra_Type> xTpetraMap =
-            //    Teuchos::rcp_dynamic_cast<const XTpetra_Type>(map->getBlock(i)->getXpetraMap()->getMap());
             TpetraMapConstPtr_Type tpetraMap =map->getBlock(i)->getTpetraMap();
             ThyraVecSpaceConstPtr_Type vecSpace = Thyra::createVectorSpace<SC, LO, GO, NO>(tpetraMap);
             vecSpaceArray[i] = vecSpace;

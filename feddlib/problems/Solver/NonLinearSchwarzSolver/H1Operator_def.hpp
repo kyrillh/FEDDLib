@@ -7,11 +7,11 @@
 namespace FROSch {
 
 template <class SC, class LO, class GO, class NO>
-H1Operator<SC, LO, GO, NO>::H1Operator(CommPtr comm) : CombineOperator<SC, LO, GO, NO>(comm) {}
+H1Operator<SC, LO, GO, NO>::H1Operator(CommPtr comm) : CombineOperator<SC, LO, GO, NO>(comm), z0_{}, z1_{} {}
 
 template <class SC, class LO, class GO, class NO>
 H1Operator<SC, LO, GO, NO>::H1Operator(SchwarzOperatorPtrVecPtr operators)
-    : CombineOperator<SC, LO, GO, NO>(operators[0]->getRangeMap()->getComm()) {}
+    : CombineOperator<SC, LO, GO, NO>(operators[0]->getRangeMap()->getComm()), z0_{}, z1_{} {}
 
 //  This apply method with the option usePreconditionerOnly is due to the inheritance from SchwarzOperator. The option
 //  may be used in alternative hybrid type methods but is not needed here.
@@ -21,8 +21,8 @@ void H1Operator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, b
     FROSCH_TIMER_START_LEVELID(applyTime, "H1Operator::apply");
     FROSCH_ASSERT(this->OperatorVector_.size() == 2, "H1 operator can only be applied with two levels")
 
-    auto one = ScalarTraits<SC>::one();
-    auto zero = ScalarTraits<SC>::zero();
+    auto one = ST::one();
+    auto zero = ST::zero();
     if (this->XTmp_.is_null())
         this->XTmp_ = MultiVectorFactory<SC, LO, GO, NO>::Build(x.getMap(), x.getNumVectors());
     if (z0_.is_null())

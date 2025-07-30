@@ -16,7 +16,7 @@
 #include <Teuchos_RCPDecl.hpp>
 #include <Teuchos_ScalarTraitsDecl.hpp>
 #include <Teuchos_VerbosityLevel.hpp>
-#include <Xpetra_Matrix.hpp>
+#include <Tpetra_MultiVector_decl.hpp>
 #include <vector>
 
 /*!
@@ -38,59 +38,11 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
   protected:
     using CommPtr = typename SchwarzOperator<SC, LO, GO, NO>::CommPtr;
 
-    using XMap = typename SchwarzOperator<SC, LO, GO, NO>::XMap;
-    using XMapPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMapPtr;
-    using ConstXMapPtr = typename SchwarzOperator<SC, LO, GO, NO>::ConstXMapPtr;
-    using XMapPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMapPtrVecPtr;
-    using ConstXMapPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::ConstXMapPtrVecPtr;
-    using ConstXMapPtrVecPtr2D = typename SchwarzOperator<SC, LO, GO, NO>::ConstXMapPtrVecPtr2D;
-
-    using XMatrixPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMatrixPtr;
-    using ConstXMatrixPtr = typename SchwarzOperator<SC, LO, GO, NO>::ConstXMatrixPtr;
-
-    using XCrsGraph = typename SchwarzOperator<SC, LO, GO, NO>::XCrsGraph;
-    using GraphPtr = typename SchwarzOperator<SC, LO, GO, NO>::GraphPtr;
-    using ConstXCrsGraphPtr = typename SchwarzOperator<SC, LO, GO, NO>::ConstXCrsGraphPtr;
-
     using XMultiVector = typename SchwarzOperator<SC, LO, GO, NO>::XMultiVector;
-    using XMultiVectorPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMultiVectorPtr;
-    using XMultiVectorPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMultiVectorPtrVecPtr;
-    using ConstXMultiVectorPtr = typename SchwarzOperator<SC, LO, GO, NO>::ConstXMultiVectorPtr;
-    using ConstXMultiVectorPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::ConstXMultiVectorPtrVecPtr;
-
-    using XImport = typename SchwarzOperator<SC, LO, GO, NO>::XImport;
-    using XImportPtr = typename SchwarzOperator<SC, LO, GO, NO>::XImportPtr;
-    using XImportPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::XImportPtrVecPtr;
-
-    using XExport = typename SchwarzOperator<SC, LO, GO, NO>::XExport;
-    using XExportPtr = typename SchwarzOperator<SC, LO, GO, NO>::XExportPtr;
-    using XExportPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::XExportPtrVecPtr;
+    using TMultiVector = typename NonLinearOperator<SC, LO, GO, NO>::TMultiVector;
 
     using ParameterListPtr = typename SchwarzOperator<SC, LO, GO, NO>::ParameterListPtr;
 
-    using SolverPtr = typename SchwarzOperator<SC, LO, GO, NO>::SolverPtr;
-    using SolverFactoryPtr = typename SchwarzOperator<SC, LO, GO, NO>::SolverFactoryPtr;
-
-    using UN = typename SchwarzOperator<SC, LO, GO, NO>::UN;
-
-    using IntVec = typename SchwarzOperator<SC, LO, GO, NO>::IntVec;
-    using IntVec2D = typename SchwarzOperator<SC, LO, GO, NO>::IntVec2D;
-
-    using GOVec = typename SchwarzOperator<SC, LO, GO, NO>::GOVec;
-    using GOVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::GOVecPtr;
-
-    using LOVec = typename SchwarzOperator<SC, LO, GO, NO>::LOVec;
-    using LOVecPtr2D = typename SchwarzOperator<SC, LO, GO, NO>::LOVecPtr2D;
-
-    using SCVec = typename SchwarzOperator<SC, LO, GO, NO>::SCVec;
-
-    using ConstLOVecView = typename SchwarzOperator<SC, LO, GO, NO>::ConstLOVecView;
-
-    using ConstGOVecView = typename SchwarzOperator<SC, LO, GO, NO>::ConstGOVecView;
-
-    using ConstSCVecView = typename SchwarzOperator<SC, LO, GO, NO>::ConstSCVecView;
-
-    using MeshPtrFEDD = typename Teuchos::RCP<FEDD::Mesh<SC, LO, GO, NO>>;
     using NonLinearProblemPtrFEDD = typename Teuchos::RCP<FEDD::NonLinearProblem<SC, LO, GO, NO>>;
     using BlockMatrixPtrFEDD = typename Teuchos::RCP<FEDD::BlockMatrix<SC, LO, GO, NO>>;
     using BlockMultiVectorPtrFEDD = typename Teuchos::RCP<FEDD::BlockMultiVector<SC, LO, GO, NO>>;
@@ -110,7 +62,7 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
 
     void apply(const BlockMultiVectorPtrFEDD x, BlockMultiVectorPtrFEDD y, SC alpha = ST::one(), SC beta = ST::zero());
 
-    void apply(const XMultiVector &x, XMultiVector &y, SC alpha = ST::one(), SC beta = ST::zero()) override;
+    void apply(TMultiVector &x, TMultiVector &y, SC alpha = ST::one(), SC beta = ST::zero()) override;
 
     // This apply method must be overridden but does not make sense in the context of nonlinear operators
     void apply(const XMultiVector &x, XMultiVector &y, bool usePreconditionerOnly, ETransp mode = NO_TRANS,

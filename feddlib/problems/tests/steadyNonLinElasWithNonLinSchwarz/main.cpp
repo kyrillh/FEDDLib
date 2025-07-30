@@ -9,7 +9,6 @@
 #include "feddlib/problems/specific/NonLinElasAssFE.hpp"
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
 
 void zeroDirichlet2D(double *x, double *res, double t, const double *parameters) {
     res[0] = 0.;
@@ -61,7 +60,7 @@ int main(int argc, char *argv[]) {
     Teuchos::oblackholestream blackhole;
     Teuchos::GlobalMPISession mpiSession(&argc, &argv, &blackhole);
 
-    Teuchos::RCP<const Teuchos::Comm<int>> comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    Teuchos::RCP<const Teuchos::Comm<int>> comm = Tpetra::getDefaultComm();
 
     Teuchos::RCP<StackedTimer> stackedTimer = rcp(new StackedTimer("Nonlinear Schwarz solver", true));
     TimeMonitor::setStackedTimer(stackedTimer);

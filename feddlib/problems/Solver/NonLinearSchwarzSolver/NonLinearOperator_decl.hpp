@@ -21,8 +21,11 @@ namespace FROSch {
 template <class SC = default_sc, class LO = default_lo, class GO = default_go, class NO = default_no>
 class NonLinearOperator {
 
-  private:
-    using XMultiVector = Xpetra::MultiVector<SC, LO, GO, NO>;
+  protected:
+    // NOTE: [KH] 28.07.25 Using Tpetra MV here even though FROSch still uses Xpetra for now. Since the nonlinear
+    // Schwarz ops are only being used by the FEDDLib at the moment and the FEDDLib has switched to Tpetra, this avoids
+    // dynamic casting with toXpetra in many places.
+    using TMultiVector = Tpetra::MultiVector<SC, LO, GO, NO>;
     using BlockMultiVectorPtrFEDD = typename Teuchos::RCP<FEDD::BlockMultiVector<SC, LO, GO, NO>>;
     using MapConstPtrFEDD = typename Teuchos::RCP<const FEDD::Map<LO, GO, NO>>;
     using ST = typename Teuchos::ScalarTraits<SC>;
@@ -32,8 +35,10 @@ class NonLinearOperator {
     ~NonLinearOperator() = default;
 
     // non-const apply() interface which nonlinear operators should implement since they cannot be applied without
-    // performing internal calculations
-    virtual void apply(const XMultiVector &x, XMultiVector &y, SC alpha = ST::one(), SC beta = ST::zero()) = 0;
+    // performing internal calculations. The input x is not const since overloads of the apply method convert Tpetra
+    // MultiVectors to FEDD MultiVectors. If the input was const, a deep copy would have to be made. Now a shallow copy
+    // is possible
+    virtual void apply(TMultiVector &x, TMultiVector &y, SC alpha = ST::one(), SC beta = ST::zero()) = 0;
 };
 } // namespace FROSch
 #endif

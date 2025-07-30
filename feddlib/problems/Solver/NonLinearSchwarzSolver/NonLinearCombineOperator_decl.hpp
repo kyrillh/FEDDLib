@@ -10,8 +10,6 @@
 #include <Teuchos_ScalarTraitsDecl.hpp>
 #include <Teuchos_TestForException.hpp>
 #include <Teuchos_VerbosityLevel.hpp>
-#include <Xpetra_Matrix.hpp>
-
 #include "CombineOperator_decl.hpp"
 /*!
  Declaration of NonlinearCombineOperator which extends the FROSch Combine operator to allow non-const apply() methods. This is
@@ -32,9 +30,6 @@ template <class SC = default_sc, class LO = default_lo, class GO = default_go, c
 class NonLinearCombineOperator : public CombineOperator<SC, LO, GO, NO>, public NonLinearOperator<SC, LO, GO, NO> {
 
   protected:
-    using SchwarzOperatorPtr = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtr;
-    using SchwarzOperatorPtrVec = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtrVec;
-    using SchwarzOperatorPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtrVecPtr;
     using NonLinearOperatorPtr = Teuchos::RCP<NonLinearOperator<SC, LO, GO, NO>>;
     using NonLinearOperatorPtrVec = Array<NonLinearOperatorPtr>;
     using NonLinearOperatorPtrVecPtr = ArrayRCP<NonLinearOperatorPtr>;
@@ -42,6 +37,7 @@ class NonLinearCombineOperator : public CombineOperator<SC, LO, GO, NO>, public 
     using CommPtr = typename CombineOperator<SC, LO, GO, NO>::CommPtr;
     using BoolVec = typename CombineOperator<SC, LO, GO, NO>::BoolVec;
     using XMultiVector = typename CombineOperator<SC, LO, GO, NO>::XMultiVector;
+    using TMultiVector = typename NonLinearOperator<SC, LO, GO, NO>::TMultiVector;
     using UN = typename CombineOperator<SC, LO, GO, NO>::UN;
     using ST = typename Teuchos::ScalarTraits<SC>;
 
@@ -50,8 +46,8 @@ class NonLinearCombineOperator : public CombineOperator<SC, LO, GO, NO>, public 
 
     ~NonLinearCombineOperator() = default;
 
-    void apply(const XMultiVector &x, XMultiVector &y, SC alpha = ScalarTraits<SC>::one(),
-               SC beta = ScalarTraits<SC>::zero()) override = 0;
+    void apply(TMultiVector &x, TMultiVector &y, SC alpha = ST::one(),
+               SC beta = ST::zero()) override = 0;
 
     void apply(const XMultiVector &x, XMultiVector &y, bool usePreconditionerOnly,
                Teuchos::ETransp mode = Teuchos::NO_TRANS, SC alpha = ST::one(), SC beta = ST::zero()) const override;
@@ -62,6 +58,8 @@ class NonLinearCombineOperator : public CombineOperator<SC, LO, GO, NO>, public 
 
   protected:
     NonLinearOperatorPtrVec NonLinearOperatorVector_ = NonLinearOperatorPtrVec(0);
+    // Tpetra alternative for XTmp_ in CombineOperator. Only required until FROSch migrates to Tpetra
+    mutable Teuchos::RCP<TMultiVector> XTmpTpetra_;
 
     BoolVec EnableNonLinearOperators_ = BoolVec(0);
 };

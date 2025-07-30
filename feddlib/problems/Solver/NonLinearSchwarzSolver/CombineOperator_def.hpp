@@ -6,13 +6,13 @@
 namespace FROSch {
 
 template <class SC, class LO, class GO, class NO>
-CombineOperator<SC, LO, GO, NO>::CombineOperator(CommPtr comm) : SchwarzOperator<SC, LO, GO, NO>(comm) {
+CombineOperator<SC, LO, GO, NO>::CombineOperator(CommPtr comm) : SchwarzOperator<SC, LO, GO, NO>(comm), XTmp_{} {
     FROSCH_DETAILTIMER_START_LEVELID(sumOperatorTime, "CombineOperator::CombineOperator");
 }
 
 template <class SC, class LO, class GO, class NO>
 CombineOperator<SC, LO, GO, NO>::CombineOperator(SchwarzOperatorPtrVecPtr operators)
-    : SchwarzOperator<SC, LO, GO, NO>(operators[0]->getRangeMap()->getComm()) {
+    : SchwarzOperator<SC, LO, GO, NO>(operators[0]->getRangeMap()->getComm()), XTmp_{} {
     FROSCH_DETAILTIMER_START_LEVELID(sumOperatorTime, "CombineOperator::CombineOperator");
     FROSCH_ASSERT(operators.size() > 0, "operators.size()<=0");
     OperatorVector_.push_back(operators[0]);

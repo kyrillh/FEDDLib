@@ -54,7 +54,7 @@ class AssembleFE_NonLinElas2D : public AssembleFE<SC, LO, GO, NO> {
     double poissonRatio_;
     double forceX_;
     double forceY_;
-    string FEType_; // FEType of Disk
+    std::string FEType_; // FEType of Disk
 
     int dofs_; // Degrees of freedom per node
 

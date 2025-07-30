@@ -6,7 +6,6 @@
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include <Teuchos_ArrayRCPDecl.hpp>
-#include <Xpetra_CrsGraphFactory.hpp>
 
 #define FEDD_HAVE_METIS
 #define FEDD_HAVE_PARMETIS
@@ -69,7 +68,6 @@ public:
     // Nonlinear Schwarz related
     typedef typename MeshUnstr_Type::Graph_Type Graph_Type;
     typedef typename MeshUnstr_Type::GraphPtr_Type GraphPtr_Type;
-    typedef typename MeshUnstr_Type::GraphFactory_Type GraphFactory_Type;
 
     typedef std::vector<idx_t> vec_idx_Type; //Metis
     

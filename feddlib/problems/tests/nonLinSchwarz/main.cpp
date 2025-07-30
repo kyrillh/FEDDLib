@@ -6,7 +6,7 @@
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 #include "feddlib/problems/specific/NonLinLaplace_decl.hpp"
 #include <Teuchos_StackedTimer.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
+#include <Tpetra_Core.hpp>
 
 void zeroDirichlet(double *x, double *res, double t, const double *parameters) { res[0] = 0.; }
 
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     typedef RCP<MeshUnstr_Type> MeshUnstrPtr_Type;
     typedef Mesh<SC, LO, GO, NO> Mesh_Type;
     typedef Teuchos::RCP<Mesh_Type> MeshPtr_Type;
-    typedef Xpetra::CrsGraph<LO, GO, NO> Graph_Type;
+    typedef Tpetra::CrsGraph<LO, GO, NO> Graph_Type;
     typedef RCP<Graph_Type> GraphPtr_Type;
 
     typedef Domain<SC, LO, GO, NO> Domain_Type;
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     Teuchos::oblackholestream blackhole;
     Teuchos::GlobalMPISession mpiSession(&argc, &argv, &blackhole);
 
-    Teuchos::RCP<const Teuchos::Comm<int>> comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    Teuchos::RCP<const Teuchos::Comm<int>> comm = Tpetra::getDefaultComm();
 
     Teuchos::RCP<StackedTimer> stackedTimer = rcp(new StackedTimer("Nonlinear Schwarz solver", true));
     TimeMonitor::setStackedTimer(stackedTimer);

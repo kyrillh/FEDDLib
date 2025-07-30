@@ -185,10 +185,15 @@ public:
     void replaceLocalValues(LO localRow, const Teuchos::ArrayView< const LO > &indices, const Teuchos::ArrayView< const SC > &values);
 
 	/*!
-		\brief Return matrix in Xpetra Format of type " ".
+		\brief Return matrix in Tpetra Format of type " ".
 	*/
     TpetraMatrixConstPtr_Type getTpetraMatrix() const;
-    
+ 
+	/*!
+		\brief Return non-const pointer to matrix in Tpetra format.
+	*/
+    TpetraMatrixPtr_Type getTpetraMatrixNonConst() const;
+       
 	/*!
 		Tpetra Matrix Matrix Multiply
 	*/

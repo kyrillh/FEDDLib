@@ -21,10 +21,7 @@
 #include <Teuchos_ScalarTraitsDecl.hpp>
 #include <Teuchos_TestForException.hpp>
 #include <Teuchos_VerbosityLevel.hpp>
-#include <Xpetra_ImportFactory.hpp>
-#include <Xpetra_MapFactory_decl.hpp>
-#include <Xpetra_MatrixFactory.hpp>
-#include <Xpetra_MultiVectorFactory_decl.hpp>
+#include <Tpetra_MultiVector_decl.hpp>
 #include <algorithm>
 #include <iterator>
 #include <numeric>
@@ -50,7 +47,7 @@ namespace FROSch {
 template <class SC, class LO, class GO, class NO>
 NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr serialComm, NonLinearProblemPtrFEDD problem,
                                                                    ParameterListPtr parameterList)
-    : SchwarzOperator<SC, LO, GO, NO>(problem->system_->getMergedMatrix()->getXpetraMatrix(), parameterList),
+    : SchwarzOperator<SC, LO, GO, NO>(FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
       problem_{problem}, x_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
       y_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
       localJacobianGhosts_{Teuchos::rcp(new FEDD::BlockMatrix<SC, LO, GO, NO>(1))},
@@ -139,7 +136,7 @@ template <class SC, class LO, class GO, class NO> int NonLinearSchwarzOperator<S
     for (int i = 0; i < domainVec.size(); i++) {
         auto tmpMPIMap = domainVec.at(i)->getMesh()->getMapOverlappingGhosts();
         auto mapOverlappingGhostsLocal =
-            Teuchos::rcp(new FEDD::Map<LO, GO, NO>(tmpMPIMap->getUnderlyingLib(), tmpMPIMap->getNodeNumElements(),
+            Teuchos::rcp(new FEDD::Map<LO, GO, NO>(tmpMPIMap->getNodeNumElements(),
                                                    tmpMPIMap->getNodeNumElements(), 0, this->SerialComm_));
         auto mapVecFieldOverlappingGhostsLocal =
             mapOverlappingGhostsLocal->buildVecFieldMap(problem_->getDofsPerNode(i));
@@ -148,7 +145,7 @@ template <class SC, class LO, class GO, class NO> int NonLinearSchwarzOperator<S
         blockMapVecFieldOverlappingGhostsLocal_->addBlock(mapVecFieldOverlappingGhostsLocal, i);
         tmpMPIMap = rcp(new FEDD::Map<LO, GO, NO>(domainVec.at(i)->getDualGraph()->getRowMap()));
         auto mapElementsOverlappingGhostsLocal =
-            Teuchos::rcp(new FEDD::Map<LO, GO, NO>(tmpMPIMap->getUnderlyingLib(), tmpMPIMap->getNodeNumElements(),
+            Teuchos::rcp(new FEDD::Map<LO, GO, NO>(tmpMPIMap->getNodeNumElements(),
                                                    tmpMPIMap->getNodeNumElements(), 0, this->SerialComm_));
         blockElementMapLocal_->addBlock(mapElementsOverlappingGhostsLocal, i);
     }
@@ -442,10 +439,10 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
 
 // Wraps another apply() method for compatibility
 template <class SC, class LO, class GO, class NO>
-void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, SC alpha, SC beta) {
+void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(TMultiVector &x, TMultiVector &y, SC alpha, SC beta) {
     // non owning rcp objects since they should not destroy x, y when going out of scope
-    auto rcpX = Teuchos::rcp(&x, false);
-    auto rcpY = Teuchos::rcp(&y, false);
+    Teuchos::RCP<TMultiVector> rcpX = Teuchos::rcp(&x, false);
+    Teuchos::RCP<TMultiVector> rcpY = Teuchos::rcp(&y, false);
     auto rcpFEDDX = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(rcpX));
     auto rcpFEDDY = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(rcpY));
 
@@ -459,7 +456,7 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMul
     feddY->split();
     apply(feddX, feddY, alpha, beta);
     feddY->merge();
-    y.update(ST::one(), *feddY->getMergedVector()->getXpetraMultiVector(), ST::zero());
+    y.update(ST::one(), *feddY->getMergedVector()->getTpetraMultiVector(), ST::zero());
 }
 
 template <class SC, class LO, class GO, class NO>

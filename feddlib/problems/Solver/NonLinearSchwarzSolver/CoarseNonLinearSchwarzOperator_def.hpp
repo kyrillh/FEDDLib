@@ -10,7 +10,6 @@
 #include <FROSch_IPOUHarmonicCoarseOperator_decl.hpp>
 #include <FROSch_Tools_decl.hpp>
 #include <FROSch_Types.h>
-#include <Tacho_Driver.hpp>
 #include <Teuchos_ArrayRCPDecl.hpp>
 #include <Teuchos_BLAS_types.hpp>
 #include <Teuchos_OrdinalTraits.hpp>
@@ -21,13 +20,16 @@
 #include <Teuchos_VerboseObject.hpp>
 #include <Teuchos_VerbosityLevel.hpp>
 #include <Teuchos_implicit_cast.hpp>
-#include <Xpetra_ImportFactory.hpp>
+#include <Xpetra_CrsMatrixWrap_decl.hpp>
 #include <Xpetra_MapFactory_decl.hpp>
 #include <Xpetra_Map_decl.hpp>
 #include <Xpetra_Matrix.hpp>
 #include <Xpetra_MatrixFactory.hpp>
 #include <Xpetra_MultiVectorFactory_decl.hpp>
 #include <Xpetra_MultiVector_decl.hpp>
+#include <Xpetra_TpetraCrsGraph_decl.hpp>
+#include <Xpetra_TpetraMap_decl.hpp>
+#include <Xpetra_TpetraMultiVector_decl.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -47,7 +49,7 @@ namespace FROSch {
 template <class SC, class LO, class GO, class NO>
 CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::CoarseNonLinearSchwarzOperator(NonLinearProblemPtrFEDD problem,
                                                                                ParameterListPtr parameterList)
-    : IPOUHarmonicCoarseOperator<SC, LO, GO, NO>(problem->system_->getMergedMatrix()->getXpetraMatrix(), parameterList),
+    : IPOUHarmonicCoarseOperator<SC, LO, GO, NO>(FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
       problem_{problem},
       x_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(problem->getDomainVector().size()))},
       y_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(problem->getDomainVector().size()))}, relNewtonTol_{},
@@ -90,11 +92,11 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
         ConstXMapPtr repeatedNodesMap;
         ConstXMapPtr repeatedDofsMap;
         if (problem_->getDofsPerNode(0) > 1) {
-            repeatedNodesMap = domainVec.at(0)->getMapRepeated()->getXpetraMap();
-            repeatedDofsMap = domainVec.at(0)->getMapVecFieldRepeated()->getXpetraMap();
+            repeatedNodesMap = Xpetra::toXpetra(domainVec.at(0)->getMapRepeated()->getTpetraMap());
+            repeatedDofsMap = Xpetra::toXpetra(domainVec.at(0)->getMapVecFieldRepeated()->getTpetraMap());
             uniqueDofsMap = domainVec.at(0)->getMapVecFieldUnique();
         } else {
-            repeatedNodesMap = domainVec.at(0)->getMapRepeated()->getXpetraMap();
+            repeatedNodesMap = Xpetra::toXpetra(domainVec.at(0)->getMapRepeated()->getTpetraMap());
             repeatedDofsMap = repeatedNodesMap;
             uniqueDofsMap = domainVec.at(0)->getMapUnique();
         }
@@ -187,11 +189,11 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
             auto mesh = domainVec.at(i)->getMesh();
             dofsPerNodeVec[i] = problem_->getDofsPerNode(i);
             if (dofsPerNodeVec[i] > 1) {
-                repeatedNodesMapVec[i] = domainVec.at(i)->getMapRepeated()->getXpetraMap();
-                repeatedDofsMapVec[i] = domainVec.at(i)->getMapVecFieldRepeated()->getXpetraMap();
+                repeatedNodesMapVec[i] = Xpetra::toXpetra(domainVec.at(i)->getMapRepeated()->getTpetraMap());
+                repeatedDofsMapVec[i] = Xpetra::toXpetra(domainVec.at(i)->getMapVecFieldRepeated()->getTpetraMap());
                 uniqueDofsMap = domainVec.at(i)->getMapVecFieldUnique();
             } else {
-                repeatedNodesMapVec[i] = domainVec.at(i)->getMapRepeated()->getXpetraMap();
+                repeatedNodesMapVec[i] = Xpetra::toXpetra(domainVec.at(i)->getMapRepeated()->getTpetraMap());
                 repeatedDofsMapVec[i] = repeatedNodesMapVec[i];
                 uniqueDofsMap = domainVec.at(i)->getMapUnique();
             }
@@ -289,8 +291,9 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
                                                            SC alpha, SC beta) {
 
     FEDD_TIMER_START(CoarseTimer, " - Schwarz - coarse solve");
-    TEUCHOS_TEST_FOR_EXCEPTION(!x->getMergedVector()->getMap()->getXpetraMap()->isSameAs(*this->getDomainMap()),
-                               std::runtime_error, "input map does not correspond to domain map of nonlinear operator");
+    TEUCHOS_TEST_FOR_EXCEPTION(
+        !Xpetra::toXpetra(x->getMergedVector()->getMap()->getTpetraMap())->isSameAs(*this->getDomainMap()),
+        std::runtime_error, "input map does not correspond to domain map of nonlinear operator");
     x_ = x;
     // Save problem state
     // Not replacing maps here --> much less needs replacing then in nonlinearSchwarzOperator
@@ -330,7 +333,8 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
         problem_->calculateNonLinResidualVec("reverse");
 
         // Restrict the residual to the coarse space
-        this->applyPhiT(*problem_->getResidualVector()->getMergedVector()->getXpetraMultiVector(), *coarseResidualVec_);
+        this->applyPhiT(*Xpetra::toXpetra(problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
+                        *coarseResidualVec_);
 
         Teuchos::Array<SC> residualArray(1);
         coarseResidualVec_->norm2(residualArray());
@@ -354,7 +358,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
         problem_->setBoundariesSystem();
 
         // Update the coarse matrix and the coarse solver (coarse factorization)
-        this->K_ = problem_->system_->getMergedMatrix()->getXpetraMatrix();
+        this->K_ = FEDD::toXpetraMatrix(problem_->system_->getMergedMatrix()->getTpetraMatrixNonConst());
         this->setUpCoarseOperator();
 
         if (relResidual < relNewtonTol_ || absResidual < absNewtonTol_) {
@@ -372,7 +376,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
         SC lambda = 1;
 
         if (useBT_) {
-        // if (false) {
+            // if (false) {
             FEDD::print("\nCoarse Newton backtracking commenced\n", this->MpiComm_);
             // Reduction constants
             SC alpha = 1e-3;
@@ -384,7 +388,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
             // Calculate initial residual for backtracking
             problem_->calculateNonLinResidualVec("reverse");
             // Restrict the residual to the coarse space
-            this->applyPhiT(*problem_->getResidualVector()->getMergedVector()->getXpetraMultiVector(),
+            this->applyPhiT(*Xpetra::toXpetra(problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
                             *coarseResidualVec_);
 
             coarseResidualVec_->norm2(residualArray());
@@ -395,7 +399,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
             while (lambda > 1e-2) {
 
                 // Update the current correction
-                this->applyPhi(*coarseDeltaG0_, *deltaG0Merged_->getXpetraMultiVectorNonConst());
+                this->applyPhi(*coarseDeltaG0_, *Xpetra::toXpetra(deltaG0Merged_->getTpetraMultiVectorNonConst()));
                 deltaG0_->setMergedVector(deltaG0Merged_);
                 deltaG0_->split();
                 // Reset the solution and update
@@ -404,8 +408,9 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
 
                 // Calculate the residual
                 problem_->calculateNonLinResidualVec("reverse");
-                this->applyPhiT(*problem_->getResidualVector()->getMergedVector()->getXpetraMultiVector(),
-                                *coarseResidualVec_);
+                this->applyPhiT(
+                    *Xpetra::toXpetra(problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
+                    *coarseResidualVec_);
                 coarseResidualVec_->norm2(residualArray());
                 residualBT = residualArray[0];
                 FEDD::print("\nBacktracking iter: ", this->MpiComm_);
@@ -429,7 +434,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
             problem_->solution_ = currentSolution;
         }
         // Project the coarse nonlinear correction update into the global space
-        this->applyPhi(*coarseDeltaG0_, *deltaG0Merged_->getXpetraMultiVectorNonConst());
+        this->applyPhi(*coarseDeltaG0_, *Xpetra::toXpetra(deltaG0Merged_->getTpetraMultiVectorNonConst()));
         deltaG0_->setMergedVector(deltaG0Merged_);
         deltaG0_->split();
 
@@ -463,12 +468,12 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
 }
 
 template <class SC, class LO, class GO, class NO>
-void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, SC alpha, SC beta) {
+void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(TMultiVector &x, TMultiVector &y, SC alpha, SC beta) {
     // This version of apply does not make sense for nonlinear operators
     // Wraps another apply() method for compatibility
     // non owning rcp objects since they should not destroy x, y when going out of scope
-    auto rcpX = Teuchos::rcp(&x, false);
-    auto rcpY = Teuchos::rcp(&y, false);
+    Teuchos::RCP<TMultiVector> rcpX = Teuchos::rcp(&x, false);
+    Teuchos::RCP<TMultiVector> rcpY = Teuchos::rcp(&y, false);
     auto rcpFEDDX = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(rcpX));
     auto rcpFEDDY = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(rcpY));
 
@@ -482,7 +487,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const XMultiVector &x
     feddY->split();
     apply(feddX, feddY, alpha, beta);
     feddY->merge();
-    y.update(ST::one(), *feddY->getMergedVector()->getXpetraMultiVector(), ST::zero());
+    y.update(ST::one(), *feddY->getMergedVector()->getTpetraMultiVector(), ST::zero());
 }
 
 template <class SC, class LO, class GO, class NO>
@@ -507,10 +512,9 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::exportCoarseBasis() {
 
     // This will have numNodes*dofs rows and numCoarseBasisFunctions columns. Each column is a coarse basis function
     // that has a value for each dof at each node.
-    Teuchos::RCP<Xpetra::Matrix<SC, LO, GO, NO>> phiXpetra = this->Phi_;
-
+    auto phiTpetra = Xpetra::toTpetra(this->Phi_);
     // Convert to a FEDD matrix object
-    auto phiMatrix = Teuchos::rcp(new FEDD::Matrix<SC, LO, GO, NO>(phiXpetra));
+    auto phiMatrix = Teuchos::rcp(new FEDD::Matrix<SC, LO, GO, NO>(phiTpetra));
     // Convert to a FEDD multivector
     Teuchos::RCP<FEDD::MultiVector<SC, LO, GO, NO>> phiMV;
     phiMatrix->toMV(phiMV);

@@ -23,19 +23,12 @@ class NewSumOperator : public CombineOperator<SC, LO, GO, NO> {
   protected:
     using CommPtr = typename SchwarzOperator<SC, LO, GO, NO>::CommPtr;
 
-    using XMapPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMapPtr;
-    using ConstXMapPtr = typename SchwarzOperator<SC, LO, GO, NO>::ConstXMapPtr;
-
     using XMultiVector = typename SchwarzOperator<SC, LO, GO, NO>::XMultiVector;
-    using XMultiVectorPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMultiVectorPtr;
 
-    using SchwarzOperatorPtr = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtr;
-    using SchwarzOperatorPtrVec = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtrVec;
     using SchwarzOperatorPtrVecPtr = typename SchwarzOperator<SC, LO, GO, NO>::SchwarzOperatorPtrVecPtr;
 
     using UN = typename SchwarzOperator<SC, LO, GO, NO>::UN;
-
-    using BoolVec = typename SchwarzOperator<SC, LO, GO, NO>::BoolVec;
+    using ST = typename Teuchos::ScalarTraits<SC>;
 
   public:
     NewSumOperator(CommPtr comm);
@@ -45,7 +38,7 @@ class NewSumOperator : public CombineOperator<SC, LO, GO, NO> {
     ~NewSumOperator() = default;
 
     virtual void apply(const XMultiVector &x, XMultiVector &y, bool usePreconditionerOnly, ETransp mode = NO_TRANS,
-                       SC alpha = ScalarTraits<SC>::one(), SC beta = ScalarTraits<SC>::zero()) const override;
+                       SC alpha = ST::one(), SC beta = ST::zero()) const override;
 };
 
 } // namespace FROSch

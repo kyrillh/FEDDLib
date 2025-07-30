@@ -18,7 +18,7 @@ namespace FROSch {
 
 template <class SC, class LO, class GO, class NO>
 NonLinearCombineOperator<SC, LO, GO, NO>::NonLinearCombineOperator(CommPtr comm)
-    : CombineOperator<SC, LO, GO, NO>(comm) {}
+    : CombineOperator<SC, LO, GO, NO>(comm), XTmpTpetra_{} {}
 
 template <class SC, class LO, class GO, class NO>
 void NonLinearCombineOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, bool usePreconditionerOnly,

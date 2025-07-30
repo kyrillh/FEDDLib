@@ -5,6 +5,7 @@
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/core/Mesh/MeshStructured.hpp"
 #include "feddlib/core/Mesh/MeshUnstructured.hpp"
+#include <Teuchos_RCPDecl.hpp>
 
 /*!
  Declaration of Domain
@@ -54,8 +55,6 @@ public:
     typedef typename Mesh_Type::Elements_Type Elements_Type;
     typedef typename Mesh_Type::ElementsPtr_Type ElementsPtr_Type;
             
-    typedef typename Mesh_Type::GraphPtr_Type GraphPtr_Type;
-
     typedef MultiVector<SC,LO,GO,NO> MultiVector_Type;
     typedef Teuchos::RCP<MultiVector_Type> MultiVectorPtr_Type;
     typedef Teuchos::RCP<const MultiVector_Type> MultiVectorPtrConst_Type;
@@ -63,6 +62,8 @@ public:
     typedef Map<LO,GO,NO> Map_Type;
     typedef Teuchos::RCP<Map_Type> MapPtr_Type;
     typedef Teuchos::RCP<const Map_Type> MapConstPtr_Type;
+
+    typedef Teuchos::RCP<Tpetra::CrsGraph<LO, GO, NO>> GraphPtr_Type;
 
     typedef Teuchos::Comm<int> Comm_Type;
     typedef Teuchos::RCP<const Comm_Type> CommConstPtr_Type;
@@ -403,7 +404,12 @@ public:
     */
     LO getNumPoints(std::string type="Unique") const;/*local*/
 
-    int getNumProcsCoarseSolve() const;/*local*/
+	/*!
+         \brief Get number of ranks reserved for coarse solve
+         \return Num ranks
+    */
+    int getNumProcsCoarseSolve() const;
+
 
 	/*!
          \brief Checks geometriy

@@ -16,6 +16,12 @@
 #include <Teuchos_RCPDecl.hpp>
 #include <Teuchos_VerboseObject.hpp>
 #include <Teuchos_VerbosityLevel.hpp>
+#include <Tpetra_CrsMatrix_decl.hpp>
+#include <Xpetra_TpetraCrsGraph_decl.hpp>
+#include <Xpetra_TpetraExport_decl.hpp>
+#include <Xpetra_TpetraImport_decl.hpp>
+#include <Xpetra_TpetraMap_decl.hpp>
+#include <Xpetra_TpetraMultiVector_decl.hpp>
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -612,6 +618,11 @@ void NonLinearSolver<SC,LO,GO,NO>::solveExtrapolation(TimeProblem<SC,LO,GO,NO> &
 // problem->initSolutionWithFunction(initialValue2D, 0, std::vector<double>{0});
 // together with e.g.
 // void initialValue2D(double *x, double *res, double *parameters) { res[0] = x[0] * x[1] * (1 - x[0]) * (1 - x[1]); }
+//
+// - TODO: [KH] 25.07.25 Epetra and hence Xpetra are being deprecated in 2025. We have already migrated the FEDDLib to
+// Tpetra. However, since the nonlinear Schwarz operators inherit from FROSch, which currently still uses Xpetra, we
+// cannot migrate the nonlinear Schwarz implementation yet. For now, Tpetra and Xpetra conversions are done in
+// solveNonLinearSchwarz() since this is where the nonlinear Schwarz operators and the FEDDLib "meet".
 template <class SC, class LO, class GO, class NO>
 void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Type &problem) {
 
@@ -695,6 +706,7 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
             Teuchos::rcp_implicit_cast<FROSch::NonLinearOperator<SC, LO, GO, NO>>(coarseOperator));
     }
 
+    // NOTE: [KH] 28.07.25 all the nonlinear Schwarz ops will continue working with Xpetra until FROSch migrates to Tpetra.
     auto simpleOverlappingOperator = Teuchos::rcp(new FROSch::SimpleOverlappingOperator<SC, LO, GO, NO>(
         Teuchos::rcpFromRef(problem), problem.getParameterList()));
     simpleCombineOperator->addOperator(simpleOverlappingOperator);
@@ -705,7 +717,7 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     }
 
     auto simpleCoarseOperator = Teuchos::rcp(new FROSch::SimpleCoarseOperator<SC, LO, GO, NO>(
-        problem.system_->getMergedMatrix()->getXpetraMatrix(), problem.getParameterList()));
+        toXpetraMatrix(problem.system_->getMergedMatrix()->getTpetraMatrixNonConst()), problem.getParameterList()));
     if (numLevels == 2) {
         simpleCoarseOperator->initialize(coarseOperator);
         simpleCombineOperator->addOperator(simpleCoarseOperator);
@@ -725,10 +737,10 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     Teuchos::RCP<Xpetra::Import<LO, GO>> uniqueToOverlappingGhostsImporter;
     ParameterListPtr_Type params = Teuchos::parameterList();
     if (!useASPEN) {
-        jacobianGhosts = Xpetra::MatrixFactory<SC, LO, GO, NO>::Build(mapOverlappingGhostsMerged()->getXpetraMap(),
+        jacobianGhosts = Xpetra::MatrixFactory<SC, LO, GO, NO>::Build(Xpetra::toXpetra(mapOverlappingGhostsMerged()->getTpetraMap()),
                                                                       approxEntriesPerRow);
         uniqueToOverlappingGhostsImporter = Xpetra::ImportFactory<LO, GO>::Build(
-            mapUniqueMerged()->getXpetraMap(), mapOverlappingGhostsMerged()->getXpetraMap());
+            Xpetra::toXpetra(mapUniqueMerged()->getTpetraMap()), Xpetra::toXpetra(mapOverlappingGhostsMerged()->getTpetraMap()));
         // So we can call doImport after calling resumeFill on a fillComplete matrix
         params->set("Optimize Storage", false);
     }
@@ -744,7 +756,7 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     logGreen("Nonlinear Schwarz solver settings", mpiComm);
     print("\tUse ASPEN: ", mpiComm);
     if (mpiComm->getRank() == 0) {
-        std::cout << boolalpha << useASPEN;
+        std::cout << std::boolalpha << useASPEN;
     }
     print("\n\tSolver variant: " + variantString, mpiComm);
     print("\n\tCombine mode: " + problem.getParameterList()->get("Combine Mode", "Restricted"), mpiComm);
@@ -772,31 +784,31 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
         // Compute the residual of the alternative problem \mathcal{F} = g
         // g fulfills the boundary conditions
         logGreen("Computing nonlinear Schwarz operator", mpiComm);
-        rhsCombineOperator->apply(*problem.getSolution()->getMergedVector()->getXpetraMultiVector(),
-                                  *g->getXpetraMultiVectorNonConst());
+        rhsCombineOperator->apply(*problem.getSolution()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst(),
+                                  *g->getTpetraMultiVectorNonConst());
         if (numLevels == 2) {
             // Update SimpleCoarseOperator to ensure it wraps the current CoarseNonLinearSchwarzOperator
             simpleCoarseOperator->initialize(coarseOperator);
         }
         if (useASPEN) {
             logGreen("Building ASPEN tangent", mpiComm);
-            localJacobian = nonLinearSchwarzOp->getLocalJacobianGhosts()->getMergedMatrix()->getXpetraMatrix();
+            localJacobian = toXpetraMatrix(nonLinearSchwarzOp->getLocalJacobianGhosts()->getMergedMatrix()->getTpetraMatrixNonConst());
         } else {
             logGreen("Building ASPIN tangent", mpiComm);
             problem.assemble("Newton");
             problem.setBoundariesSystem();
             // Compute D\mathcal{F}(u) using FROSch and DF(u)
-            auto jacobian = problem.getSystem()->getMergedMatrix()->getXpetraMatrix();
+            auto jacobian = toXpetraMatrix(problem.getSystem()->getMergedMatrix()->getTpetraMatrixNonConst());
             jacobianGhosts->setAllToScalar(ST::zero());
             jacobianGhosts->resumeFill();
             jacobianGhosts->doImport(*jacobian, *uniqueToOverlappingGhostsImporter, Xpetra::ADD);
             jacobianGhosts->fillComplete(params);
             localJacobian = FROSch::ExtractLocalSubdomainMatrix(jacobianGhosts.getConst(),
-                                                                mapOverlappingGhostsMerged()->getXpetraMap());
+                                                                Xpetra::toXpetra(mapOverlappingGhostsMerged()->getTpetraMap()));
         }
-        simpleOverlappingOperator->initialize(serialComm, localJacobian, mapOverlappingMerged()->getXpetraMap(),
-                                              mapOverlappingGhostsMerged()->getXpetraMap(),
-                                              mapUniqueMerged()->getXpetraMap(), bcFlagOverlappingGhostsVec);
+        simpleOverlappingOperator->initialize(serialComm, localJacobian, Xpetra::toXpetra(mapOverlappingMerged()->getTpetraMap()),
+                                              Xpetra::toXpetra(mapOverlappingGhostsMerged()->getTpetraMap()),
+                                              Xpetra::toXpetra(mapUniqueMerged()->getTpetraMap()), bcFlagOverlappingGhostsVec);
         simpleOverlappingOperator->compute();
         // Convert SchwarzOperator to Thyra::LinearOpBase
         auto xpetraOverlappingOperator =
