@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
     bcFactory->addBC(currentSolutionDirichlet1D, -99, 1, domainPressure, "Dirichlet", 1);
 
     NavierStokesAssFE<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,
-                                              parameterListAll);
+                                                   parameterListAll);
 
     domainVelocity->info();
     domainPressure->info();
@@ -239,10 +239,17 @@ int main(int argc, char *argv[]) {
 
     comm->barrier();
 
+    // Print a list of FEDD timers
     Teuchos::TimeMonitor::report(cout, "FEDD");
     stackedTimer->stop("Nonlinear Schwarz solver");
     StackedTimer::OutputOptions options;
     options.output_fraction = options.output_histogram = options.output_minmax = true;
+    // Print the StackedTimer instance. This is a LIFO list of timers, typically constructed through
+    // TimeMonitor::getNewCounter(). This function constructs non-existing timers and returns existing timers.
+    // Note that TimeMonitor is a wrapper around timer objects. If a TimeMonitor object is constructed around a timer
+    // object it starts the timer when it is constructed and stops the timer when it goes out of scope. Thus, repeated
+    // calls to getNewCounter() wrapped in a TimeMonitor constructor can be used to time the cumulative runtime of a
+    // function across multiple calls. This is taken advantage of e.g. by FEDD_TIMER_START.
     stackedTimer->report((std::cout), comm, options);
 
     if (parameterListAll->sublist("General").get("ParaViewExport", false)) {

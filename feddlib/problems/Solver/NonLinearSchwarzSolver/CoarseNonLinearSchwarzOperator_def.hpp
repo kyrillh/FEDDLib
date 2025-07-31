@@ -73,6 +73,7 @@ CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::CoarseNonLinearSchwarzOperator(N
 }
 
 template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::initialize() {
+    FROSCH_TIMER_START(CoarseNonLinearSchwarzInitialize, " CoarseNonLinearSchwarz::initialize");
     // Extract info from parameterList
     relNewtonTol_ =
         problem_->getParameterList()->sublist("Inner Newton Nonlinear Schwarz").get("Relative Tolerance", 1.0e-6);

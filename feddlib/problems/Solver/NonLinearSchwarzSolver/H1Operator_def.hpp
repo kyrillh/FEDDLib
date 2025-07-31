@@ -18,7 +18,7 @@ H1Operator<SC, LO, GO, NO>::H1Operator(SchwarzOperatorPtrVecPtr operators)
 template <class SC, class LO, class GO, class NO>
 void H1Operator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, bool usePreconditionerOnly, ETransp mode,
                                        SC alpha, SC beta) const {
-    FROSCH_TIMER_START_LEVELID(applyTime, "H1Operator::apply");
+    FROSCH_TIMER_START(H1Apply, "H1::apply");
     FROSCH_ASSERT(this->OperatorVector_.size() == 2, "H1 operator can only be applied with two levels")
 
     auto one = ST::one();

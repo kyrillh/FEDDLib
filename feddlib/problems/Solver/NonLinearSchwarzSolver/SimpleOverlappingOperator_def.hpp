@@ -53,6 +53,7 @@ template <class SC, class LO, class GO, class NO>
 int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(
     CommPtr serialComm, ConstXMatrixPtr jacobianGhosts, ConstXMapPtr overlappingMap, ConstXMapPtr overlappingGhostsMap,
     ConstXMapPtr uniqueMap, std::vector<FEDD::vec_int_ptr_Type> bcFlagOverlappingGhostsVec) {
+    FROSCH_TIMER_START(SimpleOverlappingInitialize, " SimpleOverlapping::initialize");
     // AlgebraicOverlappingOperator does: calculates overlap multiplicity if needed and does symbolic extraction
     // of local subdomain matrix and initialization of solver (symbolic factorization)
     // Here we just read in the localSubdomainMatrix since it already exists
@@ -94,6 +95,7 @@ int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(
 }
 
 template <class SC, class LO, class GO, class NO> int SimpleOverlappingOperator<SC, LO, GO, NO>::compute() {
+    FROSCH_TIMER_START(SimpleOverlappingInitialize, " SimpleOverlapping::compute");
     // AlgebraicOverlappingOperator does: gets values of the local subdomain matrices and computes the numerical
     // factorization
     // Here we do not need to fill values into the sparsity pattern since they are already there

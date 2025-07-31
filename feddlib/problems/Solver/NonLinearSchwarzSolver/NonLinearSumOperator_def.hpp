@@ -21,6 +21,7 @@ NonLinearSumOperator<SC, LO, GO, NO>::NonLinearSumOperator(CommPtr comm) : NonLi
 // Y = alpha * A^mode * X + beta * Y
 template <class SC, class LO, class GO, class NO>
 void NonLinearSumOperator<SC, LO, GO, NO>::apply(TMultiVector &x, TMultiVector &y, SC alpha, SC beta) {
+    FROSCH_TIMER_START(NonLinearSumApply, " NonLinearSum::apply");
     if (this->NonLinearOperatorVector_.size() > 0) {
         if (this->XTmpTpetra_.is_null())
             this->XTmpTpetra_ = Teuchos::rcp(new Tpetra::MultiVector<SC, LO, GO, NO>(x.getMap(), x.getNumVectors()));

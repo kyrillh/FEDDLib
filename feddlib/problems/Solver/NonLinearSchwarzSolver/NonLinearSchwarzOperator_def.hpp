@@ -185,7 +185,7 @@ template <class SC, class LO, class GO, class NO>
 void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFEDD x, BlockMultiVectorPtrFEDD y,
                                                      SC alpha, SC beta) {
 
-    FEDD_TIMER_START(InnerTimer, " - Schwarz - inner solve");
+    FROSCH_TIMER_START(NonLinearSchwarzApply2, "NonLinearSchwarz::apply - 2");
     auto domainVec = problem_->getDomainVector();
 
     // Store distributed problem properties
