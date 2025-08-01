@@ -4,34 +4,21 @@
 // TODO: [KH] remove as many headers as possible
 #include "MeshPartitioner_decl.hpp"
 #include "feddlib/core/FEDDCore.hpp"
-#include "feddlib/core/LinearAlgebra/Map_decl.hpp"
-#include "feddlib/core/LinearAlgebra/MultiVector_decl.hpp"
+#include "feddlib/core/LinearAlgebra/Map.hpp"
+#include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"
 #include <FROSch_Tools_def.hpp>
 #include <KokkosCompat_View.hpp>
 #include <Teuchos_ArrayViewDecl.hpp>
 #include <Teuchos_Assert.hpp>
-#include <Teuchos_ConfigDefs.hpp>
-#include <Teuchos_RCPBoostSharedPtrConversionsDecl.hpp>
 #include <Teuchos_RCPDecl.hpp>
 #include <Teuchos_TestForException.hpp>
 #include <Teuchos_VerboseObject.hpp>
-#include <Teuchos_VerbosityLevel.hpp>
 #include <Teuchos_dyn_cast.hpp>
 #include <Teuchos_implicit_cast.hpp>
 #include <Tpetra_CombineMode.hpp>
 #include <Tpetra_CrsGraph_decl.hpp>
 #include <Tpetra_Export_decl.hpp>
-#include <Xpetra_ConfigDefs.hpp>
-#include <Xpetra_CrsGraph.hpp>
-#include <Xpetra_ExportFactory.hpp>
-#include <Xpetra_ImportFactory.hpp>
-#include <Xpetra_MapFactory_decl.hpp>
-#include <Xpetra_Map_def.hpp>
-#include <Xpetra_MultiVectorFactory_decl.hpp>
-#include <Xpetra_MultiVector_decl.hpp>
-#include <Xpetra_TpetraCrsGraph_decl.hpp>
-#include <Zoltan2_MeshAdapter.hpp>
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
@@ -1542,7 +1529,7 @@ void MeshPartitioner<SC, LO, GO, NO>::partitionDualGraphWithOverlap(const int me
     auto part = partVec.data();
 
     // Number of available ranks = number of parts to partition into
-    idx_t nparts = get<1>(rankRanges_[meshNumber]) - get<0>(rankRanges_[meshNumber]) + 1;
+    idx_t nparts = std::get<1>(rankRanges_[meshNumber]) - std::get<0>(rankRanges_[meshNumber]) + 1;
 
     if (myRank == 0) {
         std::cout << "--- Partitioning dual graph with METIS ... \n";
@@ -1572,7 +1559,7 @@ void MeshPartitioner<SC, LO, GO, NO>::partitionDualGraphWithOverlap(const int me
     vec_GO_Type locepart(0);
     for (auto i = 0; i < nvtxs; i++) {
         // Subtract start of the rank range to map required ranks to interval starting at zero
-        if (part[i] == this->comm_->getRank() - get<0>(this->rankRanges_[meshNumber])) {
+        if (part[i] == this->comm_->getRank() - std::get<0>(this->rankRanges_[meshNumber])) {
             locepart.push_back(i);
         }
     }

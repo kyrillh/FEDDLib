@@ -1,7 +1,6 @@
 #ifndef SUMOPERATOR_DECL_HPP
 #define SUMOPERATOR_DECL_HPP
 
-#include "SumOperator_decl.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/CombineOperator_decl.hpp"
 #include <FROSch_SchwarzOperator_def.hpp>

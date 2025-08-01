@@ -1,7 +1,6 @@
 #ifndef COMBINEOPERATOR_DECL_HPP
 #define COMBINEOPERATOR_DECL_HPP
 
-#include "CombineOperator_decl.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include <FROSch_SchwarzOperator_def.hpp>
 

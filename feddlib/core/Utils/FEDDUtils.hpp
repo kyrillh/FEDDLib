@@ -3,11 +3,11 @@
 
 #include "feddlib/core/FEDDCore.hpp"
 #include <Teuchos_RCPDecl.hpp>
-#include <Tpetra_CrsGraph_decl.hpp>
-#include <Tpetra_CrsMatrix_decl.hpp>
-#include <Xpetra_CrsMatrixWrap_decl.hpp>
-#include <Xpetra_Matrix_decl.hpp>
-#include <Xpetra_TpetraCrsMatrix_decl.hpp>
+#include <Tpetra_CrsGraph.hpp>
+#include <Tpetra_CrsMatrix.hpp>
+#include <Xpetra_CrsMatrixWrap.hpp>
+#include <Xpetra_Matrix.hpp>
+#include <Xpetra_TpetraCrsMatrix.hpp>
 #include <fstream>
 #include <iomanip>
 #include <ios>

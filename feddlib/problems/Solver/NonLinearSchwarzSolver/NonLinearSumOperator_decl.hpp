@@ -5,12 +5,7 @@
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearOperator_decl.hpp"
 #include <FROSch_SchwarzOperator_def.hpp>
 #include <Teuchos_ArrayRCPDecl.hpp>
-#include <Teuchos_Describable.hpp>
-#include <Teuchos_FancyOStream.hpp>
-#include <Teuchos_RCPDecl.hpp>
 #include <Teuchos_ScalarTraitsDecl.hpp>
-#include <Teuchos_TestForException.hpp>
-#include <Teuchos_VerbosityLevel.hpp>
 
 #include <FROSch_SumOperator_decl.hpp>
 /*!
