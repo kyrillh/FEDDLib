@@ -166,17 +166,34 @@ Teuchos::RCP<Map<LO,GO,NO> > Map<LO,GO,NO>::buildUniqueMap( int numFreeProcs ) c
     if (numFreeProcs==0) {
         
         Teuchos::RCP<Tpetra::Vector<GO,LO,GO,NO> > myIndices = Teuchos::RCP( new Tpetra::Vector<GO,LO,GO,NO>(map_));
+        // Mark rank ownership of each index. map_ is overlapping so some indices are owned by multiple ranks.
         myIndices->putScalar(map_->getComm()->getRank()+1);
-
+        // Get Trilinos to build a unique distribution of all indices (these go up to maxAllGID_)
         TpetraMapPtr_Type linearMap = Teuchos::RCP(new TpetraMap_Type( map_->getMaxAllGlobalIndex()+1, 0, map_->getComm()));
-        Teuchos::RCP<Tpetra::Vector<GO,LO,GO,NO> > globalIndices = Teuchos::RCP( new Tpetra::Vector<GO,LO,GO,NO>(linearMap));
+        Teuchos::RCP<Tpetra::Vector<GO,LO,GO,NO>> globalIndices = Teuchos::RCP( new Tpetra::Vector<GO,LO,GO,NO>(linearMap));
 
-        Teuchos::RCP<Tpetra::Import<LO,GO,NO> > importer = Teuchos::RCP(new Tpetra::Import<LO, GO, NO>( map_,linearMap));
-        Teuchos::RCP<Tpetra::Import<LO,GO,NO> > importer2 = Teuchos::RCP(new Tpetra::Import<LO, GO, NO>(linearMap, map_));
-        globalIndices->doImport(*myIndices,*importer,Tpetra::INSERT);
+        Teuchos::RCP<Tpetra::Import<LO,GO,NO> > rep2Uni = Teuchos::RCP(new Tpetra::Import<LO, GO, NO>( map_,linearMap));
+        Teuchos::RCP<Tpetra::Import<LO, GO, NO>> uni2Rep = Teuchos::RCP(new Tpetra::Import<LO, GO, NO>(linearMap, map_));
+        // Usually doExport would be used to synchronise an overlapping (repeated) vector to a unique vector. Here
+        // doImport is used in INSERT mode so that only one entry is imported from one of the possibly multiple owning
+        // ranks of each index. This operation is probably not deterministic (Trilinos implementation dependent) e.g. if
+        // global index 0 lies on rank 0 in the unique distribution and ranks 1 and 2 in the overlapping distribution,
+        // does rank 0 get the entry from rank 1 or rank 2? Following this operation, each global index is associated
+        // with only one rank number.
+        globalIndices->doImport(*myIndices, *rep2Uni, Tpetra::INSERT);
+        // Reset the overlapping vector
         myIndices->putScalar(0);
-        myIndices->doImport(*globalIndices,*importer2,Tpetra::ADD);
-        
+        // Import the unique rank number back into the overlapping vector. Now every rank is informed about which rank
+        // owns each global index in the unique distribution.
+        myIndices->doImport(*globalIndices, *uni2Rep, Tpetra::ADD);
+
+        // Each rank filters the global indices in the overlapping distribution be removing any that are not marked as
+        // its own. This results in the unique distribution. Note that linearMap is already a unique distribution of all
+        // the global indices. It would be possible to use this directly, but the distribution of linearMap may be
+        // completely different from map_ which would incure a large communication overhead. e.g. on two ranks: 
+        // map_: [2, 3, 4, 5] [0, 1, 2, 3]
+        // linearMap: [0, 1, 2] [3, 4, 5]
+        // This method ensures that mapTpetra will be [2, 3, 4, 5] [0, 1] or [3, 4, 5] [0, 1, 2] etc.
         Teuchos::Array<GO> uniqueVector;
         for (unsigned i=0; i<myIndices->getLocalLength(); i++) {
             if (myIndices->getData(0)[i] == map_->getComm()->getRank()+1) {

@@ -1,4 +1,5 @@
 #include "Elements.hpp"
+#include <string>
 /*!
  Definition of Elements
  
@@ -80,14 +81,14 @@ void Elements::addElement( FiniteElement& fe, GO globalID ){
 }
     
 const FiniteElement& Elements::getElement( int i ) const {
-    TEUCHOS_TEST_FOR_EXCEPTION( elements_.is_null(), std::runtime_error, "Elements not initialized! GetElement( i ) not possible. Elements not initialized");
-    TEUCHOS_TEST_FOR_EXCEPTION( elements_->size() - 1 < i, std::runtime_error, "Elements does not exist! GetElement( i ) not possible.");
+    TEUCHOS_TEST_FOR_EXCEPTION( elements_.is_null(), std::runtime_error, "Elements not initialized! GetElement(i) not possible. Elements not initialized");
+    TEUCHOS_TEST_FOR_EXCEPTION( elements_->size() - 1 < i, std::runtime_error, "Element " + std::to_string(i) + " does not exist in GetElement(i).");
     return elements_->at(i);
 }
 
 FiniteElement& Elements::getElement( int i ) {
-    TEUCHOS_TEST_FOR_EXCEPTION( elements_.is_null(), std::runtime_error, "Elements not initialized! GetElement( i ) not possible.");
-    TEUCHOS_TEST_FOR_EXCEPTION( elements_->size() - 1 < i, std::runtime_error, "Elements does not exist! GetElement( i ) not possible.");
+    TEUCHOS_TEST_FOR_EXCEPTION( elements_.is_null(), std::runtime_error, "Elements not initialized! GetElement(i) not possible.");
+    TEUCHOS_TEST_FOR_EXCEPTION( elements_->size() - 1 < i, std::runtime_error, "Element " + std::to_string(i) + " does not exist in GetElement(i).");
     return elements_->at(i);
 }
     
