@@ -520,15 +520,18 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
         auto y_overlapping = problem_->solution_->getBlockNonConst(i);
 
         // For testing difference between add and insert
-        /* if (this->MpiComm_->getRank() == 0) { */
-        /*     y_overlapping->putScalar(1.); */
-        /* } else if (this->MpiComm_->getRank() == 1) { */
-        /*     y_overlapping->putScalar(2.); */
-        /* } else if (this->MpiComm_->getRank() == 2) { */
-        /*     y_overlapping->putScalar(4.); */
-        /* } else if (this->MpiComm_->getRank() == 3) { */
-        /*     y_overlapping->putScalar(7.); */
-        /* } */
+        // if (this->MpiComm_->getRank() == 0) {
+        //     y_overlapping->putScalar(1.);
+        // } else {
+        //     y_overlapping->putScalar(0.);
+        // }
+        // } else if (this->MpiComm_->getRank() == 1) {
+        //     y_overlapping->putScalar(2.);
+        // } else if (this->MpiComm_->getRank() == 2) {
+        //     y_overlapping->putScalar(4.);
+        // } else if (this->MpiComm_->getRank() == 3) {
+        //     y_overlapping->putScalar(7.);
+        // }
 
         y_overlapping->replaceMap(mapOverlappingGhosts);
 

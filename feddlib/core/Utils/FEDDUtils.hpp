@@ -233,8 +233,8 @@ void make_unique( std::vector<T>& in )
 
 // ################# Nonlinear Schwarz related functions
 template <class LO, class GO, class NO>
-int ExtendOverlapByOneLayer(Teuchos::RCP<const Tpetra::CrsGraph<LO, GO, NO>> inputGraph,
-                            Teuchos::RCP<const Tpetra::CrsGraph<LO, GO, NO>> &outputGraph) {
+int ExtendOverlapByOneLayer(const Teuchos::RCP<Tpetra::CrsGraph<LO, GO, NO>> inputGraph,
+                            Teuchos::RCP<Tpetra::CrsGraph<LO, GO, NO>> &outputGraph) {
     // In the adjacency matrix of the graph, connectivity of node i is given by row i. The column map of row i
     // corresponds to the connectivity and by assigning ownership of all rows referenced by the column map to the rank,
     // the local subdomain is extended by one layer of connectivity
@@ -244,7 +244,7 @@ int ExtendOverlapByOneLayer(Teuchos::RCP<const Tpetra::CrsGraph<LO, GO, NO>> inp
     tmpGraph->doImport(*inputGraph, scatter, Tpetra::INSERT);
     tmpGraph->fillComplete(inputGraph->getDomainMap(), inputGraph->getRangeMap());
 
-    outputGraph = tmpGraph.getConst();
+    outputGraph = tmpGraph;
     return 0;
 }
 
