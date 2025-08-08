@@ -65,6 +65,9 @@ template <class SC, class LO, class GO, class NO> void NonLinLaplace<SC, LO, GO,
     this->feFactory_->assemblyNonlinearLaplace(this->dim_, this->getDomain(0)->getFEType(), 2, this->u_rep_,
                                                this->system_, this->residualVec_, this->parameterList_, "Jacobian");
 
+    // Initialise solution to 1 everywhere
+    this->solution_->putScalar(1.);
+
     if (this->verbose_) {
         std::cout << "done -- " << std::endl;
     }

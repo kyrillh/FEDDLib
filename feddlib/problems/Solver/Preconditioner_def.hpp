@@ -1,3 +1,6 @@
+#include <Teuchos_RCPDecl.hpp>
+#include <Tpetra_CrsMatrix_decl.hpp>
+#include <Xpetra_Matrix_decl.hpp>
 #ifndef PRECONDITIONER_START
 #define PRECONDITIONER_START(A,S) Teuchos::RCP<Teuchos::TimeMonitor> A = Teuchos::rcp(new Teuchos::TimeMonitor(*Teuchos::TimeMonitor::getNewTimer(std::string("Preconditioner: ") + std::string(S))));
 #endif
@@ -1745,16 +1748,11 @@ void Preconditioner<SC,LO,GO,NO>::exportCoarseBasis( ){
     ParameterListPtr_Type pLPrec = sublist( sublist( pListPhiExport_, "Preconditioner Types" ) ,"FROSch" );
     std::string coarseType = pLPrec->get( "CoarseOperator Type", "RGDSWCoarseOperator" );
     ParameterListPtr_Type pLCoarse = sublist( pLPrec, coarseType );
-//    TEUCHOS_TEST_FOR_EXCEPTION( coarseType!="RGDSWCoarseOperator" && coarseType!="GDSWCoarseOperator", std::runtime_error, "Export Phi only for GDSWCoarseOperator and RGDSWCoarseOperator.");
 
     TEUCHOS_TEST_FOR_EXCEPTION( !pLCoarse->isParameter("RCP(Phi)"), std::runtime_error, "No parameter to extract Phi pointer.");
     
-    Teuchos::RCP<Tpetra::CrsMatrix<SC,LO,GO,NO> > phiTpetra;
-    
-    TEUCHOS_TEST_FOR_EXCEPTION( !pLCoarse->isType<decltype(phiTpetra)>("RCP(Phi)"), std::runtime_error, "Wrong type of pointer to extract Phi.");
-    
-    phiTpetra = pLCoarse->get<decltype(phiTpetra)>("RCP(Phi)");
-    
+    auto phiTpetra = Xpetra::toTpetra(pLCoarse->get<Teuchos::RCP<Xpetra::Matrix<SC, LO, GO>>>("RCP(Phi)"));
+
     MatrixPtr_Type phiMatrix = Teuchos::rcp( new Matrix_Type( phiTpetra ) );
     int numberOfBlocks;
     {

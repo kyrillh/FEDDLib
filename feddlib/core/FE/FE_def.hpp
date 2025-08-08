@@ -472,10 +472,16 @@ void FE<SC,LO,GO,NO>::assemblyNonLinearElasticity(int dim,
 
 	/// Tupel construction follows follwing pattern:
 	/// std::string: Physical Entity (i.e. Velocity) , std::string: Discretisation (i.e. "P2"), int: Degrees of Freedom per Node, int: Number of Nodes per element)
-	int numNodes=6;
+	int numNodes=3;
+    if(FEType== "P2"){
+        numNodes=6;
+    }    
 	if(dim==3){
-		numNodes=10;
+		numNodes=4;
+        if(FEType== "P2")
+            numNodes=10;
 	}
+	
 	tuple_disk_vec_ptr_Type problemDisk = Teuchos::rcp(new tuple_disk_vec_Type(0));
 	tuple_ssii_Type displacement ("Displacement",FEType,dofs,numNodes);
 	problemDisk->push_back(displacement);
