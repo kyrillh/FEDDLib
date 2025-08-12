@@ -4,8 +4,6 @@
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "Map.hpp"
-#include "BlockMap.hpp"
-#include "BlockMultiVector.hpp"
 #include <Thyra_LinearOpBase_decl.hpp>
 #include <Teuchos_VerboseObject.hpp>
 #include <MatrixMarket_Tpetra.hpp>
@@ -27,6 +25,7 @@
  */
 
 namespace FEDD {
+// Forward Declaration of BlockMultiVector to avoid circular includes (BlockMultiVector includes MultiVector) and speed up compilation time.
 template <class SC, class LO, class GO, class NO>
 class BlockMultiVector;
 template <class SC = default_sc, class LO = default_lo, class GO = default_go, class NO = default_no>

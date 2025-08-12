@@ -2,6 +2,7 @@
 #define FE_DEF_hpp
 
 #include <string>
+#include "feddlib/core/core_config.h"
 #ifdef FEDD_HAVE_ACEGENINTERFACE
 #include <aceinterface.hpp>
 #endif
