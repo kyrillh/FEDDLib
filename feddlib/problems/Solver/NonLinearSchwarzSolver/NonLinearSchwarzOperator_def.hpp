@@ -38,10 +38,10 @@
  @copyright KH
  */
 
-// NOTE: KHo Working with a FEDDLib mesh object for now. This has a partitioned dual graph and corresponding maps. When
+// NOTE: [KH] Working with a FEDDLib mesh object for now. This has a partitioned dual graph and corresponding maps. When
 // making this solver more portable a mesh format will have to be decided on and METIS partitioning of the mesh and dual
 // graph construction integrated. Could also make FROSch constructor more fitting.
-// NOTE: KHo Passing in a FEDD::Problem for now. This could be made more general by accepting a NOX::Thyra::Group
+// NOTE: [KH] Passing in a FEDD::Problem for now. This could be made more general by accepting a NOX::Thyra::Group
 
 namespace FROSch {
 template <class SC, class LO, class GO, class NO>
@@ -502,7 +502,7 @@ template <class SC, class LO, class GO, class NO> string NonLinearSchwarzOperato
     return "Nonlinear Schwarz Operator";
 }
 
-// NOTE: KHo if FROSch_OverlappingOperator is modified this functionality could be shared
+// NOTE: [KH] if FROSch_OverlappingOperator is modified this functionality could be shared
 template <class SC, class LO, class GO, class NO>
 void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
 

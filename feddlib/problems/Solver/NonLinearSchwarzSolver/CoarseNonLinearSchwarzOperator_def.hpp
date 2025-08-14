@@ -368,7 +368,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
 
         // Apply the coarse solution
         this->applyCoarseSolve(*coarseResidualVec_, *coarseDeltaG0_, ETransp::NO_TRANS);
-        // TODO: kho fix this in FROSch
+        // TODO: [KH] fix this in FROSch
         //  Required because applyCoarseSolve switches out the map without restoring initial map. BAD!!
         coarseResidualVec_->replaceMap(this->GatheringMaps_[this->GatheringMaps_.size() - 1]);
 

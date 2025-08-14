@@ -48,7 +48,7 @@ MeshPartitioner<SC, LO, GO, NO>::MeshPartitioner(DomainPtrArray_Type domains, Pa
                                                  std::string feType, int dimension) {
     domains_ = domains;
     pList_ = pL;
-    // TODO: kho unused. Can be removed.
+    // TODO: [KH] unused. Can be removed.
     feType_ = feType;
     comm_ = domains_[0]->getComm();
     rankRanges_.resize(domains_.size());
@@ -369,7 +369,7 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
                 pointsRepIndices.push_back(eind[j]); // Ids of element nodes, globalIDs
         }
     }
-    // TODO: kho why erase the vectors here? eind points to the underlying array and is used later.
+    // TODO: [KH] why erase the vectors here? eind points to the underlying array and is used later.
     eind_vec.erase(eind_vec.begin(), eind_vec.end());
     eptr_vec.erase(eptr_vec.begin(), eptr_vec.end());
 
@@ -1184,9 +1184,9 @@ void MeshPartitioner<SC, LO, GO, NO>::buildOverlappingDualGraphFromDistributedME
             // Map the node index from global to local and save
             tmpElement.push_back(eindVec.at(j));
         }
-        // NOTE: kho element flags are needed by some problem types. Might need to communicate them and add them here
+        // NOTE: [KH] element flags are needed by some problem types. Might need to communicate them and add them here
         FiniteElement tempFE(tmpElement, tempView[i]);
-        // NOTE: kho Surfaces are not added here for now. Since they probably will not be needed.
+        // NOTE: [KH] Surfaces are not added here for now. Since they probably will not be needed.
         mesh->elementsC_->addElement(tempFE);
     }
     // Communicate nodes and store in points repeated
@@ -1758,7 +1758,7 @@ void MeshPartitioner<SC, LO, GO, NO>::buildSubdomainFromDualGraphUnstructured(co
             tmpElement.push_back(index);
         }
         FiniteElement tempFE(tmpElement, elementsMesh->getElement(globalID).getFlag());
-        // NOTE KHo Surfaces are not added here for now. Since they probably will not be needed.
+        // NOTE [KH] Surfaces are not added here for now. Since they probably will not be needed.
         meshUnstr->elementsOverlappingGhosts_->addElement(tempFE);
     }
     for (auto i = 0; i < elementMap->getNodeNumElements(); i++) {
@@ -1772,7 +1772,7 @@ void MeshPartitioner<SC, LO, GO, NO>::buildSubdomainFromDualGraphUnstructured(co
             tmpElement.push_back(index);
         }
         FiniteElement tempFE(tmpElement, elementsMesh->getElement(globalID).getFlag());
-        // NOTE KHo Surfaces are not added here for now. Since they probably will not be needed.
+        // NOTE [KH] Surfaces are not added here for now. Since they probably will not be needed.
         meshUnstr->elementsC_->addElement(tempFE);
     }
 }
