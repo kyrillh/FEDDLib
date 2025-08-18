@@ -198,6 +198,13 @@ public:
 
     void initSolutionWithVector(MultiVector_Type& mv);
 
+    /**
+     * \brief Initialize the solution in a block with a custom function
+     *
+     * \param f boost::function specified by the user
+     * \param block the block id whos solution should be set
+     * \param params the parameters that are passed to the function f. NOTE! the first parameter must be the number of dofs per node stored in current block.
+     */
     void initSolutionWithFunction(const RhsFunc_Type& f, int block, std::vector<double> params);
 
     LinSolverBuilderPtr_Type getLinearSolverBuilder() const{return linearSolverBuilder_;}

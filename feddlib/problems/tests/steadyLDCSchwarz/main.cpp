@@ -4,32 +4,28 @@
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
-
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 #include "feddlib/problems/specific/NavierStokesAssFE.hpp"
 
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
+#include <Teuchos_TestForException.hpp>
 #include <stdexcept>
 
-/*!
- main of steady-state Navier-Stokes problem
-
- @brief steady-state Navier-Stokes main
- @author Christian Hochmuth
- @version 1.0
- @copyright CH
- */
-
-using namespace std;
-
-void initialValue2D(double *x, double *res, double *parameters) {
-    res[0] = 0;
-    res[1] = 0;
+void initialValue(double *x, double *res, double *parameters) {
+    int dofs = static_cast<int>(parameters[0]);
+    for (int i = 0; i < dofs; i++) {
+        res[i] = 0;
+    }
 }
-// void initialValue2D(double *x, double *res, double *parameters) { res[0] = x[0] * x[1] * (1 - x[0]) * (1 - x[1]); }
+
 // Required for setting the Dirichlet BC on the ghost points to the current global solution in nonlinear Schwarz
+void currentSolutionDirichlet3D(double *x, double *res, double t, const double *parameters) {
+    res[0] = x[0];
+    res[1] = x[1];
+    res[2] = x[2];
+}
+
 void currentSolutionDirichlet2D(double *x, double *res, double t, const double *parameters) {
     res[0] = x[0];
     res[1] = x[1];
@@ -37,35 +33,43 @@ void currentSolutionDirichlet2D(double *x, double *res, double t, const double *
 void currentSolutionDirichlet1D(double *x, double *res, double t, const double *parameters) { res[0] = x[0]; }
 
 void zeroDirichlet(double *x, double *res, double t, const double *parameters) {
-
     res[0] = 0.;
-
     return;
 }
 
 void zeroDirichlet2D(double *x, double *res, double t, const double *parameters) {
-
     res[0] = 0.;
     res[1] = 0.;
+    return;
+}
 
+void zeroDirichlet3D(double *x, double *res, double t, const double *parameters) {
+    res[0] = 0.;
+    res[1] = 0.;
+    res[2] = 0.;
     return;
 }
 
 // For Lid Driven Cavity Test
 void ldcFunc2D(double *x, double *res, double t, const double *parameters) {
-
     res[0] = 1.; //* parameters[0];
     res[1] = 0.;
+    return;
+}
 
+// For Lid Driven Cavity Test
+void ldcFunc3D(double *x, double *res, double t, const double *parameters) {
+    res[0] = 1. * parameters[0];
+    res[1] = 0.;
+    res[2] = 0.;
     return;
 }
 
 void dummyFunc(double *x, double *res, double *parameters) {
-    if (parameters[0] == 2)
+    if (static_cast<int>(parameters[0]) == 2)
         res[0] = 1;
     else
         res[0] = 0.;
-
     return;
 }
 
@@ -74,7 +78,6 @@ typedef default_sc SC;
 typedef default_lo LO;
 typedef default_go GO;
 typedef default_no NO;
-using namespace Teuchos;
 
 using namespace FEDD;
 
@@ -86,28 +89,20 @@ int main(int argc, char *argv[]) {
     Teuchos::oblackholestream blackhole;
     Teuchos::GlobalMPISession mpiSession(&argc, &argv, &blackhole);
 
-    Teuchos::RCP<const Teuchos::Comm<int>> comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    Teuchos::RCP<const Teuchos::Comm<int>> comm = Tpetra::getDefaultComm();
     bool verbose(comm->getRank() == 0);
-
-    //    Teuchos::RCP<Teuchos::FancyOStream> out = Teuchos::VerboseObjectBase::getDefaultOStream();
-
-    if (verbose) {
-        cout << "###############################################################" << endl;
-        cout << "##################### Steady Navier-Stokes ####################" << endl;
-        cout << "###############################################################" << endl;
-    }
 
     // Command Line Parameters
     Teuchos::CommandLineProcessor myCLP;
 
-    string xmlProblemFile = "parametersProblem.xml";
+    std::string xmlProblemFile = "parametersProblem.xml";
     myCLP.setOption("problemfile", &xmlProblemFile, ".xml file with Inputparameters.");
-    string xmlSchwarzSolverFile = "parametersSolverNonLinSchwarz.xml";
+    std::string xmlSchwarzSolverFile = "parametersSolverNonLinSchwarz.xml";
     myCLP.setOption("schwarzsolverfile", &xmlSchwarzSolverFile, ".xml file with Inputparameters.");
+    double length = 4.;
+    myCLP.setOption("length", &length, "length of domain.");
     bool debug = false;
     myCLP.setOption("debug", "", &debug, "Bool option for debugging");
-    double length = 4.;
-    myCLP.setOption("length", &length, "Length of domain.");
 
     myCLP.recogniseAllOptions(true);
     myCLP.throwExceptions(false);
@@ -123,46 +118,35 @@ int main(int argc, char *argv[]) {
     comm->barrier();
     comm->barrier();
 
-    Teuchos::RCP<StackedTimer> stackedTimer = rcp(new StackedTimer("Nonlinear Schwarz solver", true));
-    TimeMonitor::setStackedTimer(stackedTimer);
+    Teuchos::RCP<Teuchos::StackedTimer> stackedTimer = rcp(new Teuchos::StackedTimer("Nonlinear Schwarz solver", true));
+    Teuchos::TimeMonitor::setStackedTimer(stackedTimer);
 
     ParameterListPtr_Type parameterListProblem = Teuchos::getParametersFromXmlFile(xmlProblemFile);
 
     ParameterListPtr_Type parameterListSolver = Teuchos::getParametersFromXmlFile(xmlSchwarzSolverFile);
 
-    int dim = parameterListProblem->sublist("Parameter").get("Dimension", 2);
+    int dim = parameterListProblem->sublist("Parameter").get("Dimension", 3);
 
     std::string discVelocity = parameterListProblem->sublist("Parameter").get("Discretization Velocity", "P2");
     std::string discPressure = parameterListProblem->sublist("Parameter").get("Discretization Pressure", "P1");
 
-    string meshType = parameterListProblem->sublist("Parameter").get("Mesh Type", "structured");
-    string meshName = parameterListProblem->sublist("Parameter").get("Mesh Name", "circle2D_1800.mesh");
-    string meshDelimiter = parameterListProblem->sublist("Parameter").get("Mesh Delimiter", " ");
     int m = parameterListProblem->sublist("Parameter").get("H/h", 5);
-    string linearization = parameterListProblem->sublist("General").get("Linearization", "FixedPoint");
-    string precMethod = parameterListProblem->sublist("General").get("Preconditioner Method", "Monolithic");
-    int mixedFPIts = parameterListProblem->sublist("General").get("MixedFPIts", 1);
     auto overlap = parameterListSolver->get("Overlap", 1);
     int n;
 
-    TEUCHOS_TEST_FOR_EXCEPTION(dim != 2, std::runtime_error, "Only 2D implemented for now");
     ParameterListPtr_Type parameterListAll(new Teuchos::ParameterList(*parameterListProblem));
     parameterListAll->setParameters(*parameterListSolver);
-
-    std::string bcType = parameterListProblem->sublist("Parameter").get("BC Type", "parabolic");
+    parameterListAll->print(std::cout);
 
     int minNumberSubdomains = 1;
-    if (!meshType.compare("structured")) {
-        minNumberSubdomains = 1;
-    }
 
-    int numProcsCoarseSolve = parameterListProblem->sublist("General").get("Mpi Ranks Coarse", 0);
-    int size = comm->getSize() - numProcsCoarseSolve;
+    int numProcsCoarseSolve = 0;
+    int size = comm->getSize();
 
     DomainPtr_Type domainPressure;
     DomainPtr_Type domainVelocity;
     if (verbose) {
-        cout << "-- Building Mesh ..." << flush;
+        std::cout << "-- Building Mesh ..." << std::flush;
     }
 
     MeshPartitioner_Type::DomainPtrArray_Type domainArray(2);
@@ -172,46 +156,59 @@ int main(int argc, char *argv[]) {
     ParameterListPtr_Type pListPartitioner = sublist(parameterListAll, "Mesh Partitioner");
     MeshPartitioner<SC, LO, GO, NO> partitionerP1;
 
-    if (!meshType.compare("structured_ldc")) {
-        // Structured Mesh for Lid-Driven Cavity Test
-        TEUCHOS_TEST_FOR_EXCEPTION(size % minNumberSubdomains != 0, std::logic_error,
-                                   "Wrong number of processors for structured mesh.");
+    // Structured Mesh for Lid-Driven Cavity Test
+    TEUCHOS_TEST_FOR_EXCEPTION(size % minNumberSubdomains != 0, std::logic_error,
+                               "Wrong number of processors for structured mesh.")
+    if (dim == 2) {
         n = (int)(std::pow(size / minNumberSubdomains, 1 / 2.) + 100 * Teuchos::ScalarTraits<double>::eps()); // 1/H
         std::vector<double> x(2);
         x[0] = 0.0;
         x[1] = 0.0;
         domainPressure.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., comm));
         domainVelocity.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., comm));
-        domainArray[0] = domainPressure;
-        domainArray[1] = domainVelocity;
-        domainPressure->buildMesh(5, "Square", dim, discPressure, n, m, numProcsCoarseSolve);
-        domainVelocity->buildMesh(5, "Square", dim, discVelocity, n, m, numProcsCoarseSolve);
-
-        // The FE type passed here is not used. The MeshPartitioner gets the FE type directly from each domain
-        partitionerP1 = MeshPartitioner<SC, LO, GO, NO>(domainArray, pListPartitioner, "P1", dim);
-        partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(0, overlap);
-        partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(1, overlap);
-
-        partitionerP1.buildSubdomainFromDualGraphStructured(0);
-        partitionerP1.buildSubdomainFromDualGraphStructured(1);
+    } else if (dim == 3) {
+        n = (int)(std::pow(size / minNumberSubdomains, 1 / 3.) + 100 * Teuchos::ScalarTraits<double>::eps()); // 1/H
+        std::vector<double> x(3);
+        x[0] = 0.0;
+        x[1] = 0.0;
+        x[2] = 0.0;
+        domainPressure.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., 1., comm));
+        domainVelocity.reset(new Domain<SC, LO, GO, NO>(x, 1., 1., 1., comm));
     }
+    domainPressure->buildMesh(5, "Square", dim, discPressure, n, m, numProcsCoarseSolve);
+    domainVelocity->buildMesh(5, "Square", dim, discVelocity, n, m, numProcsCoarseSolve);
+
+    domainArray[0] = domainPressure;
+    domainArray[1] = domainVelocity;
+    // The FE type passed here is not used. The MeshPartitioner gets the FE type directly from each domain
+    partitionerP1 = MeshPartitioner<SC, LO, GO, NO>(domainArray, pListPartitioner, "P1", dim);
+    // partitionerP1.tempSchwarzInitFunc(0);
+    // partitionerP1.tempSchwarzInitFunc(1);
+    partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(0, overlap);
+    partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(1, overlap);
+
+    partitionerP1.buildSubdomainFromDualGraphStructured(0);
+    partitionerP1.buildSubdomainFromDualGraphStructured(1);
 
     std::vector<double> parameter_vec(1, parameterListProblem->sublist("Parameter").get("MaxVelocity", 1.));
 
     Teuchos::RCP<BCBuilder<SC, LO, GO, NO>> bcFactory(new BCBuilder<SC, LO, GO, NO>());
 
-    if (!bcType.compare("LDC")) {
-        parameter_vec.push_back(0.); // Dummy
+    parameter_vec.push_back(0.); // Dummy
+    if (dim == 2) {
         bcFactory->addBC(zeroDirichlet2D, 1, 0, domainVelocity, "Dirichlet", dim);
         bcFactory->addBC(zeroDirichlet2D, 3, 0, domainVelocity, "Dirichlet", dim);
         bcFactory->addBC(ldcFunc2D, 2, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
         bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1);
-    } else {
-        TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "Select a valid boundary condition.");
+        // The current global solution must be set as the Dirichlet BC on the ghost nodes for nonlinear Schwarz solver
+        // to correctly solve on the subdomains
+        bcFactory->addBC(currentSolutionDirichlet2D, -99, 0, domainVelocity, "Dirichlet", dim);
+    } else if (dim == 3) {
+        bcFactory->addBC(zeroDirichlet3D, 1, 0, domainVelocity, "Dirichlet", dim);
+        bcFactory->addBC(ldcFunc3D, 2, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
+        bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1); // Pressure Node
+        bcFactory->addBC(currentSolutionDirichlet3D, -99, 0, domainVelocity, "Dirichlet", dim);
     }
-    // The current global solution must be set as the Dirichlet BC on the ghost nodes for nonlinear Schwarz solver to
-    // correctly solve on the subdomains
-    bcFactory->addBC(currentSolutionDirichlet2D, -99, 0, domainVelocity, "Dirichlet", dim);
     bcFactory->addBC(currentSolutionDirichlet1D, -99, 1, domainPressure, "Dirichlet", 1);
 
     NavierStokesAssFE<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,
@@ -225,10 +222,14 @@ int main(int argc, char *argv[]) {
     navierStokes.addRhsFunction(dummyFunc);
 
     navierStokes.initializeProblem();
-    navierStokes.initSolutionWithFunction(initialValue2D, 0, std::vector<double>{0});
-    navierStokes.initSolutionWithFunction(initialValue2D, 1, std::vector<double>{0});
+    if (dim == 2) {
+        navierStokes.initSolutionWithFunction(initialValue, 0, std::vector<double>{2});
+        navierStokes.initSolutionWithFunction(initialValue, 1, std::vector<double>{1});
+    } else if (dim == 3) {
+        navierStokes.initSolutionWithFunction(initialValue, 0, std::vector<double>{3});
+        navierStokes.initSolutionWithFunction(initialValue, 1, std::vector<double>{1});
+    }
     navierStokes.assemble();
-
     navierStokes.setBoundariesRHS();
 
     std::string nlSolverType = parameterListProblem->sublist("General").get("Linearization", "NonlinearSchwarz");
@@ -236,13 +237,12 @@ int main(int argc, char *argv[]) {
     FEDD_TIMER_START(SolveTimer, " - Schwarz - global solve");
     nlSolver.solve(navierStokes);
     FEDD_TIMER_STOP(SolveTimer);
-
     comm->barrier();
 
     // Print a list of FEDD timers
-    Teuchos::TimeMonitor::report(cout, "FEDD");
+    Teuchos::TimeMonitor::report(std::cout, "FEDD");
     stackedTimer->stop("Nonlinear Schwarz solver");
-    StackedTimer::OutputOptions options;
+    Teuchos::StackedTimer::OutputOptions options;
     options.output_fraction = options.output_histogram = options.output_minmax = true;
     // Print the StackedTimer instance. This is a LIFO list of timers, typically constructed through
     // TimeMonitor::getNewCounter(). This function constructs non-existing timers and returns existing timers.
@@ -274,6 +274,5 @@ int main(int argc, char *argv[]) {
         exParaVelocity->save(0.0);
         exParaPressure->save(0.0);
     }
-
     return (EXIT_SUCCESS);
 }

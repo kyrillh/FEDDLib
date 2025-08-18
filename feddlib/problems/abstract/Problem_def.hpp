@@ -1,6 +1,8 @@
 #ifndef PROBLEM_DEF_hpp
 #define PROBLEM_DEF_hpp
 #include "Problem_decl.hpp"
+#include <Teuchos_TestForException.hpp>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -558,6 +560,7 @@ namespace FEDD
                                    "Initial value cannot be set before a call to initializeVectors()");
         auto solution = solution_->getBlockNonConst(block);
         auto dofsPerNode = dofsPerNode_vec_.at(block);
+        TEUCHOS_TEST_FOR_EXCEPTION(dofsPerNode != static_cast<int>(params.at(0)), std::runtime_error, "There is a mismatch between the passed and the actual dofs per node");
         std::vector<SC> result(dofsPerNode);
         for (auto i = 0; i < solution->getNumVectors(); i++) {
             for (auto j = 0; j < domainPtr_vec_.at(block)->getMesh()->getPointsUnique()->size(); j++) {
