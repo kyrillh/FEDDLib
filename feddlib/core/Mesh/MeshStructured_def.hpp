@@ -3603,25 +3603,26 @@ void MeshStructured<SC,LO,GO,NO>::setStructuredMeshFlags(int flagsOption,std::st
                     break;
                 case 5: //LDC
                     for (int i=0; i<this->pointsUni_->size(); i++) {
+                        // Left side
                         if (this->pointsUni_->at(i).at(0) < (coorRec[0] + tol) ) {
                             this->bcFlagUni_->at(i) = 1;
                         }
-                        //bottom
+                        // Bottom
                         if (this->pointsUni_->at(i).at(0) > (coorRec[0] - tol) &&
                             this->pointsUni_->at(i).at(2) < (coorRec[2] + tol) ) {
                             this->bcFlagUni_->at(i) = 1;
                         }
-                        //front
+                        // Front
                         if (this->pointsUni_->at(i).at(0) > (coorRec[0] - tol) &&
                             this->pointsUni_->at(i).at(1) < (coorRec[1] + tol) ) {
                             this->bcFlagUni_->at(i) = 1;
                         }
-                        //back
+                        // Back
                         if (this->pointsUni_->at(i).at(0) > (coorRec[0] - tol) &&
                             this->pointsUni_->at(i).at(1) > (coorRec[1] + width - tol) ) {
                             this->bcFlagUni_->at(i) = 1;
                         }
-                        //out
+                        // Right side avoiding previously set values
                         if (this->pointsUni_->at(i).at(0) > (coorRec[0] + length - tol) &&
                             this->pointsUni_->at(i).at(1) > (coorRec[1] + tol) &&
                             this->pointsUni_->at(i).at(1) < (coorRec[1] + width - tol)&&
@@ -3629,39 +3630,36 @@ void MeshStructured<SC,LO,GO,NO>::setStructuredMeshFlags(int flagsOption,std::st
                             this->pointsUni_->at(i).at(2) < (coorRec[2] + height - tol)) {
                             this->bcFlagUni_->at(i) = 1;
                         }
-                                                //top
+                        // Top
                         if (this->pointsUni_->at(i).at(2) > (coorRec[2] + height - tol) ) {
                             this->bcFlagUni_->at(i) = 2;
                         }
+                        // (0,0) point of ldc
                         if (this->pointsUni_->at(i).at(0) < (coorRec[0] +tol) && this->pointsUni_->at(i).at(1) < (coorRec[1] +tol) && this->pointsUni_->at(i).at(2) < (coorRec[2] +tol)) {
-                            this->bcFlagUni_->at(i) = 3; // (0,0) point of ldc
+                            this->bcFlagUni_->at(i) = 3;
                         }
                     }
-                    for (int i=0; i<this->pointsUni_->size(); i++) {
-                        if (this->pointsRep_->at(i).at(0) < (coorRec[0] - tol) ) {
+                    for (int i=0; i<this->pointsRep_->size(); i++) {
+                        // Left side
+                        if (this->pointsRep_->at(i).at(0) < (coorRec[0] + tol) ) {
                             this->bcFlagRep_->at(i) = 1;
                         }
-                        //bottom
+                        // Bottom
                         if (this->pointsRep_->at(i).at(0) > (coorRec[0] - tol) &&
                             this->pointsRep_->at(i).at(2) < (coorRec[2] + tol) ) {
                             this->bcFlagRep_->at(i) = 1;
                         }
-                        //top
-                        if (this->pointsRep_->at(i).at(0) > (coorRec[0] - tol) &&
-                            this->pointsRep_->at(i).at(2) > (coorRec[2] + height - tol) ) {
-                            this->bcFlagRep_->at(i) = 2;
-                        }
-                        //front
+                        // Front
                         if (this->pointsRep_->at(i).at(0) > (coorRec[0] - tol) &&
                             this->pointsRep_->at(i).at(1) < (coorRec[1] + tol) ) {
                             this->bcFlagRep_->at(i) = 1;
                         }
-                        //back
+                        // Back
                         if (this->pointsRep_->at(i).at(0) > (coorRec[0] - tol) &&
                             this->pointsRep_->at(i).at(1) > (coorRec[1] + width - tol) ) {
                             this->bcFlagRep_->at(i) = 1;
                         }
-                        //out
+                        // Right side avoiding previously set values
                         if (this->pointsRep_->at(i).at(0) > (coorRec[0] + length - tol) &&
                             this->pointsRep_->at(i).at(1) > (coorRec[1] + tol) &&
                             this->pointsRep_->at(i).at(1) < (coorRec[1] + width - tol)&&
@@ -3669,10 +3667,15 @@ void MeshStructured<SC,LO,GO,NO>::setStructuredMeshFlags(int flagsOption,std::st
                             this->pointsRep_->at(i).at(2) < (coorRec[2] + height - tol)) {
                             this->bcFlagRep_->at(i) = 1;
                         }
-                        if (this->pointsRep_->at(i).at(0) < (coorRec[0] +tol) && this->pointsRep_->at(i).at(1) < (coorRec[1] +tol) && this->pointsRep_->at(i).at(2) < (coorRec[2] +tol)) {
-                            this->bcFlagRep_->at(i) = 3; // (0,0) point of ldc
+                        // Top
+                        if (this->pointsRep_->at(i).at(2) > (coorRec[2] + height - tol) ) {
+                            this->bcFlagRep_->at(i) = 2;
                         }
-                    }
+                        // (0,0) point of ldc
+                        if (this->pointsRep_->at(i).at(0) < (coorRec[0] +tol) && this->pointsRep_->at(i).at(1) < (coorRec[1] +tol) && this->pointsRep_->at(i).at(2) < (coorRec[2] +tol)) {
+                            this->bcFlagRep_->at(i) = 3;
+                        }
+                     }
                     break;
                 default:
                     break;
