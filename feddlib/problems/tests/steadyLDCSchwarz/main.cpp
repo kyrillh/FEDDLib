@@ -136,7 +136,6 @@ int main(int argc, char *argv[]) {
 
     ParameterListPtr_Type parameterListAll(new Teuchos::ParameterList(*parameterListProblem));
     parameterListAll->setParameters(*parameterListSolver);
-    parameterListAll->print(std::cout);
 
     int minNumberSubdomains = 1;
 
@@ -154,7 +153,7 @@ int main(int argc, char *argv[]) {
     domainArray[1] = domainVelocity;
 
     ParameterListPtr_Type pListPartitioner = sublist(parameterListAll, "Mesh Partitioner");
-    MeshPartitioner<SC, LO, GO, NO> partitionerP1;
+    MeshPartitioner<SC, LO, GO, NO> partitioner;
 
     // Structured Mesh for Lid-Driven Cavity Test
     TEUCHOS_TEST_FOR_EXCEPTION(size % minNumberSubdomains != 0, std::logic_error,
@@ -181,14 +180,14 @@ int main(int argc, char *argv[]) {
     domainArray[0] = domainPressure;
     domainArray[1] = domainVelocity;
     // The FE type passed here is not used. The MeshPartitioner gets the FE type directly from each domain
-    partitionerP1 = MeshPartitioner<SC, LO, GO, NO>(domainArray, pListPartitioner, "P1", dim);
+    partitioner = MeshPartitioner<SC, LO, GO, NO>(domainArray, pListPartitioner, "P1", dim);
     // partitionerP1.tempSchwarzInitFunc(0);
     // partitionerP1.tempSchwarzInitFunc(1);
-    partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(0, overlap);
-    partitionerP1.buildOverlappingDualGraphFromDistributedParMETIS(1, overlap);
+    partitioner.buildOverlappingDualGraphFromDistributedParMETIS(0, overlap);
+    partitioner.buildOverlappingDualGraphFromDistributedParMETIS(1, overlap);
 
-    partitionerP1.buildSubdomainFromDualGraphStructured(0);
-    partitionerP1.buildSubdomainFromDualGraphStructured(1);
+    partitioner.buildSubdomainFromDualGraphStructured(0);
+    partitioner.buildSubdomainFromDualGraphStructured(1);
 
     std::vector<double> parameter_vec(1, parameterListProblem->sublist("Parameter").get("MaxVelocity", 1.));
 

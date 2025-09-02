@@ -49,7 +49,8 @@ namespace FROSch {
 template <class SC, class LO, class GO, class NO>
 CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::CoarseNonLinearSchwarzOperator(NonLinearProblemPtrFEDD problem,
                                                                                ParameterListPtr parameterList)
-    : IPOUHarmonicCoarseOperator<SC, LO, GO, NO>(FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
+    : IPOUHarmonicCoarseOperator<SC, LO, GO, NO>(
+          FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
       problem_{problem},
       x_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(problem->getDomainVector().size()))},
       y_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(problem->getDomainVector().size()))}, relNewtonTol_{},
@@ -166,14 +167,17 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
 
         // Dof count in each block
         auto dofsPerNodeVec = Teuchos::ArrayRCP<unsigned>(domainVec.size());
-        // The distribution of dofs. One map for each block. This gets built heuristically in
-        // TwoLevelBlockPreconditioner using the unique distribution if not provided but only for one block.
+        // The distribution of dofs. One map for each block i.e. this map contains an entry for every dof. If it was
+        // merged e.g. pressure map is offset by the velocity map, then the dof mapping seen in the global system matrix
+        // would correspond to the merged map. This gets built heuristically in TwoLevelBlockPreconditioner using the
+        // unique distribution if not provided but only for one block.
         auto repeatedDofsMapVec = Teuchos::ArrayRCP<Teuchos::RCP<const Xpetra::Map<LO, GO, NO>>>(domainVec.size());
         // The distribution of nodes. This gets built from the distribution of dofs in TwoLevelBlockPreconditioner. Here
         // we already know this distribution, so we just ensure the built one is the same as the existing one.
         auto repeatedNodesMapVec = Teuchos::ArrayRCP<Teuchos::RCP<const Xpetra::Map<LO, GO, NO>>>(domainVec.size());
         // The distribution of dofs, but this is a 2D vector. For each block there is a vector that contains a map entry
-        // for each dof, unlike repeatedDofsMapVec.
+        // for each dof, in contrast to repeatedDofsMapVec which maps each dof in single map. e.g. the velocity block
+        // will contain a vector of #dim maps, each identical, for each velocity component.
         auto dofsMapsVec =
             Teuchos::ArrayRCP<Teuchos::ArrayRCP<Teuchos::RCP<const Xpetra::Map<LO, GO, NO>>>>(domainVec.size());
         // A multivector for each block. Columns in the multivector for each basis function
@@ -186,23 +190,29 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
 
         deltaG0_ = Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(domainVec.size()));
         GO offset = 0;
+
         for (int i = 0; i < domainVec.size(); i++) {
-            auto mesh = domainVec.at(i)->getMesh();
             dofsPerNodeVec[i] = problem_->getDofsPerNode(i);
             if (dofsPerNodeVec[i] > 1) {
                 repeatedNodesMapVec[i] = Xpetra::toXpetra(domainVec.at(i)->getMapRepeated()->getTpetraMap());
                 repeatedDofsMapVec[i] = Xpetra::toXpetra(domainVec.at(i)->getMapVecFieldRepeated()->getTpetraMap());
-                uniqueDofsMap = domainVec.at(i)->getMapVecFieldUnique();
             } else {
                 repeatedNodesMapVec[i] = Xpetra::toXpetra(domainVec.at(i)->getMapRepeated()->getTpetraMap());
                 repeatedDofsMapVec[i] = repeatedNodesMapVec[i];
+            }
+        }
+
+        auto mergedRepeatedDofsMap = MergeMaps(repeatedDofsMapVec);
+
+        for (int i = 0; i < domainVec.size(); i++) {
+            auto mesh = domainVec.at(i)->getMesh();
+            if (dofsPerNodeVec[i] > 1) {
+                uniqueDofsMap = domainVec.at(i)->getMapVecFieldUnique();
+            } else {
                 uniqueDofsMap = domainVec.at(i)->getMapUnique();
             }
-
             auto tempMV = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(uniqueDofsMap, 1));
             deltaG0_->addBlock(tempMV, i);
-
-            // auto dofsPerNode = problem_->getDofsPerNode(0);
 
             // Initialize the underlying IPOUHarmonicCoarseOperator object
             // dofs of a node are lumped together
@@ -218,7 +228,7 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
             //     repeated map. We just check it gets built correctly.
             //    - dofMaps: [out] An array of repeated maps, one for each dof, that map the dof to its global index
             //    i.e. includes the offset.
-            //    - offset: [in] offset taking into account all  previous blocks
+            //    - offset: [in] offset taking into account all previous blocks
             BuildDofMaps(repeatedDofsMapVec[i], dofsPerNodeVec[i], dofOrdering, dummyRepeatedNodesMap, dofsMapsVec[i],
                          offset);
             FROSCH_ASSERT(repeatedNodesMapVec[i]->isSameAs(*dummyRepeatedNodesMap), "Error with the repeatedNodesMap.");
@@ -250,7 +260,7 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
             // this point different nullspaces could be built for each block.
             // The nullspace is multiplied by partition of unity to build the coarse space. This ensures that the coarse
             // space spans the nullspace
-            nullSpaceBasisVec[i] = BuildNullSpace(dimension, nullSpaceType, repeatedDofsMapVec[i], dofsPerNodeVec[i],
+            nullSpaceBasisVec[i] = BuildNullSpace(dimension, nullSpaceType, mergedRepeatedDofsMap, dofsPerNodeVec[i],
                                                   dofsMapsVec[i], implicit_cast<ConstXMultiVectorPtr>(nodeListVec[i]));
             // Build the vector of Dirichlet node indices
             // See FROSch::FindOneEntryOnlyRowsGlobal() for reference
@@ -334,8 +344,9 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
         problem_->calculateNonLinResidualVec("reverse");
 
         // Restrict the residual to the coarse space
-        this->applyPhiT(*Xpetra::toXpetra(problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
-                        *coarseResidualVec_);
+        this->applyPhiT(
+            *Xpetra::toXpetra(problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
+            *coarseResidualVec_);
 
         Teuchos::Array<SC> residualArray(1);
         coarseResidualVec_->norm2(residualArray());
@@ -389,8 +400,10 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
             // Calculate initial residual for backtracking
             problem_->calculateNonLinResidualVec("reverse");
             // Restrict the residual to the coarse space
-            this->applyPhiT(*Xpetra::toXpetra(problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
-                            *coarseResidualVec_);
+            this->applyPhiT(
+                *Xpetra::toXpetra(
+                    problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
+                *coarseResidualVec_);
 
             coarseResidualVec_->norm2(residualArray());
             SC residual0BT = residualArray[0];
@@ -410,7 +423,8 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
                 // Calculate the residual
                 problem_->calculateNonLinResidualVec("reverse");
                 this->applyPhiT(
-                    *Xpetra::toXpetra(problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
+                    *Xpetra::toXpetra(
+                        problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
                     *coarseResidualVec_);
                 coarseResidualVec_->norm2(residualArray());
                 residualBT = residualArray[0];

@@ -28,8 +28,6 @@ AssembleFENavierStokesFEAT<SC, LO, GO, NO>::AssembleFENavierStokesFEAT(int flag,
     locConv_ = std::vector<SC>(this->dofsElementVelocity_, 1.);
 
     int numVerts;
-    // TODO: [KH] for now only consider 2D
-    TEUCHOS_TEST_FOR_EXCEPTION(this->getDim() != 2, std::runtime_error, "feat interface currently only supports 2D");
 
     if (this->FETypeVelocity_ == "P2") {
         if (this->getDim() == 2) {
