@@ -112,6 +112,8 @@ public:
 public:
 
     void reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) override;
+    void assembleCoarseConnectivity() override;
+    void removeCoarseConnectivity() override;
 private:
 
 

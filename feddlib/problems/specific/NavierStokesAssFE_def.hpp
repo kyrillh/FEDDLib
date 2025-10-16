@@ -1,6 +1,7 @@
 #ifndef NAVIERSTOKESASSFE_def_hpp
 #define NAVIERSTOKESASSFE_def_hpp
 #include "NavierStokesAssFE_decl.hpp"
+#include <stdexcept>
 
 /*!
  Definition of Navier-Stokes
@@ -238,6 +239,7 @@ void NavierStokesAssFE<SC,LO,GO,NO>::reAssemble(std::string type) const {
 
    		this->system_->addBlock(ANW,0,0);
 
+        //TODO: [KH] why do we reassemble fixed point matrices here?
         this->feFactory_->assemblyNavierStokes(this->dim_, this->getDomain(0)->getFEType(), this->getDomain(1)->getFEType(), 2, this->dim_,1,u_rep_,p_rep_,this->system_, this->residualVec_,this->coeff_,this->parameterList_, true, "FixedPoint",  true);  // We can also change that to "Jacobian"     
  		this->feFactory_->assemblyNavierStokes(this->dim_, this->getDomain(0)->getFEType(), this->getDomain(1)->getFEType(), 2, this->dim_,1,u_rep_,p_rep_,this->system_, this->residualVec_,this->coeff_,this->parameterList_, true, "Rhs",  true);
 
@@ -449,18 +451,35 @@ void NavierStokesAssFE<SC,LO,GO,NO>::computeSteadyPostprocessingViscosity_Soluti
 
 }
 
-
-
-
-template<class SC,class LO,class GO,class NO>
-    void NavierStokesAssFE<SC,LO,GO,NO>::reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap){
+template <class SC, class LO, class GO, class NO>
+void NavierStokesAssFE<SC, LO, GO, NO>::reInitSpecificProblemVectors(
+    const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) {
     this->u_rep_ = Teuchos::rcp(new MultiVector_Type(newMap->getBlock(0)));
     this->p_rep_ = Teuchos::rcp(new MultiVector_Type(newMap->getBlock(1)));
     assembleConstantMatrices();
 }
 
-
-
+template <class SC, class LO, class GO, class NO>
+void NavierStokesAssFE<SC, LO, GO, NO>::assembleCoarseConnectivity() {
+        TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error, "Another assembly routine must be called before calling assembleCoarseConnectivity");
+        auto FEType = this->getFEType(1);
+        auto pressureMap = this->getDomain(1)->getMapUnique();
+        MatrixPtr_Type C(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
+        this->feFactory_->assemblyBDStabilization( this->dim_, FEType, C, true);
+        C->resumeFill();
+        C->fillComplete( pressureMap, pressureMap );
+        this->system_->addBlock( C, 1, 1 );
 }
 
+template <class SC, class LO, class GO, class NO>
+void NavierStokesAssFE<SC, LO, GO, NO>::removeCoarseConnectivity() {
+        TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error, "Calling removeCoarseConnectivity() on an empty system_ does not make sense.");
+        auto pressureMap = this->getDomain(1)->getMapUnique();
+        MatrixPtr_Type C(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
+        C->fillComplete( pressureMap, pressureMap );
+        this->system_->addBlock( C, 1, 1 );
+        this->setBoundariesSystem();
+}
+
+}
 #endif

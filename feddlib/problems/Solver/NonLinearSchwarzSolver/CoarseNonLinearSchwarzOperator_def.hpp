@@ -143,6 +143,7 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
         // Build the vector of Dirichlet node indices
         // See FROSch::FindOneEntryOnlyRowsGlobal() for reference
         auto dirichletBoundaryDofsVec = Teuchos::rcp(new std::vector<GO>(0));
+        auto doNothingBoundaryDofsVec = Teuchos::rcp(new std::vector<GO>(0));
         int block = 0;
         int loc = 0;
         for (auto i = 0; i < repeatedNodesMap->getLocalNumElements(); i++) {
@@ -152,17 +153,22 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
             // block: block id in which to search. Needs to be provided to the function.
             if (problem_->getBCFactory()->findFlag(flag, block, loc)) {
                 for (auto j = 0; j < dofsPerNode; j++) {
-                    dirichletBoundaryDofsVec->push_back(repeatedDofsMap->getGlobalElement(dofsPerNode * i + j));
+                    if (problem_->getBCFactory()->getBCType(loc) == "DoNothing") {
+                        doNothingBoundaryDofsVec->push_back(repeatedDofsMap->getGlobalElement(dofsPerNode * i + j));
+                    } else {
+                        dirichletBoundaryDofsVec->push_back(repeatedDofsMap->getGlobalElement(dofsPerNode * i + j));
+                    }
                 }
             }
         }
         // Convert std::vector to ArrayRCP
         auto dirichletBoundaryDofs = arcp<GO>(dirichletBoundaryDofsVec);
+        auto doNothingBoundaryDofs = arcp<GO>(doNothingBoundaryDofsVec);
         // This builds the coarse spaces, assembles the coarse solve map and does symbolic factorization of the coarse
         // problem
         IPOUHarmonicCoarseOperator<SC, LO, GO, NO>::initialize(
             dimension, dofsPerNode, repeatedNodesMap, dofsMaps, nullSpaceBasis,
-            implicit_cast<ConstXMultiVectorPtr>(nodeList), dirichletBoundaryDofs);
+            implicit_cast<ConstXMultiVectorPtr>(nodeList), dirichletBoundaryDofs, doNothingBoundaryDofs);
     } else { // else we are dealing with a block system
 
         // Dof count in each block
@@ -187,6 +193,8 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
         auto nodeListVec = Teuchos::ArrayRCP<Teuchos::RCP<const Xpetra::MultiVector<SC, LO, GO, NO>>>(domainVec.size());
         // List of indices of the nodes that are on the Dirichlet boundary
         auto dirichletBoundaryDofsVec = Teuchos::ArrayRCP<Teuchos::ArrayRCP<GO>>(domainVec.size());
+        // List of indices of the nodes that are not on a Dirichlet boundary
+        auto doNothingBoundaryDofsVec = Teuchos::ArrayRCP<Teuchos::ArrayRCP<GO>>(domainVec.size());
 
         deltaG0_ = Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(domainVec.size()));
         GO offset = 0;
@@ -266,6 +274,7 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
             // See FROSch::FindOneEntryOnlyRowsGlobal() for reference
             int loc = 0;
             auto tempDirichletBoundaryDofs = Teuchos::rcp(new std::vector<GO>(0));
+            auto tempDoNothingBoundaryDofs = Teuchos::rcp(new std::vector<GO>(0));
             for (auto j = 0; j < repeatedNodesMapVec[i]->getLocalNumElements(); j++) {
                 auto flag = mesh->bcFlagRep_->at(j);
                 // The vector vecFlag_ contains the flags that have been set with addBC().
@@ -274,19 +283,25 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
                 // offset is required since FROSch indexes the Dirichlet boundary dofs by their global index
                 if (problem_->getBCFactory()->findFlag(flag, i, loc)) {
                     for (auto k = 0; k < dofsPerNodeVec[i]; k++) {
-                        tempDirichletBoundaryDofs->push_back(
-                            offset + repeatedDofsMapVec[i]->getGlobalElement(dofsPerNodeVec[i] * j + k));
+                        if (problem_->getBCFactory()->getBCType(loc) == "DoNothing") {
+                            tempDoNothingBoundaryDofs->push_back(
+                                offset + repeatedDofsMapVec[i]->getGlobalElement(dofsPerNodeVec[i] * j + k));
+                        } else {
+                            tempDirichletBoundaryDofs->push_back(
+                                offset + repeatedDofsMapVec[i]->getGlobalElement(dofsPerNodeVec[i] * j + k));
+                        }
                     }
                 }
             }
             dirichletBoundaryDofsVec[i] = Teuchos::arcp<GO>(tempDirichletBoundaryDofs);
+            doNothingBoundaryDofsVec[i] = Teuchos::arcp<GO>(tempDoNothingBoundaryDofs);
             offset += repeatedDofsMapVec[i]->getMaxAllGlobalIndex() + 1;
         }
         // This builds the coarse spaces, assembles the coarse solve map and does symbolic factorization of the
         // coarse problem. Numerical factorization is done in the build() function.
         IPOUHarmonicCoarseOperator<SC, LO, GO, NO>::initialize(dimension, dofsPerNodeVec, repeatedNodesMapVec,
                                                                dofsMapsVec, nullSpaceBasisVec, nodeListVec,
-                                                               dirichletBoundaryDofsVec);
+                                                               dirichletBoundaryDofsVec, doNothingBoundaryDofsVec);
     }
     coarseResidualVec_ =
         Xpetra::MultiVectorFactory<SC, LO, GO>::Build(this->GatheringMaps_[this->GatheringMaps_.size() - 1], 1);

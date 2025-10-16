@@ -37,6 +37,11 @@ void zeroDirichlet(double *x, double *res, double t, const double *parameters) {
     return;
 }
 
+void doNothing(double *x, double *res, double t, const double *parameters) {
+    TEUCHOS_TEST_FOR_EXCEPTION(true, std::runtime_error, "doNothing() does nothing and should never be called");
+    return;
+}
+
 void zeroDirichlet2D(double *x, double *res, double t, const double *parameters) {
     res[0] = 0.;
     res[1] = 0.;
@@ -148,10 +153,6 @@ int main(int argc, char *argv[]) {
         std::cout << "-- Building Mesh ..." << std::flush;
     }
 
-    MeshPartitioner_Type::DomainPtrArray_Type domainArray(2);
-    domainArray[0] = domainPressure;
-    domainArray[1] = domainVelocity;
-
     ParameterListPtr_Type pListPartitioner = sublist(parameterListAll, "Mesh Partitioner");
     MeshPartitioner<SC, LO, GO, NO> partitioner;
 
@@ -177,6 +178,7 @@ int main(int argc, char *argv[]) {
     domainPressure->buildMesh(5, "Square", dim, discPressure, n, m, numProcsCoarseSolve);
     domainVelocity->buildMesh(5, "Square", dim, discVelocity, n, m, numProcsCoarseSolve);
 
+    MeshPartitioner_Type::DomainPtrArray_Type domainArray(2);
     domainArray[0] = domainPressure;
     domainArray[1] = domainVelocity;
     // The FE type passed here is not used. The MeshPartitioner gets the FE type directly from each domain
@@ -198,6 +200,8 @@ int main(int argc, char *argv[]) {
         bcFactory->addBC(zeroDirichlet2D, 1, 0, domainVelocity, "Dirichlet", dim);
         bcFactory->addBC(zeroDirichlet2D, 3, 0, domainVelocity, "Dirichlet", dim);
         bcFactory->addBC(ldcFunc2D, 2, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
+        bcFactory->addBC(doNothing, 1, 1, domainPressure, "DoNothing", 1);
+        bcFactory->addBC(doNothing, 2, 1, domainPressure, "DoNothing", 1);
         bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1);
         // The current global solution must be set as the Dirichlet BC on the ghost nodes for nonlinear Schwarz solver
         // to correctly solve on the subdomains
