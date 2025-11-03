@@ -213,7 +213,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>postProcessing</b> ()
 <tr class="memdesc:a8ae32f71020082d81b055afbeda6fc29 inherit pub_methods_classFEDD_1_1AssembleFE"><td class="mdescLeft">&#160;</td><td class="mdescRight">This function is called at the end of each Newton step after updating the solution vector. <br /></td></tr>
 <tr class="separator:a8ae32f71020082d81b055afbeda6fc29 inherit pub_methods_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a35ada89164c74b433340733c01f30f4b inherit pub_methods_classFEDD_1_1AssembleFE" id="r_a35ada89164c74b433340733c01f30f4b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classFEDD_1_1AssembleFE.html#a35ada89164c74b433340733c01f30f4b">getDim</a> ()</td></tr>
-<tr class="memdesc:a35ada89164c74b433340733c01f30f4b inherit pub_methods_classFEDD_1_1AssembleFE"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the spatial dimension. (Typically 2 or 3)  <br /></td></tr>
+<tr class="memdesc:a35ada89164c74b433340733c01f30f4b inherit pub_methods_classFEDD_1_1AssembleFE"><td class="mdescLeft">&#160;</td><td class="mdescRight">TODO: PostProcessing: Teuchos::Array with values and one global Array with Strings and names.  <br /></td></tr>
 <tr class="separator:a35ada89164c74b433340733c01f30f4b inherit pub_methods_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a93f37b5e5f8f9a73152abb2e8be4ba4f inherit pub_methods_classFEDD_1_1AssembleFE" id="r_a93f37b5e5f8f9a73152abb2e8be4ba4f"><td class="memItemLeft" align="right" valign="top">vec2D_dbl_Type&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classFEDD_1_1AssembleFE.html#a93f37b5e5f8f9a73152abb2e8be4ba4f">getNodesRefConfig</a> ()</td></tr>
 <tr class="memdesc:a93f37b5e5f8f9a73152abb2e8be4ba4f inherit pub_methods_classFEDD_1_1AssembleFE"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return the coordnates of the finite element nodes.  <br /></td></tr>
@@ -238,6 +238,9 @@ default_go&#160;</td><td class="memItemRight" valign="bottom"><b>getGlobalElemen
 <tr class="memitem:af87de74856df7bcf0d7d872240599efb inherit pub_methods_classFEDD_1_1AssembleFE" id="r_af87de74856df7bcf0d7d872240599efb"><td class="memItemLeft" align="right" valign="top">vec_dbl_Type&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classFEDD_1_1AssembleFE.html#af87de74856df7bcf0d7d872240599efb">getLocalconstOutputField</a> ()</td></tr>
 <tr class="memdesc:af87de74856df7bcf0d7d872240599efb inherit pub_methods_classFEDD_1_1AssembleFE"><td class="mdescLeft">&#160;</td><td class="mdescRight">Obtain value of resulting postprocessing field at nodes/ inside an element.  <br /></td></tr>
 <tr class="separator:af87de74856df7bcf0d7d872240599efb inherit pub_methods_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac7a184424bb4f1f8176853849e25a6ad inherit pub_methods_classFEDD_1_1AssembleFE" id="r_ac7a184424bb4f1f8176853849e25a6ad"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classFEDD_1_1AssembleFE.html#ac7a184424bb4f1f8176853849e25a6ad">changeLinearization</a> (std::string linearization)</td></tr>
+<tr class="memdesc:ac7a184424bb4f1f8176853849e25a6ad inherit pub_methods_classFEDD_1_1AssembleFE"><td class="mdescLeft">&#160;</td><td class="mdescRight">Switch e.g. from FixedPoint assembly to Newton method during runtime.  <br /></td></tr>
+<tr class="separator:ac7a184424bb4f1f8176853849e25a6ad inherit pub_methods_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
@@ -279,7 +282,9 @@ tuple_disk_vec_ptr_Type&#160;</td><td class="memItemRight" valign="bottom"><b>di
 <tr class="memitem:a75ac3bec40089aca4566313ae7dd2650 inherit pro_attribs_classFEDD_1_1AssembleFE" id="r_a75ac3bec40089aca4566313ae7dd2650"><td class="memItemLeft" align="right" valign="top">
 tuple_sd_vec_ptr_Type&#160;</td><td class="memItemRight" valign="bottom"><b>elementIntormation_</b></td></tr>
 <tr class="separator:a75ac3bec40089aca4566313ae7dd2650 inherit pro_attribs_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab2892bff598d5a4f784d4f30ddf4836c inherit pro_attribs_classFEDD_1_1AssembleFE" id="r_ab2892bff598d5a4f784d4f30ddf4836c"><td class="memItemLeft" align="right" valign="top">vec2D_dbl_Type&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classFEDD_1_1AssembleFE.html#ab2892bff598d5a4f784d4f30ddf4836c">nodesRefConfig_</a></td></tr>
+<tr class="memitem:ab2892bff598d5a4f784d4f30ddf4836c inherit pro_attribs_classFEDD_1_1AssembleFE" id="r_ab2892bff598d5a4f784d4f30ddf4836c"><td class="memItemLeft" align="right" valign="top">
+vec2D_dbl_Type&#160;</td><td class="memItemRight" valign="bottom"><b>nodesRefConfig_</b></td></tr>
+<tr class="memdesc:ab2892bff598d5a4f784d4f30ddf4836c inherit pro_attribs_classFEDD_1_1AssembleFE"><td class="mdescLeft">&#160;</td><td class="mdescRight">TODO: Why "Reference Configuration"? <br /></td></tr>
 <tr class="separator:ab2892bff598d5a4f784d4f30ddf4836c inherit pro_attribs_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaa84c5ca06ca8dcd1ad82d7d66ac8e4c inherit pro_attribs_classFEDD_1_1AssembleFE" id="r_aaa84c5ca06ca8dcd1ad82d7d66ac8e4c"><td class="memItemLeft" align="right" valign="top">
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>timeProblem_</b></td></tr>
@@ -308,6 +313,9 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>timeIncrement_</b><
 <tr class="memitem:a48cecbc7fdb9436b25a9be32ddb89213 inherit pro_attribs_classFEDD_1_1AssembleFE" id="r_a48cecbc7fdb9436b25a9be32ddb89213"><td class="memItemLeft" align="right" valign="top">
 default_go&#160;</td><td class="memItemRight" valign="bottom"><b>globalElementID_</b></td></tr>
 <tr class="separator:a48cecbc7fdb9436b25a9be32ddb89213 inherit pro_attribs_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9a50c18cc465dfdf5f8fb7d44605e9c3 inherit pro_attribs_classFEDD_1_1AssembleFE" id="r_a9a50c18cc465dfdf5f8fb7d44605e9c3"><td class="memItemLeft" align="right" valign="top">
+std::string&#160;</td><td class="memItemRight" valign="bottom"><b>linearization_</b></td></tr>
+<tr class="separator:a9a50c18cc465dfdf5f8fb7d44605e9c3 inherit pro_attribs_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac749eb90559fe5787d2c78cf220a6371 inherit pro_attribs_classFEDD_1_1AssembleFE" id="r_ac749eb90559fe5787d2c78cf220a6371"><td class="memItemLeft" align="right" valign="top">
 vec_dbl_Type&#160;</td><td class="memItemRight" valign="bottom"><b>constOutputField_</b></td></tr>
 <tr class="separator:ac749eb90559fe5787d2c78cf220a6371 inherit pro_attribs_classFEDD_1_1AssembleFE"><td class="memSeparator" colspan="2">&#160;</td></tr>

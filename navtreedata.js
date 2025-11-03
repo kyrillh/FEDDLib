@@ -25,7 +25,6 @@
 var NAVTREE =
 [
   [ "Finite Element Domain Decomposition Library", "index.html", [
-    [ "Todo List", "todo.html", null ],
     [ "Namespaces", "namespaces.html", [
       [ "Namespace List", "namespaces.html", "namespaces_dup" ]
     ] ],
@@ -51,11 +50,11 @@ var NAVTREEINDEX =
 [
 "AABBTree_8hpp_source.html",
 "classFEDD_1_1AABBTree.html",
-"classFEDD_1_1BCBuilder.html#a85f4fe085c295973bd70331d6022e095",
-"classFEDD_1_1ErrorEstimation.html#a1623aca9e03e8e2dba9ea82ce60152cf",
-"classFEDD_1_1Matrix.html#adad7e424dbc2904f993dc94afe3de53c",
-"classFEDD_1_1PrecBlock2x2.html#a05782c26718c60189a50004899f83b48",
-"hlpdat_8h_source.html"
+"classFEDD_1_1BCBuilder.html#a4028cf583fa3693387fe390f51724f94",
+"classFEDD_1_1Elements.html#a4c85e1340ba638ad26cb83ce881b4789",
+"classFEDD_1_1Matrix.html#a95c7c48f147c7be5246e02aa362e4766",
+"classFEDD_1_1NonLinElasAssFE.html#a879befcfb269ad30d640d9a5c64fcecb",
+"dir_9133d0e4f1a454cd4b7c7e68643393ac.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';
