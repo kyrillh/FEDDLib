@@ -290,9 +290,13 @@ void BlockMatrix<SC,LO,GO,NO>::mergeBlockNew(UN blockRow, UN blockCol){
 template <class SC, class LO, class GO, class NO>
 void BlockMatrix<SC,LO,GO,NO>::print(Teuchos::EVerbosityLevel verbLevel){
 
+
     for (UN i=0; i<blockMatrix_.size(); i++) {
         for (UN j=0; j<blockMatrix_.size(); j++) {
             if ( !blockMatrix_[i][j].is_null() ) {
+                if (this->blockMap_->getComm()->getRank() == 0) {
+                    std::cout << "===> Block(" << i << ", " << j << ")" << std::endl;
+                }
                 blockMatrix_[i][j]->print( verbLevel );
             }
         }

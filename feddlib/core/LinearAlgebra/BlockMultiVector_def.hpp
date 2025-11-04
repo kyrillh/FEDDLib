@@ -443,6 +443,9 @@ void BlockMultiVector<SC,LO,GO,NO>::print(Teuchos::EVerbosityLevel verbLevel){
 
     for (UN i=0; i<blockMultiVector_.size(); i++) {
         if ( !blockMultiVector_[i].is_null() ) {
+                if (this->blockMap_->getComm()->getRank() == 0) {
+                    std::cout << "===> Block(" << i << ")" << std::endl;
+                }
             blockMultiVector_[i]->print( verbLevel );
         }
     }
