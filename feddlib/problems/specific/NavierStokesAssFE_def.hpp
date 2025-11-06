@@ -459,27 +459,28 @@ void NavierStokesAssFE<SC, LO, GO, NO>::reInitSpecificProblemVectors(
     assembleConstantMatrices();
 }
 
-template <class SC, class LO, class GO, class NO>
-void NavierStokesAssFE<SC, LO, GO, NO>::assembleCoarseConnectivity() {
-        TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error, "Another assembly routine must be called before calling assembleCoarseConnectivity");
+template <class SC, class LO, class GO, class NO> void NavierStokesAssFE<SC, LO, GO, NO>::assembleCoarseConnectivity() {
+    if (this->getFEType(0).compare("P1") && this->getFEType(0).compare("Q1")) {
+        TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error,
+                                   "Another assembly routine must be called before calling assembleCoarseConnectivity");
         auto FEType = this->getFEType(1);
         auto pressureMap = this->getDomain(1)->getMapUnique();
-        MatrixPtr_Type C(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
-        this->feFactory_->assemblyBDStabilization( this->dim_, FEType, C, true);
+        MatrixPtr_Type C(
+            new Matrix_Type(this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow()));
+        this->feFactory_->assemblyBDStabilization(this->dim_, FEType, C, true);
         C->resumeFill();
-        C->fillComplete( pressureMap, pressureMap );
-        this->system_->addBlock( C, 1, 1 );
+        C->fillComplete(pressureMap, pressureMap);
+        this->system_->addBlock(C, 1, 1);
+    }
 }
 
-template <class SC, class LO, class GO, class NO>
-void NavierStokesAssFE<SC, LO, GO, NO>::removeCoarseConnectivity() {
-        TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error, "Calling removeCoarseConnectivity() on an empty system_ does not make sense.");
-        auto pressureMap = this->getDomain(1)->getMapUnique();
-        MatrixPtr_Type C(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
-        C->fillComplete( pressureMap, pressureMap );
-        this->system_->addBlock( C, 1, 1 );
+template <class SC, class LO, class GO, class NO> void NavierStokesAssFE<SC, LO, GO, NO>::removeCoarseConnectivity() {
+    if (this->getFEType(0).compare("P1") && this->getFEType(0).compare("Q1")) {
+        TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error,
+                                   "Calling removeCoarseConnectivity() on an empty system_ does not make sense.");
+        this->system_->removeBlock(1, 1);
         this->setBoundariesSystem();
+    }
 }
-
 }
 #endif

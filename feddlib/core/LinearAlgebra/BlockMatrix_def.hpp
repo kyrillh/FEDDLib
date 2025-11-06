@@ -1,6 +1,8 @@
 #ifndef BLOCKMATRIX_DEF_hpp
 #define BLOCKMATRIX_DEF_hpp
 #include "BlockMatrix_decl.hpp"
+#include <Teuchos_TestForException.hpp>
+#include <stdexcept>
 /*!
  Definition of BlockMatrix
 
@@ -115,6 +117,12 @@ void BlockMatrix<SC,LO,GO,NO>::addBlock(const MatrixPtr_Type& matrix, int i, int
     blockMap_->addBlock( matrix->getMap(), i);
 }
 
+template <class SC, class LO, class GO, class NO>
+void BlockMatrix<SC,LO,GO,NO>::removeBlock(int i, int j){
+    TEUCHOS_TEST_FOR_EXCEPTION(!blockExists(i,j), std::runtime_error, "Trying to remove a block that doesn't exist")
+    blockMatrix_[i][j] = Teuchos::null;
+    blockMap_->removeBlock(i);
+}
 template <class SC, class LO, class GO, class NO>
 void BlockMatrix<SC,LO,GO,NO>::merge(){
     if ( mergedMap_.is_null() ) {

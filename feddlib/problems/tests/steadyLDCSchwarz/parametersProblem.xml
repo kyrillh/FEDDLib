@@ -1,6 +1,6 @@
 <ParameterList name="Problem">
     <ParameterList name="Parameter">
-        <Parameter name="Dimension" type="int" value="3" />
+        <Parameter name="Dimension" type="int" value="2" />
         <Parameter name="Discretization Velocity" type="string" value="P2" /><!--P1-P1
         with NavierStokesAssFE does not work because of checkFE. -->
         <Parameter name="Discretization Pressure" type="string" value="P1" />
@@ -31,6 +31,7 @@
     <ParameterList name="General">
         <Parameter name="Linearization" type="string" value="NonLinearSchwarz" /> <!-- FixedPoint,
         Newton, NOX-->
+        <Parameter name="Preconditioner Method" type="string" value="Monolithic" />
         <Parameter name="ParaViewExport" type="bool" value="true" />
     </ParameterList>
 </ParameterList>

@@ -701,11 +701,12 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
         auto tempMat = Teuchos::rcp_const_cast<const Xpetra::Matrix<SC, LO, GO, NO>>(toXpetraMatrix(problem.system_->getMergedMatrix()->getTpetraMatrixNonConst()));
         coarseOperator->resetMatrix(tempMat);
         coarseOperator->initialize();
-        coarseOperator->compute();
         // Remove the coarse connectivity again once we are done
         problem.removeCoarseConnectivity();
+        problem.setBoundariesSystem();
         tempMat = Teuchos::rcp_const_cast<const Xpetra::Matrix<SC, LO, GO, NO>>(toXpetraMatrix(problem.system_->getMergedMatrix()->getTpetraMatrixNonConst()));
         coarseOperator->resetMatrix(tempMat);
+        coarseOperator->compute();
 
         if (problem.getParameterList()->sublist("Exporter").get("Export coarse functions", false)) {
             coarseOperator->exportCoarseBasis();
