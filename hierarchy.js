@@ -57,9 +57,11 @@ var hierarchy =
     ] ],
     [ "FEDD::ExporterTxt", "classFEDD_1_1ExporterTxt.html", null ],
     [ "FEDD::FE< SC, LO, GO, NO >", "classFEDD_1_1FE.html", null ],
+    [ "FEDD::FindDataset_t", "structFEDD_1_1FindDataset__t.html", null ],
     [ "FEDD::FiniteElement", "classFEDD_1_1FiniteElement.html", null ],
     [ "FEDD::HDF5Export< SC, LO, GO, NO >", "classFEDD_1_1HDF5Export.html", null ],
     [ "FEDD::HDF5Import< SC, LO, GO, NO >", "classFEDD_1_1HDF5Import.html", null ],
+    [ "FEDD::HDF5Toolbox< SC, LO, GO, NO >", "classFEDD_1_1HDF5Toolbox.html", null ],
     [ "FEDD::Helper", "classFEDD_1_1Helper.html", null ],
     [ "FEDD::InputToOutputMappingClass< SC, LO, GO, NO >", "classFEDD_1_1InputToOutputMappingClass.html", null ],
     [ "FEDD::InputToOutputMappingClass< default_sc, default_lo, default_go, default_no >", "classFEDD_1_1InputToOutputMappingClass.html", [
@@ -154,5 +156,7 @@ var hierarchy =
     ] ],
     [ "TaskOptions", "structTaskOptions.html", null ],
     [ "TaskReturn", "structTaskReturn.html", null ],
-    [ "FEDD::TimeSteppingTools", "classFEDD_1_1TimeSteppingTools.html", null ]
+    [ "FEDD::ThyraTypedefs< SC >", "structFEDD_1_1ThyraTypedefs.html", null ],
+    [ "FEDD::TimeSteppingTools", "classFEDD_1_1TimeSteppingTools.html", null ],
+    [ "FEDD::TpetraTypedefs< SC, LO, GO, NO >", "structFEDD_1_1TpetraTypedefs.html", null ]
 ];

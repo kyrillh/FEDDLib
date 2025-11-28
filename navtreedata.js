@@ -49,12 +49,13 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "AABBTree_8hpp_source.html",
-"classFEDD_1_1AABBTree.html",
-"classFEDD_1_1BCBuilder.html#a4028cf583fa3693387fe390f51724f94",
-"classFEDD_1_1Elements.html#a4c85e1340ba638ad26cb83ce881b4789",
-"classFEDD_1_1Matrix.html#a95c7c48f147c7be5246e02aa362e4766",
-"classFEDD_1_1NonLinElasAssFE.html#a879befcfb269ad30d640d9a5c64fcecb",
-"dir_9133d0e4f1a454cd4b7c7e68643393ac.html"
+"classAssembleFELaplace.html",
+"classFEDD_1_1BCBuilder.html#a2d2b064c1a50b229c015bd599a66c7f1",
+"classFEDD_1_1Elasticity.html",
+"classFEDD_1_1Matrix.html#a3544253497eaa0762112537546138fcf",
+"classFEDD_1_1NavierStokes.html#a0fce4c4a70d3fb5833f3f3100346718c",
+"classMeshpartitioner.html",
+"tdato_8h_source.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';
