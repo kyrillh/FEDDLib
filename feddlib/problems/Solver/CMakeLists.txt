@@ -2,9 +2,9 @@ set(Solver_HEADERS
     Solver/DAESolverInTime_decl.hpp
     Solver/DAESolverInTime_def.hpp
     Solver/DAESolverInTime.hpp
-    Solver/LinearSolver_decl.hpp
-    Solver/LinearSolver_def.hpp
-    Solver/LinearSolver.hpp
+	Solver/LinearSolver.hpp
+	Solver/LinearSolver_decl.hpp
+	Solver/LinearSolver_def.hpp
     Solver/NonLinearSolver.hpp
     Solver/NonLinearSolver_decl.hpp
     Solver/NonLinearSolver_def.hpp
@@ -24,7 +24,7 @@ set(Solver_HEADERS
     CACHE INTERNAL "")
 
 set(Solver_SOURCES
-    Solver/DAESolverInTime.cpp
+	Solver/DAESolverInTime.cpp
     Solver/LinearSolver.cpp
     Solver/NonLinearSolver.cpp
     Solver/Preconditioner.cpp
@@ -37,10 +37,5 @@ set(Solver_SOURCES
 set(LOCAL_HEADERS)
 foreach(INC ${Solver_HEADERS})
   string(REPLACE "Solver/" "" LOCAL_INC ${INC})
-  set(LOCAL_HEADERS ${LOCAL_HEADERS} ${LOCAL_INC})
+  append_set(LOCAL_HEADERS ${LOCAL_INC})
 endforeach()
-
-install(
-  FILES ${LOCAL_HEADERS}
-  DESTINATION "${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}/feddlib/problems/Solver"
-  COMPONENT ${PACKAGE_NAME})

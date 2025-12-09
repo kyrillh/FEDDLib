@@ -1,7 +1,5 @@
 #ifndef MESHUNSTRUCTURED_def_hpp
 #define MESHUNSTRUCTURED_def_hpp
-#include "MeshUnstructured_decl.hpp"
-#include "feddlib/core/LinearAlgebra/MultiVector_def.hpp"
 
 /*!
  Definition of MeshUnstructured
@@ -50,7 +48,7 @@ delimiter_(" ")
 }
 
 template <class SC, class LO, class GO, class NO>
-MeshUnstructured<SC,LO,GO,NO>::MeshUnstructured(CommConstPtr_Type comm, int volumeID):
+MeshUnstructured<SC,LO,GO,NO>::MeshUnstructured(CommConstPtr_Type comm, int volumeID,std::string meshUnit, bool convertToCM):
 Mesh<SC,LO,GO,NO>(comm),
 meshInterface_(),
 volumeID_(volumeID),
@@ -61,7 +59,9 @@ delimiter_(" ")
 {
     edgeElements_ = Teuchos::rcp( new EdgeElements_Type() );
     surfaceEdgeElements_ = Teuchos::rcp( new Elements_Type() );
-        
+    meshUnitRead_ = meshUnit;
+    meshUnitFinal_ = meshUnit; 
+    convertToCM_ = convertToCM;
 }
 
 template <class SC, class LO, class GO, class NO>
@@ -971,7 +971,7 @@ void MeshUnstructured<SC,LO,GO,NO>::setMeshFileName(std::string meshFileName, st
 /*!
 
  \brief Not all edges are marked with a flag in the beginning. In order to set the correct flags to new points we assign the edge flag of the edge they originated from, similar to the function determineEdgeFlagP2, but this function uses the edgeMap. 
-	@todo Elaboration of Flag Assignment Process. i.e. Lowest flag is used etc.
+	TODO: Elaboration of Flag Assignment Process. i.e. Lowest flag is used etc.
 
 */
 
@@ -1466,9 +1466,27 @@ void MeshUnstructured<SC,LO,GO,NO>::readNodes(){
 
     FEDD_TIMER_START(pointsTimer," : MeshReader : Set Points not partitioned");
 
+    double scale=1.0;
+    if(convertToCM_){
+        if(meshUnitRead_ == "mm")
+            scale = pow(10,-1);
+        else if(meshUnitRead_ == "cm")
+            scale = pow(10,0);
+        else if(meshUnitRead_ == "dm")
+            scale = pow(10,1);
+        else if(meshUnitRead_ == "m")
+            scale = pow(10,2);
+        else
+            TEUCHOS_TEST_FOR_EXCEPTION(true, std::runtime_error, "Meshunstr: Read Nodes() - convertToSI_ = true, but read unit unknown, please check.");
+
+        meshUnitFinal_ = "cm"; 
+        if(this->comm_->getRank() == 0)   
+            std::cout << " Transforming the mesh with original unit " << meshUnitRead_ << " to unit cm." << std::endl;
+    }
+
     for (int i=0; i<numNodes_ ; i++) {
         for (int j=0; j<this->getDimension(); j++)
-            this->pointsRep_->at(i).at(j) = nodes[this->getDimension()*i+j];
+            this->pointsRep_->at(i).at(j) = scale*nodes[this->getDimension()*i+j];
         
         this->bcFlagRep_->at(i) = nodeFlags[i];
     }

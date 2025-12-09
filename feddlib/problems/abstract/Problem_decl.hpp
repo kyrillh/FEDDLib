@@ -1,26 +1,18 @@
 #ifndef PROBLEM_DECL_hpp
 #define PROBLEM_DECL_hpp
 
-#include "feddlib/problems/problems_config.h"
-#include "feddlib/core/FEDDCore.hpp"
-#include "feddlib/core/FE/FE.hpp"
-#include "feddlib/core/FE/Domain.hpp"
-#include "feddlib/core/General/BCBuilder.hpp"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
-#include "feddlib/problems/Solver/Preconditioner.hpp"
-#include "feddlib/core/LinearAlgebra/BlockMultiVector.hpp"
-#include "feddlib/core/LinearAlgebra/BlockMatrix.hpp"
-#include "feddlib/problems/Solver/LinearSolver.hpp"
-
 #include <Stratimikos_DefaultLinearSolverBuilder.hpp>
 #include <Thyra_PreconditionerBase.hpp>
-#include <Thyra_LinearOpBase_decl.hpp>
 
 #include "git_version.h"
 
 #ifdef FEDD_HAVE_TEKO
 #include <Teko_StratimikosFactory.hpp>
 #endif
+
+#include "feddlib/problems/problems_config.h"
+#include "feddlib/core/FEDDCore.hpp"
+#include "feddlib/core/LinearAlgebra/Matrix.hpp"
 
 /*!
  Declaration of Problem
@@ -33,6 +25,16 @@
 
 
 namespace FEDD {
+template<class SC_, class LO_, class GO_, class NO_>
+class BlockMultiVector;
+template<class SC_, class LO_, class GO_, class NO_>
+class BCBuilder;
+template<class SC_, class LO_, class GO_, class NO_>
+class BlockMatrix;
+template<class SC_, class LO_, class GO_, class NO_>
+class Domain;
+template<class SC_, class LO_, class GO_, class NO_>
+class FE;
 template<class SC_, class LO_, class GO_, class NO_>
 class Preconditioner;
 
@@ -91,8 +93,9 @@ public:
     typedef std::vector<std::string> string_vec_Type;
 
     typedef Teuchos::RCP<Thyra::PreconditionerBase<SC> > ThyraPrecPtr_Type;
-    typedef Teuchos::RCP<Thyra::LinearOpBase<SC> > ThyraLinOpPtr_Type;
-    
+    using ThyraTypes = ThyraTypedefs<SC>;
+    using ThyraLinOpPtr_Type = Teuchos::RCP<typename ThyraTypes::ThyraOp_Type>;
+
     Problem(CommConstPtr_Type comm);
 
     Problem(ParameterListPtr_Type &parameterList, CommConstPtr_Type comm);
@@ -101,9 +104,14 @@ public:
 
     virtual void info() = 0;
 
+    /*! If we have a Nonlinear Problem, we need the opportunity to know about the current Newton Step -> override in NonLinearProblem
+        Default implementation just returns 0
+    */
+    virtual int getNonlinearIterationStep() const{return 0; } 
+
     void infoProblem();
 
-    void infoParameter();
+    void infoParameter(bool full = true, std::string ="empty");
 
     void addVariable(const DomainConstPtr_Type &domain, std::string FEType, std::string name, int dofsPerNode);
 
@@ -217,6 +225,7 @@ public:
     
     void addParemeterRhs(double para){ parasSourceFunc_.push_back( para ); }
     
+    void changeAssFELinearization(std::string linearization); // Function in order to be able to change e.g. from FixedPoint to Newton linearization on element level
 
 	double calculateH1Norm(MultiVectorConstPtr_Type mv, int blockId1=0, int blockId2=0, int domainInd=0); // Function that calculates H1 Error in the 'mv * K * mv' sense, with K beeing the Stiffness Matrix
 

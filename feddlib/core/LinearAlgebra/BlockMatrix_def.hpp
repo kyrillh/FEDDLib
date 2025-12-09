@@ -1,8 +1,5 @@
 #ifndef BLOCKMATRIX_DEF_hpp
 #define BLOCKMATRIX_DEF_hpp
-#include "BlockMatrix_decl.hpp"
-#include <Teuchos_TestForException.hpp>
-#include <stdexcept>
 /*!
  Definition of BlockMatrix
 

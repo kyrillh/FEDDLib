@@ -1,11 +1,5 @@
 #ifndef MAP_DEF_hpp
 #define MAP_DEF_hpp
-#include "Map_decl.hpp"
-#include <Teuchos_ConfigDefs.hpp>
-#include <Teuchos_Describable.hpp>
-#include <Teuchos_FancyOStream.hpp>
-#include <Teuchos_VerboseObject.hpp>
-#include <Teuchos_VerbosityLevel.hpp>
 
 /*!
  Declaration of Map
@@ -120,14 +114,6 @@ typename Map<LO,GO,NO>::TpetraMapConstPtr_Type Map<LO,GO,NO>::getTpetraMap() con
     TEUCHOS_TEST_FOR_EXCEPTION(map_.is_null(),std::runtime_error,"getTpetraMap(): map_ is null.");
     
     return map_;
-}
-
-template < class LO, class GO, class NO>
-typename Map<LO,GO,NO>::XpetraMapConstPtr_Type Map<LO,GO,NO>::getXpetraMap() {
-    
-    TEUCHOS_TEST_FOR_EXCEPTION(mapX_.is_null(),std::runtime_error,"getXpetraMap(): map_ is null.");
-    
-    return mapX_;
 }
 
 template < class LO, class GO, class NO>
@@ -313,171 +299,7 @@ Teuchos::RCP<Map<LO,GO,NO> > Map<LO,GO,NO>::buildUniqueMap( tuple_intint_Type ra
     return  map;
 
 }
-/*
-    
-template <class LO,class GO,class NO>
-Teuchos::RCP<Map<LO,GO,NO> > Map<LO,GO,NO>::buildUniqueMap( int numFreeProcs ) const
-{
-    TEUCHOS_TEST_FOR_EXCEPTION(map_.is_null(),std::runtime_error,"map is null.");
-    if (numFreeProcs==0) {
-        
-        Teuchos::RCP<Xpetra::Vector<GO,LO,GO,NO> > myIndices = Xpetra::VectorFactory<GO,LO,GO,NO>::Build(map_);
-        myIndices->putScalar(map_->getComm()->getRank()+1);
-
-        Teuchos::RCP<Xpetra::Map<LO,GO,NO> > linearMap = Xpetra::MapFactory<LO,GO,NO>::Build(map_->getMaxAllGlobalIndex()+1,0,map_->getComm());
-        Teuchos::RCP<Xpetra::Vector<GO,LO,GO,NO> > globalIndices = Xpetra::VectorFactory<GO,LO,GO,NO>::Build(linearMap);
-
-        // map_ is the repeated map so it is not one-to-one
-        Teuchos::RCP<Xpetra::Vector<GO, LO, GO, NO>> myIndices = Xpetra::VectorFactory<GO, LO, GO, NO>::Build(map_);
-        // Store the index of the current rank for each local point
-        myIndices->putScalar(map_->getComm()->getRank() + 1);
-
-        // Build Xpetra map with Xpetra-defined contigous uniform distribution i.e. each ranks global index list is a
-        // strictly increasing interval and each rank owns same number of global indices (the latter seems to be
-        // unfulfilled) linearMap is one-to-one
-        Teuchos::RCP<Xpetra::Map<LO, GO, NO>> linearMap =
-            Xpetra::MapFactory<LO, GO, NO>::Build(map_->lib(), map_->getMaxAllGlobalIndex() + 1, 0, map_->getComm());
-
-        // Build vector distributed according to linearMap
-        Teuchos::RCP<Xpetra::Vector<GO, LO, GO, NO>> globalIndices =
-            Xpetra::VectorFactory<GO, LO, GO, NO>::Build(linearMap);
-
-        // Build importers between maps Build(sourceMap, targetMap)
-        // Importer redistributes from unique to possibly non-unique
-        // Vice versa for exporter
-        Teuchos::RCP<Xpetra::Import<LO, GO, NO>> importer = Xpetra::ImportFactory<LO, GO, NO>::Build(map_, linearMap);
-        Teuchos::RCP<Xpetra::Import<LO, GO, NO>> importer2 = Xpetra::ImportFactory<LO, GO, NO>::Build(linearMap, map_);
-
-        // Insert new values that do not already exist
-        // Now globalIndices contains an index of one of the ranks that owns that entry in map_ (recall map_ is
-        // non-unique) i.e. globalIndices is one way of splitting up the points between the ranks unequally
-        globalIndices->doImport(*myIndices, *importer, Xpetra::INSERT);
-        myIndices->putScalar(0);
-        // Add values to existing values (all zero)
-        myIndices->doImport(*globalIndices, *importer2, Xpetra::ADD);
-
-        // Build vector of points that have been uniquely assigned to this rank
-        Teuchos::Array<GO> uniqueVector;
-        for (unsigned i = 0; i < myIndices->getLocalLength(); i++) {
-            if (myIndices->getData(0)[i] == map_->getComm()->getRank() + 1) {
-                uniqueVector.push_back(map_->getGlobalElement(i));
-            }
-        }
-        Teuchos::RCP<Xpetra::Map<LO,GO,NO> > mapXpetra = Xpetra::MapFactory<LO,GO,NO>::Build(-1,uniqueVector(),0,map_->getComm());
-        Teuchos::RCP<Map<LO,GO,NO> > map = Teuchos::rcp( new Map<LO,GO,NO>( mapXpetra ) );
-        return  map;
-    }
-    else{
-        Teuchos::RCP<Xpetra::Vector<GO,LO,GO,NO> > myIndices = Xpetra::VectorFactory<GO,LO,GO,NO>::Build(map_);
-        myIndices->putScalar(map_->getComm()->getRank()+1);
-        GO maxGID = map_->getMaxAllGlobalIndex();
-        int numAvailableRanks = map_->getComm()->getSize() - numFreeProcs;
-        int numElementsForAvailRank =
-            (int)(((maxGID + 1) / numAvailableRanks) + 100. * std::numeric_limits<double>::epsilon());
-
-        int remainingElement = maxGID + 1 - numAvailableRanks * numElementsForAvailRank;
-        bool hasOneMoreElement = false;
-
-        if (remainingElement > map_->getComm()->getRank()) {
-            numElementsForAvailRank++;
-            hasOneMoreElement = true;
-        }
-
-        if (map_->getComm()->getRank() + 1 > map_->getComm()->getSize() - numFreeProcs) {
-            numElementsForAvailRank = 0;
-        }
-
-        Teuchos::Array<GO> myElements(numElementsForAvailRank);
-        GO offset = numElementsForAvailRank * map_->getComm()->getRank();
-        if (!hasOneMoreElement) {
-            offset += remainingElement;
-        }
-        for (int i = 0; i < myElements.size(); i++) {
-            myElements[i] = i + offset;
-        }
-
-        Teuchos::RCP<Xpetra::Map<LO,GO,NO> > linearMapAvailRanks = Xpetra::MapFactory<LO,GO,NO>::Build( Teuchos::OrdinalTraits<GO>::invalid(), myElements(), 0, map_->getComm() );
-        
-        Teuchos::RCP<Xpetra::Vector<GO,LO,GO,NO> > globalIndices = Xpetra::VectorFactory<GO,LO,GO,NO>::Build(linearMapAvailRanks);
-        
-        Teuchos::RCP<Xpetra::Import<LO,GO,NO> > importer = Xpetra::ImportFactory<LO,GO,NO>::Build( map_, linearMapAvailRanks );
-        Teuchos::RCP<Xpetra::Import<LO,GO,NO> > importer2 = Xpetra::ImportFactory<LO,GO,NO>::Build( linearMapAvailRanks, map_ );
-        
-        globalIndices->doImport(*myIndices,*importer,Xpetra::INSERT);
-        
-        myIndices->putScalar(0);
-        myIndices->doImport(*globalIndices, *importer2, Xpetra::ADD);
-
-        Teuchos::Array<GO> uniqueVector;
-        for (unsigned i = 0; i < myIndices->getLocalLength(); i++) {
-            if (myIndices->getData(0)[i] == map_->getComm()->getRank() + 1) {
-                uniqueVector.push_back(map_->getGlobalElement(i));
-            }
-        }
-        Teuchos::RCP<Xpetra::Map<LO,GO,NO> > mapXpetra = Xpetra::MapFactory<LO,GO,NO>::Build(-1,uniqueVector(),0,map_->getComm());
-        Teuchos::RCP<Map<LO,GO,NO> > map = Teuchos::rcp( new Map<LO,GO,NO>( mapXpetra ) );
-        return  map;
-    }
-}
-
-// merge with above function
-template <class LO, class GO, class NO>
-Teuchos::RCP<Map<LO, GO, NO>> Map<LO, GO, NO>::buildUniqueMap(tuple_intint_Type rankRange) const {
-    TEUCHOS_TEST_FOR_EXCEPTION(map_.is_null(), std::runtime_error, "map is null.");
-    int rank = map_->getComm()->getRank();
-    Teuchos::RCP<Xpetra::Vector<GO, LO, GO, NO>> myIndices = Xpetra::VectorFactory<GO, LO, GO, NO>::Build(map_);
-    myIndices->putScalar(rank + 1);
-    GO maxGID = map_->getMaxAllGlobalIndex();
-
-    int numAvailableRanks = std::get<1>(rankRange) - std::get<0>(rankRange) + 1;
-    int numElementsForAvailRank =
-        (int)(((maxGID + 1) / numAvailableRanks) + 100. * std::numeric_limits<double>::epsilon());
-
-    int remainingElement = maxGID + 1 - numAvailableRanks * numElementsForAvailRank;
-    bool hasOneMoreElement = false;
-
-    if (remainingElement > map_->getComm()->getRank() - std::get<0>(rankRange)) {
-        numElementsForAvailRank++;
-        hasOneMoreElement = true;
-    }
-    if (map_->getComm()->getRank() < std::get<0>(rankRange) || map_->getComm()->getRank() > std::get<1>(rankRange))
-        numElementsForAvailRank = 0;
-
-    Teuchos::Array<GO> myElements(numElementsForAvailRank);
-    GO offset = numElementsForAvailRank * (map_->getComm()->getRank() - std::get<0>(rankRange));
-
-    if (!hasOneMoreElement)
-        offset += remainingElement;
-
-    for (int i = 0; i < myElements.size(); i++)
-        myElements[i] = i + offset;
-
-    
-    Teuchos::RCP<Xpetra::Map<LO,GO,NO> > linearMapAvailRanks = Xpetra::MapFactory<LO,GO,NO>::Build( Teuchos::OrdinalTraits<GO>::invalid(), myElements(), 0, map_->getComm() );
-    
-    Teuchos::RCP<Xpetra::Vector<GO,LO,GO,NO> > globalIndices = Xpetra::VectorFactory<GO,LO,GO,NO>::Build(linearMapAvailRanks);
-    
-    Teuchos::RCP<Xpetra::Import<LO,GO,NO> > importer = Xpetra::ImportFactory<LO,GO,NO>::Build( map_, linearMapAvailRanks );
-    Teuchos::RCP<Xpetra::Import<LO,GO,NO> > importer2 = Xpetra::ImportFactory<LO,GO,NO>::Build( linearMapAvailRanks, map_ );
-    
-    globalIndices->doImport(*myIndices,*importer,Xpetra::INSERT);
-    
-    myIndices->putScalar(0);
-    myIndices->doImport(*globalIndices, *importer2, Xpetra::ADD);
-
-    Teuchos::Array<GO> uniqueVector;
-    for (unsigned i = 0; i < myIndices->getLocalLength(); i++) {
-        if (myIndices->getData(0)[i] == map_->getComm()->getRank() + 1) {
-            uniqueVector.push_back(map_->getGlobalElement(i));
-        }
-    }
-    Teuchos::RCP<Xpetra::Map<LO,GO,NO> > mapXpetra = Xpetra::MapFactory<LO,GO,NO>::Build(-1,uniqueVector(),0,map_->getComm());
-    Teuchos::RCP<Map<LO,GO,NO> > map = Teuchos::rcp( new Map<LO,GO,NO>( mapXpetra ) );
-
-    return  map;
-
-}*/
-    
+   
 
 }
 #endif

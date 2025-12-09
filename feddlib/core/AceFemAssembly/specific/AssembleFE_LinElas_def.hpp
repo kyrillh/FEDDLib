@@ -1,7 +1,6 @@
 #ifndef ASSEMBLEFE_LINELAS_DEF_hpp
 #define ASSEMBLEFE_LINELAS_DEF_hpp
 
-#include "AssembleFE_LinElas_decl.hpp"
 #include "feddlib/core/AceFemAssembly/AceInterface/NeoHookQuadraticTets.hpp"
 #include <vector>
 #include <iostream>
@@ -27,7 +26,6 @@ AssembleFE<SC,LO,GO,NO>(flag, nodesRefConfig, params,tuple)
 	E_ = this->params_->sublist("Parameter").get("E",3500.0); // the last value is the dafault value, in case no parameter is set
     //lambda_ = this->params_->sublist("Parameter").get("lambda",1.);
     poissonRatio_ = this->params_->sublist("Parameter").get("Poisson Ratio",0.4e-0);
-
 	/// Tupel construction follows follwing pattern:
 	/// string: Physical Entity (i.e. Velocity) , string: Discretisation (i.e. "P2"), int: Degrees of Freedom per Node, int: Number of Nodes per element)
 	FEType_ = std::get<1>(this->diskTuple_->at(0)); // FEType of Disk

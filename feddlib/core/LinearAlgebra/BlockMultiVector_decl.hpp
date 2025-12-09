@@ -1,12 +1,12 @@
 #ifndef BlockMultiVector_DECL_hpp
 #define BlockMultiVector_DECL_hpp
 
-#include "feddlib/core/FEDDCore.hpp"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
-#include "BlockMap.hpp"
-#include "MultiVector.hpp"
 #include <Thyra_ProductVectorSpaceBase.hpp>
 #include <Thyra_DefaultProductMultiVector_decl.hpp>
+#include <Teuchos_BLAS_types.hpp>
+
+#include "feddlib/core/FEDDCore.hpp"
+
 /*!
  Declaration of BlockMultiVector
  
@@ -139,6 +139,8 @@ public:
 
     MultiVectorConstPtr_Type getMergedVector();
 
+    /// @brief Return the merged vector as non-const vector. This finds application in pressure projection
+    /// @return 
     // TODO: [KH] 29.07.25 delete this as soon as FROSch migrates to Tpetra. 
     // Only need this because the toXpetra() function cannot handle RCP<const MultiVector>.
     MultiVectorPtr_Type getMergedVectorNonConst();

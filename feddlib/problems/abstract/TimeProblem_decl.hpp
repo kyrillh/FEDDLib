@@ -3,11 +3,10 @@
 
 #include "feddlib/problems/problems_config.h"
 #include "feddlib/core/FEDDCore.hpp"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
-#include "feddlib/problems/Solver/Preconditioner.hpp"
-#include "NonLinearProblem.hpp"
-//#include "LinearProblem.hpp"
+#include "Problem.hpp"
+
 #include <Thyra_StateFuncModelEvaluatorBase.hpp>
+
 /*!
  Declaration of TimeProblem
 
@@ -24,11 +23,10 @@
  */
 namespace FEDD {
 template<class SC_, class LO_, class GO_, class NO_>
-class NonLinearProblem;
-template<class SC_, class LO_, class GO_, class NO_>
-//class LinearProblem;
-//template<class SC_, class LO_, class GO_, class NO_>
 class Preconditioner;
+template<class SC_, class LO_, class GO_, class NO_>
+class NonLinearProblem;
+
 template <class SC = default_sc, class LO = default_lo, class GO = default_go, class NO = default_no>
 class TimeProblem: public Thyra::StateFuncModelEvaluatorBase<SC>  {
 
@@ -68,21 +66,22 @@ public:
 
     typedef NonLinearProblem<SC,LO,GO,NO> NonLinProb_Type;
     typedef Teuchos::RCP<NonLinProb_Type> NonLinProbPtr_Type;
-//    typedef LinearProblem<SC,LO,GO,NO> LinearProblem_Type;
 
     typedef typename Problem_Type::Preconditioner_Type Preconditioner_Type;
     typedef typename Problem_Type::PreconditionerPtr_Type PreconditionerPtr_Type;
 
     typedef typename Problem_Type::LinSolverBuilderPtr_Type LinSolverBuilderPtr_Type;
 
-    typedef typename NonLinProb_Type::TpetraMatrix_Type TpetraMatrix_Type;
-    
-    typedef typename NonLinProb_Type::ThyraVecSpace_Type ThyraVecSpace_Type;
-    typedef typename NonLinProb_Type::ThyraVec_Type ThyraVec_Type;
-    typedef typename NonLinProb_Type::ThyraOp_Type ThyraOp_Type;
+    using TpetraTypes = TpetraTypedefs<SC,LO,GO,NO>;
+    using TpetraMatrix_Type = typename TpetraTypes::TpetraMatrix_Type;
+    using TpetraOp_Type = typename TpetraTypes::TpetraOp_Type;
+
+    using ThyraTypes = ThyraTypedefs<SC>;
+    using ThyraVecSpace_Type = typename ThyraTypes::ThyraVecSpace_Type;
+    using ThyraVec_Type = typename ThyraTypes::ThyraVec_Type;
     typedef Thyra::BlockedLinearOpBase<SC> ThyraBlockOp_Type;
-    
-    typedef typename NonLinProb_Type::TpetraOp_Type TpetraOp_Type;
+
+    using ThyraOp_Type = typename ThyraTypes::ThyraOp_Type;    
         
     TimeProblem(Problem_Type& problem, CommConstPtr_Type comm);
     
@@ -182,15 +181,15 @@ public:
     BlockMultiVectorPtrArray_Type getSolutionAllPreviousTimestep();
 
     BlockMatrixPtr_Type getMassSystem();
-    
+
     ParameterListPtr_Type getParameterList();
-        
+
     void assembleSourceTerm( double time=0. );
 
     BlockMultiVectorPtr_Type getSourceTerm( );
-        
+
     bool hasSourceTerm() const;
-    
+
     CommConstPtr_Type getComm() const{return  comm_;}
 
     LinSolverBuilderPtr_Type getLinearSolverBuilder() const;
@@ -198,20 +197,20 @@ public:
     void getValuesOfInterest( vec_dbl_Type& values );
 
     void computeValuesOfInterestAndExport();
-    
+
     void updateTime( double time ){ time_ = time;}
 
     void addToRhs(BlockMultiVectorPtr_Type x);
-    
+
     ProblemPtr_Type problem_;
     CommConstPtr_Type comm_;
-    
+
     mutable BlockMatrixPtr_Type systemCombined_;
     mutable BlockMatrixPtr_Type systemMass_;
     mutable SmallMatrix<double> timeParameters_;
     SmallMatrix<int>        timeStepDef_;
     SmallMatrix<double>     massParameters_;
-    
+
     FEFacPtr_Type feFactory_;
 //    bool					boolLinearProblem_;
     int                     dimension_;

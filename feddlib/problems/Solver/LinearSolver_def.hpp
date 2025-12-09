@@ -1,6 +1,10 @@
 #ifndef LinearSolver_DEF_hpp
 #define LinearSolver_DEF_hpp
-#include "LinearSolver_decl.hpp"
+
+#include "feddlib/problems/abstract/TimeProblem.hpp"
+#include "feddlib/problems/Solver/Preconditioner.hpp"
+#include "feddlib/core/LinearAlgebra/BlockMatrix.hpp"
+
 /*!
  Definition of LinearSolver
 
@@ -58,7 +62,7 @@ int LinearSolver<SC,LO,GO,NO>::solve(TimeProblem_Type* problem, BlockMultiVector
         TEUCHOS_TEST_FOR_EXCEPTION( true, std::logic_error, "Teko not found! Build Trilinos with Teko.");
 #endif
     }
-    else if(!type.compare("FaCSI") || type == "FaCSI-Teko" )
+    else if(!type.compare("FaCSI") || type == "FaCSI-Teko" || type == "FaCSI-Blck" )
         its = solveBlock( problem, rhs, type );
     else if (type=="Diagonal" || type=="Triangular" || type=="PCD" || type=="LSC")
         its = solveBlock( problem, rhs, type );
@@ -90,10 +94,22 @@ int LinearSolver<SC,LO,GO,NO>::solveMonolithic(Problem_Type* problem, BlockMulti
 
     problem->getLinearSolverBuilder()->setParameterList(pListThyraSolver);
     Teuchos::RCP<Thyra::LinearOpWithSolveFactoryBase<SC> > lowsFactory = problem->getLinearSolverBuilder()->createLinearSolveStrategy("");
-
+        
+    // Add the possibility to completly skip the preconditioner rebuild after a specific number of Newton steps
     bool iterativeSolve = !pListThyraSolver->get("Linear Solver Type", "Belos").compare("Belos");
     if (iterativeSolve && (type != "MonolithicConstPrec" || problem->getPreconditioner()->getThyraPrec().is_null()))
-        problem->setupPreconditioner("Monolithic");
+    {   // Analogous to NOX as Nonlinear Solver in NonLinearProblem_def.hpp, we want to have the option to reuse the Preconditioner after the first X Newtonsteps
+        // We have the option to reuse the preconditioner after the first X Newtonsteps
+        int newtonLimit = problem->getParameterList()->sublist("Parameter").get("newtonLimit",2);
+        if(problem->getNonlinearIterationStep() < newtonLimit || problem->getParameterList()->sublist("Parameter").get("Rebuild Preconditioner every Newton Iteration",true) )
+        {
+            problem->setupPreconditioner("Monolithic");
+        }
+        else{ // Reusing preconditioner
+            if (verbose)
+                std::cout << "LinearSolver<SC,LO,GO,NO>::solveMonolithic(Problem_Type* problem, BlockMultiVectorPtr_Type rhs, std::string type ):: Skipping preconditioner reconstruction" << std::endl;
+        }
+    }
 
     if (!pListThyraSolver->sublist("Preconditioner Types").sublist("FROSch").get("Level Combination","Additive").compare("Multiplicative")) {
         pListThyraSolver->sublist("Preconditioner Types").sublist("FROSch").set("Only apply coarse",true);
@@ -193,7 +209,7 @@ int LinearSolver<SC,LO,GO,NO>::solveMonolithic(TimeProblem_Type* timeProblem, Bl
         if (verbose)
             std::cout << status << std::endl;
         problem->getSolution()->fromThyraMultiVector(thyraX);
-        // problem->getSolution()->writeMM("solution");
+
         if ( !pListThyraSolver->get("Linear Solver Type","Belos").compare("Belos") ){
             its = status.extraParameters->get("Belos/Iteration Count",0);
             double achievedTol = status.extraParameters->get("Belos/Achieved Tolerance",-1.);

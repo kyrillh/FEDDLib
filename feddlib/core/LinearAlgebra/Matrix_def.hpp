@@ -1,6 +1,5 @@
 #ifndef MATRIX_DEF_hpp
 #define MATRIX_DEF_hpp
-#include "Matrix_decl.hpp"
 
 /*!
  Defintion of Matrix
@@ -12,7 +11,7 @@
  */
 
 namespace FEDD {
-//using namespace Teuchos;
+
 template <class SC, class LO, class GO, class NO>
 Matrix<SC,LO,GO,NO>::Matrix():
 	matrix_()
@@ -152,9 +151,6 @@ typename  Matrix<SC,LO,GO,NO>::TpetraMapConstPtr_Type Matrix<SC,LO,GO,NO>::getMa
 
 template <class SC, class LO, class GO, class NO>
 Teuchos::RCP<const Thyra::LinearOpBase<SC> > Matrix<SC,LO,GO,NO>::getThyraLinOp() const{
-    //Xpetra::CrsMatrixWrap<SC,LO,GO,NO>& crsWrapMatrix = dynamic_cast<Xpetra::CrsMatrixWrap<SC,LO,GO,NO>&>(*matrix_);
-    //return Xpetra::ThyraUtils<SC,LO,GO,NO>::toThyra(crsWrapMatrix.getCrsMatrix());
-
     Teuchos::RCP<Thyra::LinearOpBase<SC> > thyraOp = Teuchos::null;
 
     Teuchos::RCP<Tpetra::CrsMatrix<SC,LO,GO,NO> >  tpCrsMat = matrix_; // = xTpCrsMat->getTpetra_CrsMatrixNonConst();
@@ -170,8 +166,7 @@ Teuchos::RCP<const Thyra::LinearOpBase<SC> > Matrix<SC,LO,GO,NO>::getThyraLinOp(
 
 template <class SC, class LO, class GO, class NO>
 Teuchos::RCP<Thyra::LinearOpBase<SC> > Matrix<SC,LO,GO,NO>::getThyraLinOpNonConst() {
-    //Xpetra::CrsMatrixWrap<SC,LO,GO,NO>& crsWrapMatrix = dynamic_cast<Xpetra::CrsMatrixWrap<SC,LO,GO,NO>&>(*matrix_);
-    //return Teuchos::rcp_const_cast<Thyra::LinearOpBase<SC> > (Xpetra::ThyraUtils<SC,LO,GO,NO>::toThyra(crsWrapMatrix.getCrsMatrix()) );
+  
     Teuchos::RCP<Thyra::LinearOpBase<SC> > thyraOp = Teuchos::null;
 
     Teuchos::RCP<Tpetra::CrsMatrix<SC,LO,GO,NO> >  tpCrsMat = matrix_; // = xTpCrsMat->getTpetra_CrsMatrixNonConst();
@@ -374,11 +369,6 @@ void Matrix<SC,LO,GO,NO>::scale(const SC& alpha) {
 template <class SC, class LO, class GO, class NO>
 void Matrix<SC,LO,GO,NO>::writeMM(std::string fileName) const{
     TEUCHOS_TEST_FOR_EXCEPTION( matrix_.is_null(), std::runtime_error,"Matrix in writeMM is null.");
-    //typedef Tpetra::CrsMatrix<SC,LO,GO,NO> TpetraCrsMatrix;
-    //typedef Teuchos::RCP<TpetraCrsMatrix> TpetraCrsMatrixPtr;
-
-    //Xpetra::CrsMatrixWrap<SC,LO,GO,NO>& crsOp = dynamic_cast<Xpetra::CrsMatrixWrap<SC,LO,GO,NO>&>(*matrix_);
-    //Xpetra::TpetraCrsMatrix<SC,LO,GO,NO>& xTpetraMat = dynamic_cast<Xpetra::TpetraCrsMatrix<SC,LO,GO,NO>&>(*crsOp.getCrsMatrix());
 
     TpetraMatrixPtr_Type tpetraMat = matrix_;
 
@@ -394,12 +384,8 @@ void Matrix<SC,LO,GO,NO>::addMatrix(SC alpha, const MatrixPtr_Type &B, SC beta){
         B->resumeFill();
     TEUCHOS_TEST_FOR_EXCEPTION( B->isLocallyIndexed(), std::runtime_error,"Matrix in is locally index but Trilinos Tpetra cannot add to a matrix at this stage.");
     
-    //const Tpetra::CrsMatrix<SC,LO,GO,NO>& tpA = Xpetra::Helpers<SC,LO,GO,NO>::Op2TpetraCrs(A);
-    //Tpetra::CrsMatrix<SC,LO,GO,NO>& tpB = Xpetra::Helpers<SC,LO,GO,NO>::Op2NonConstTpetraCrs(B);
-
     Tpetra::MatrixMatrix::Add(*matrix_, false, alpha, *B->matrix_, beta);
 
-    //Xpetra::MatrixMatrix<SC,LO,GO,NO>::TwoMatrixAdd( *matrix_, false, alpha, *B->matrix_, beta );
 }
 
 template <class SC, class LO, class GO, class NO>

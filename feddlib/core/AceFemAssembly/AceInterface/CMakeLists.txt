@@ -1,4 +1,4 @@
-SET(AceFemAssemblyAceInterface_HEADERS
+set(AceFemAssemblyAceInterface_HEADERS
 	AceFemAssembly/AceInterface/NeoHookQuadraticTets.hpp
   AceFemAssembly/AceInterface/NeoHookQuadraticTets2.hpp
     AceFemAssembly/AceInterface/NeoHookQuadraticTets3.hpp
@@ -21,7 +21,7 @@ SET(AceFemAssemblyAceInterface_HEADERS
   AceFemAssembly/AceInterface/sensitivity.h
 CACHE INTERNAL "")
 
-SET(AceFemAssemblyAceInterface_SOURCES
+set(AceFemAssemblyAceInterface_SOURCES
 	AceFemAssembly/AceInterface/NeoHookQuadraticTets.f
   AceFemAssembly/AceInterface/NeoHookQuadraticTets_cbinding.f
   AceFemAssembly/AceInterface/NeoHookQuadraticTets2.f
@@ -33,14 +33,8 @@ SET(AceFemAssemblyAceInterface_SOURCES
 	AceFemAssembly/AceInterface/SMSUtility.f
 CACHE INTERNAL "")
 
-SET(LOCAL_HEADERS)
-FOREACH(INC ${AceFemAssemblyAceInterface_HEADERS})
-  STRING(REPLACE "AceInterface/" "" LOCAL_INC ${INC})
-  SET(LOCAL_HEADERS ${LOCAL_HEADERS} ${LOCAL_INC})
-ENDFOREACH()
-
-INSTALL(
-  FILES ${LOCAL_HEADERS}
-  DESTINATION "${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}/feddlib/core/AceFemAssembly/AceInterface"
-  COMPONENT ${PACKAGE_NAME}
-)
+set(LOCAL_HEADERS)
+foreach(INC ${AceFemAssemblyAceInterface_HEADERS})
+  string(REPLACE "AceFemAssembly/AceInterface/" "" LOCAL_INC ${INC})
+  append_set(LOCAL_HEADERS ${LOCAL_INC})
+endforeach()

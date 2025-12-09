@@ -1,23 +1,17 @@
 #ifndef Preconditioner_DECL_hpp
 #define Preconditioner_DECL_hpp
 
-#include "feddlib/problems/problems_config.h"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
-#include "feddlib/core/General/ExporterParaView.hpp"
-#include "feddlib/problems/abstract/MinPrecProblem.hpp"
-#include "feddlib/problems/abstract/Problem.hpp"
-#include "feddlib/problems/abstract/TimeProblem.hpp"
-#include "feddlib/problems/Solver/PrecOpFaCSI.hpp"
-#include "feddlib/problems/Solver/PrecBlock2x2.hpp"
-#include "feddlib/problems/specific/LaplaceBlocks.hpp"
-#include "feddlib/problems/specific/FSI.hpp"
-#include "Xpetra_ThyraUtils.hpp"
+#include <Xpetra_ThyraUtils.hpp>
 #include <Thyra_PreconditionerBase.hpp>
 #include <Thyra_DefaultPreconditioner_decl.hpp>
 #include <Stratimikos_FROSch_def.hpp>
-//#include <Stratimikos_FROSch_def.hpp> // hier werden schon alle FROSch VK eingebunden
+
+#include "feddlib/core/General/DefaultTypeDefs.hpp"
+#include "feddlib/core/General/ExporterParaView.hpp"
+#include "feddlib/problems/problems_config.h"
+
 #ifdef FEDD_HAVE_TEKO
-#include "Teko_StratimikosFactory.hpp"
+#include <Teko_StratimikosFactory.hpp>
 #include <Teko_StaticRequestCallback.hpp>
 #endif
 
@@ -144,6 +138,15 @@ public:
 
     bool isPreconditionerComputed() const{return precondtionerIsBuilt_;}
 
+    /// @brief Setting pressure projection from specific prolem to be used in preconditioner
+    /// @param pressureProjection 
+    void setPressureProjection(BlockMultiVectorPtr_Type pressureProjection) const;
+
+    /// @brief Getting pressure projection used in preconditioner
+    /// @return pressure projection
+    BlockMultiVectorPtr_Type getPressureProjection(){return pressureProjection_;}
+
+
 private:
     ThyraPrecPtr_Type thyraPrec_;
     bool precondtionerIsBuilt_;
@@ -184,6 +187,9 @@ private:
     
     mutable MatrixPtr_Type pcdOperatorMatrixPtr_; // PCD
     mutable ThyraLinOpConstPtr_Type pcdOperator_; // PCD
+
+    // Block multivector for pressure projection
+    mutable BlockMultiVectorPtr_Type pressureProjection_;
 
     // For construction in the FEDDLib
     MinPrecProblemPtr_Type probLaplace_;

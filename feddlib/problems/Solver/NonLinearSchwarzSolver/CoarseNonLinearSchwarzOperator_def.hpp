@@ -7,6 +7,9 @@
 #include "feddlib/core/LinearAlgebra/Map_decl.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector_decl.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"
+#include "feddlib/core/General/ExporterParaView.hpp"
+#include "feddlib/core/FE/Domain.hpp"
+#include "feddlib/core/General/BCBuilder.hpp"
 #include <FROSch_IPOUHarmonicCoarseOperator_decl.hpp>
 #include <FROSch_Tools_decl.hpp>
 #include <FROSch_Types.h>

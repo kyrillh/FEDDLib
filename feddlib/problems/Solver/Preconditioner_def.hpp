@@ -11,11 +11,24 @@
 
 #ifndef Preconditioner_DEF_hpp
 #define Preconditioner_DEF_hpp
-#include "Preconditioner_decl.hpp"
 #include <Thyra_DefaultZeroLinearOp_decl.hpp>
 #ifdef FEDD_HAVE_IFPACK2
 #include <Thyra_Ifpack2PreconditionerFactory_def.hpp>
 #endif
+
+#include "feddlib/core/FE/Domain.hpp"
+#include "feddlib/core/General/BCBuilder.hpp"
+
+#include "feddlib/problems/abstract/MinPrecProblem.hpp"
+#include "feddlib/problems/abstract/Problem.hpp"
+#include "feddlib/problems/abstract/TimeProblem.hpp"
+#include "feddlib/problems/specific/NavierStokes.hpp"
+#include "feddlib/problems/specific/NonLinElasticity.hpp"
+#include "feddlib/problems/specific/LinElas.hpp"
+#include "feddlib/problems/specific/Geometry.hpp"
+#include "feddlib/problems/specific/FSI.hpp"
+#include "feddlib/problems/Solver/PrecOpFaCSI.hpp"
+#include "feddlib/problems/Solver/PrecBlock2x2.hpp"
 
 /*!
  Definition of Preconditioner
@@ -98,6 +111,11 @@ precFactory_()
 {
     timeProblem_.reset( problem, false );
 
+    // We need to ensure that already set information is upheld
+    if(!problem->getUnderlyingProblem()->preconditioner_->getPressureProjection().is_null()){
+        setPressureProjection(problem->getUnderlyingProblem()->preconditioner_->getPressureProjection());
+    }
+
     if(!problem->getUnderlyingProblem()->preconditioner_->getVelocityMassMatrix().is_null()){
         setVelocityMassMatrix(problem->getUnderlyingProblem()->preconditioner_->getVelocityMassMatrix());
     }
@@ -149,11 +167,16 @@ void Preconditioner<SC,LO,GO,NO>::initializePreconditioner( std::string type )
             initPreconditionerBlock( );
         
     }
-    else if (type == "Teko" || type == "FaCSI-Teko"){
+    else if (type == "Teko" || type == "FaCSI-Teko" || type == "FaCSI-Block"){
         TEUCHOS_TEST_FOR_EXCEPTION( true, std::logic_error, "Please construct the Teko precondtioner completely.");
     }
     else
         TEUCHOS_TEST_FOR_EXCEPTION( true, std::logic_error, "Unkown preconditioner type for initialization.");
+}
+
+template <class SC,class LO,class GO,class NO>
+void Preconditioner<SC,LO,GO,NO>::setPressureProjection(BlockMultiVectorPtr_Type pressureProjection) const{
+    pressureProjection_ = pressureProjection;
 }
 
 template <class SC,class LO,class GO,class NO>
@@ -254,7 +277,7 @@ void Preconditioner<SC,LO,GO,NO>::buildPreconditioner( std::string type )
         TEUCHOS_TEST_FOR_EXCEPTION( true, std::logic_error, "Teko not found! Build Trilinos with Teko.");
 #endif
     }
-    else if( type == "FaCSI" || type == "FaCSI-Teko" ){
+    else if( type == "FaCSI" || type == "FaCSI-Teko" || type == "FaCSI-Block" ){
         buildPreconditionerFaCSI( type );
     }
     else if(type == "Triangular" || type == "Diagonal" || type == "PCD" || type == "LSC"){
@@ -454,6 +477,21 @@ void Preconditioner<SC,LO,GO,NO>::buildPreconditionerMonolithic( )
             pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").set("DofOrdering Vector",dofOrderings);
             pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").set("DofsPerNode Vector",dofsPerNodeVector);
             pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").set( "Mpi Ranks Coarse",parameterList->sublist("General").get("Mpi Ranks Coarse",0) );
+
+            // This a pressure projection is only used for saddle point problems. We check here if we have a pressure projection set and if we have more than one block or one block with dim dof per node (i.e. fluid problem)
+            // This is unfortunately called pressure correction in FROSch, but is a projection!
+            if(!pressureProjection_.is_null() && ( dofsPerNodeVector.size() > 1 || dofsPerNodeVector[0] == 1) ){
+                pressureProjection_->merge(); // We merge the projection vector, as FROSch does not distinguish between blocks
+
+                Teuchos::RCP< Tpetra::MultiVector<SC,LO,GO,NO> > vectorTpetra =  pressureProjection_->getMergedVectorNonConst()->getTpetraMultiVectorNonConst();
+                Teuchos::RCP< Xpetra::TpetraMultiVector<SC,LO,GO,NO> > vectorXpetraTpetra = Teuchos::rcp(new Xpetra::TpetraMultiVector<SC,LO,GO,NO>(vectorTpetra));
+                Teuchos::RCP< Xpetra::MultiVector<SC,LO,GO,NO> > vectorXpetra = Teuchos::rcp_dynamic_cast<Xpetra::MultiVector<SC,LO,GO,NO>>(vectorXpetraTpetra);
+
+                pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").sublist("AlgebraicOverlappingOperator").set("Projection",vectorXpetra);
+                // In case of pressure correction we set the parameter in the parameterlist to true
+                pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").sublist("AlgebraicOverlappingOperator").set("Use Pressure Correction", true);
+                pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").sublist("AlgebraicOverlappingOperator").set("Use Local Pressure Correction", true);
+            }
 
             /*  We need to set the ranges of local problems and the coarse problem here.
                 When using an unstructured decomposition of, e.g., FSI, with 2 domains, which might be on a different set of ranks, we need to set the following parameters for FROSch here. Similarly we need to set a coarse rank problem range. For now, we use extra coarse ranks only for structured decompositions
@@ -987,11 +1025,16 @@ void Preconditioner<SC,LO,GO,NO>::buildPreconditionerFaCSI( std::string type )
 
     ParameterListPtr_Type pLFluid = steadyFSI->getFluidProblem()->getParameterList();
     
+ 
     std::string precTypeFluid;
     if (type == "FaCSI")
         precTypeFluid = "Monolithic";
-    else if (type == "FaCSI-Teko")
+    else if (type == "FaCSI-Teko"){
         precTypeFluid = "Teko";
+    }
+    else if (type == "FaCSI-Block"){
+        precTypeFluid = parameterList->sublist("Parameter Fluid").get("Preconditioner Type", "PCD");
+    }
 
     CommConstPtr_Type comm = timeProblem_->getComm();
     bool useFluidPreconditioner = parameterList->sublist("General").get("Use Fluid Preconditioner", true);
@@ -1007,37 +1050,35 @@ void Preconditioner<SC,LO,GO,NO>::buildPreconditionerFaCSI( std::string type )
             std::cout << "\t### FaCSI standard ###" << std::endl;
     }
 
-    
-    //Setup fluid problem
-    if (probFluid_.is_null()){
-        probFluid_ = Teuchos::rcp( new MinPrecProblem_Type( pLFluid, timeProblem_->getComm() ) );
-        DomainConstPtr_vec_Type fluidDomains = steadyFSI->getFluidProblem()->getDomainVector();
-        probFluid_->initializeDomains( fluidDomains );
-        probFluid_->initializeLinSolverBuilder( timeProblem_->getLinearSolverBuilder() );
-    }
-    
     BlockMatrixPtr_Type fluidSystem = Teuchos::rcp( new BlockMatrix_Type(2) );
     
     // We build copies of the fluid system with homogenous Dirichlet boundary conditions on the interface
-    MatrixPtr_Type f = Teuchos::rcp(new Matrix_Type( fsiSystem->getBlock(0,0) ) );
-    MatrixPtr_Type bt = Teuchos::rcp(new Matrix_Type( fsiSystem->getBlock(0,1) ) );
-    MatrixPtr_Type b = Teuchos::rcp(new Matrix_Type( fsiSystem->getBlock(1,0) ) );
-    MatrixPtr_Type c;
-    if ( fsiSystem->blockExists(1,1) )
-        c = Teuchos::rcp(new Matrix_Type( fsiSystem->getBlock(1,1) ) );
-    fluidSystem->addBlock( f, 0, 0 );
-    fluidSystem->addBlock( bt, 0, 1 );
-    fluidSystem->addBlock( b, 1, 0 );
-    if ( fsiSystem->blockExists(1,1) )
-        fluidSystem->addBlock( c, 1, 1 );
+    // MatrixPtr_Type f = Teuchos::rcp(new Matrix_Type( fsiSystem->getBlock(0,0) ) );
+   
+    // MatrixPtr_Type bt = Teuchos::rcp(new Matrix_Type( fsiSystem->getBlock(0,1) ) );
+    // MatrixPtr_Type b = Teuchos::rcp(new Matrix_Type( fsiSystem->getBlock(1,0) ) );
+    // MatrixPtr_Type c;
+    // if ( fsiSystem->blockExists(1,1) )
+    //     c = Teuchos::rcp(new Matrix_Type( fsiSystem->getBlock(1,1) ) );
+    // fluidSystem->addBlock( f, 0, 0 );
+    // fluidSystem->addBlock( bt, 0, 1 );
+    // fluidSystem->addBlock( b, 1, 0 );
+    // if ( fsiSystem->blockExists(1,1) )
+    //     fluidSystem->addBlock( c, 1, 1 );
 
-    faCSIBCFactory_->setSystem( fluidSystem );
 
-    probFluid_->initializeSystem( fluidSystem );
+   // We want to use the underlying Navier-Stokes Fluid Problem to build the preconditioner
+    // We start with the fluid time problem
+    Teuchos::RCP< TimeProblem<SC,LO,GO,NO> > fluidProblem = steadyFSI->problemTimeFluid_;
+    fluidProblem->combineSystems(); // Build combined system || check if even is neccesary
+    fluidProblem->setBoundariesSystem(); // Set boundaries || might also need fsi bc
+    // The we cast the timeproblem to original Navier-Stokes problem and use it to build preconditioner
+    Teuchos::RCP< NavierStokes<SC,LO,GO,NO> > fluidProblemSteady = Teuchos::rcp_dynamic_cast<NavierStokes<SC,LO,GO,NO> >(fluidProblem->getUnderlyingProblem());
 
-    probFluid_->setupPreconditioner( precTypeFluid );
+    faCSIBCFactory_->setSystem( fluidProblem->getSystemCombined() );
 
-    precFluid_ = probFluid_->getPreconditioner()->getThyraPrec()->getNonconstUnspecifiedPrecOp();
+    fluidProblemSteady->setupPreconditioner( precTypeFluid );
+    precFluid_ = fluidProblemSteady->getPreconditioner()->getThyraPrec()->getNonconstUnspecifiedPrecOp();
 
     //Setup structure problem
     bool nonlinearStructure = false;
@@ -1198,6 +1239,7 @@ void Preconditioner<SC,LO,GO,NO>::buildPreconditionerBlock2x2( )
     CommConstPtr_Type comm;
     ProblemPtr_Type steadyProblem;
     if (!timeProblem_.is_null()){
+        std::cout << "buildPreconditionerBlock2x2 timeProblem_ " << std::endl;
         parameterList = timeProblem_->getParameterList();
         system = timeProblem_->getSystemCombined();
         comm = timeProblem_->getComm();

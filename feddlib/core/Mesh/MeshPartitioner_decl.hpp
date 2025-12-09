@@ -1,12 +1,6 @@
 #ifndef MeshPartitioner_decl_hpp
 #define MeshPartitioner_decl_hpp
 
-#include "feddlib/core/FE/Domain.hpp"
-#include "feddlib/core/FE/FiniteElement.hpp"
-#include "feddlib/core/FEDDCore.hpp"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
-#include <Teuchos_ArrayRCPDecl.hpp>
-
 #define FEDD_HAVE_METIS
 #define FEDD_HAVE_PARMETIS
 
@@ -16,6 +10,10 @@
 #ifdef FEDD_HAVE_PARMETIS
 #include <parmetis.h>
 #endif
+
+#include "feddlib/core/FEDDCore.hpp"
+#include "feddlib/core/General/DefaultTypeDefs.hpp"
+#include "feddlib/core/FE/Domain.hpp"
 
 /*!
  Defintion of MeshPartitioner
@@ -81,7 +79,7 @@ public:
 		\brief Main Function of partitioner. Called with volume ID in order to set in case it is not equal to ten. Always make sure the volumeID corresponds to the
 		highest given flag. 
 	*/
-    void readAndPartition(int volumeID=10);
+    void readAndPartition(int volumeID=10, std::string meshUnit = "cm", bool convertToCM = false);
         
     /*! \brief Only used in 3D to set the edges as subelements to surfaces*/
     void setEdgesToSurfaces(int meshNumber);

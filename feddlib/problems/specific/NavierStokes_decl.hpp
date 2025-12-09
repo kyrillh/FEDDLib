@@ -1,11 +1,13 @@
 #ifndef NAVIERSTOKES_decl_hpp
 #define NAVIERSTOKES_decl_hpp
-#include "feddlib/problems/abstract/NonLinearProblem.hpp"
-#include <Xpetra_ThyraUtils.hpp>
-#include <Xpetra_CrsMatrixWrap.hpp>
+
 #include <Thyra_ProductVectorBase.hpp>
 #include <Thyra_PreconditionerBase.hpp>
 #include <Thyra_ModelEvaluatorBase_decl.hpp>
+
+#include "feddlib/problems/abstract/NonLinearProblem.hpp"
+
+
 /*!
  Declaration of Navier-Stokes
 
@@ -16,7 +18,10 @@
  */
 
 namespace FEDD{
-
+template <class SC, class LO, class GO, class NO>
+class Matrix;
+template <class SC, class LO, class GO, class NO>
+class BCBuilder;
 
 template <class SC = default_sc, class LO = default_lo, class GO = default_go, class NO = default_no>
 class NavierStokes : public NonLinearProblem<SC,LO,GO,NO>  {
@@ -38,6 +43,7 @@ public:
     typedef typename Problem_Type::MultiVectorPtr_Type MultiVectorPtr_Type;
     typedef typename Problem_Type::MultiVectorConstPtr_Type MultiVectorConstPtr_Type;
     typedef typename Problem_Type::BlockMultiVectorPtr_Type BlockMultiVectorPtr_Type;
+    typedef typename Problem_Type::BlockMultiVector_Type BlockMultiVector_Type;
 
     typedef typename Problem_Type::Domain_Type Domain_Type;
     typedef typename Problem_Type::DomainPtr_Type DomainPtr_Type;
@@ -95,10 +101,12 @@ public:
     
     void computeValuesOfInterestAndExport() override {}
 
+
 //    virtual void assembleExternal( std::string type ){}
     /*####################*/
 
     mutable MatrixPtr_Type 	A_;
+    mutable MatrixPtr_Type 	NNZ_A_;
     vec_int_ptr_Type pressureIDsLoc;
     MultiVectorPtr_Type u_rep_;
 
@@ -115,6 +123,7 @@ public:
     void removeCoarseConnectivity() override;
 private:
 
+    void establishNNZPattern() const;
 
 };
 }

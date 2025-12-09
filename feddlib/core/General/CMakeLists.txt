@@ -1,4 +1,4 @@
-SET(General_HEADERS
+set(General_HEADERS
 	General/BCBuilder.hpp
 	General/BCBuilder_decl.hpp
 	General/BCBuilder_def.hpp
@@ -20,27 +20,27 @@ SET(General_HEADERS
 	General/HDF5Export.hpp
 	General/HDF5Export_decl.hpp
 	General/HDF5Export_def.hpp
-	General/HDF5Import.cpp
-	General/HDF5Export.cpp
+	General/HDF5Toolbox_def.hpp
+	General/HDF5Toolbox_decl.hpp
+	General/HDF5Toolbox.hpp
 CACHE INTERNAL "")
 
-SET(General_SOURCES
+set(General_SOURCES
 	General/BCBuilder.cpp
     General/ExporterParaView.cpp
     General/ExporterTxt.cpp
 	General/InputToOutputMappingClass.cpp
 	General/DifferentiableFuncClass.cpp
+	General/HDF5Toolbox.cpp
+	General/HDF5Import.cpp
+	General/HDF5Export.cpp
 CACHE INTERNAL "")
 
+# --- Add HDF5 includes ---
+tribits_include_directories(${TPL_HDF5_INCLUDE_DIRS})
 
-SET(LOCAL_HEADERS)
-FOREACH(INC ${General_HEADERS})
-  STRING(REPLACE "General/" "" LOCAL_INC ${INC})
-  SET(LOCAL_HEADERS ${LOCAL_HEADERS} ${LOCAL_INC})
-ENDFOREACH()
-
-INSTALL(
-  FILES ${LOCAL_HEADERS}
-  DESTINATION "${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}/feddlib/core/General"
-  COMPONENT ${PACKAGE_NAME}
-)
+set(LOCAL_HEADERS)
+foreach(INC ${General_HEADERS})
+  string(REPLACE "General/" "" LOCAL_INC ${INC})
+  append_set(LOCAL_HEADERS ${LOCAL_INC})
+endforeach()

@@ -1,6 +1,5 @@
 #ifndef NAVIERSTOKES_def_hpp
 #define NAVIERSTOKES_def_hpp
-#include "NavierStokes_decl.hpp"
 
 #ifndef NAVIER_STOKES_START
 #define NAVIER_STOKES_START(A,S) Teuchos::RCP<Teuchos::TimeMonitor> A = Teuchos::rcp(new Teuchos::TimeMonitor(*Teuchos::TimeMonitor::getNewTimer(std::string("Assemble Navier-Stokes:") + std::string(S))));
@@ -9,6 +8,10 @@
 #ifndef NAVIER_STOKES_STOP
 #define NAVIER_STOKES_STOP(A) A.reset();
 #endif
+
+#include "feddlib/core/LinearAlgebra/Matrix.hpp"
+#include "feddlib/core/General/BCBuilder.hpp"
+#include "feddlib/problems/Solver/Preconditioner.hpp"
 
 /*!
  Definition of Navier-Stokes
@@ -51,7 +54,9 @@ double OneFunction(double* x, int* parameter)
 }
 
 void dummyFuncRhs(double* x, double* res, double* parameters){
-    if(parameters[0]==2)
+
+    // parameters[1] contains the surface flag, parameter[0] contains the inlet flag
+    if(parameters[1]==parameters[0])
         res[0]=1;
     else
         res[0] = 0.;
@@ -129,12 +134,24 @@ u_rep_()
         || !this->parameterList_->sublist("Teko Parameters").sublist("Preconditioner Types").sublist("Teko").get("Inverse Type","SIMPLE").compare("PCD") 
         || !this->parameterList_->sublist("Teko Parameters").sublist("Preconditioner Types").sublist("Teko").get("Inverse Type","SIMPLE").compare("LSC-Pressure-Laplace") )
     { 
+
+        int flagOutlet = this->parameterList_->sublist("General").get("Flag Outlet Fluid", 3);
+        int flagInterface = this->parameterList_->sublist("General").get("Flag Interface", 6);
+
         this->bcFactoryPCD_.reset(new BCBuilder<SC,LO,GO,NO>( ));
-        this->bcFactoryPCD_->addBC(zeroDirichletBC, 3, 0, Teuchos::rcp_const_cast<Domain_Type>( domainPressure ), "Dirichlet", 1);
+        this->bcFactoryPCD_->addBC(zeroDirichletBC, flagOutlet, 0, Teuchos::rcp_const_cast<Domain_Type>( domainPressure ), "Dirichlet", 1);
+        // this->bcFactoryPCD_->addBC(zeroDirichletBC, flagInterface, 0, Teuchos::rcp_const_cast<Domain_Type>( domainPressure ), "Dirichlet", 1);
+        // this->bcFactoryPCD_->addBC(zeroDirichletBC, 9, 0, Teuchos::rcp_const_cast<Domain_Type>( domainPressure ), "Dirichlet", 1);
+        // this->bcFactoryPCD_->addBC(zeroDirichletBC, 10, 0, Teuchos::rcp_const_cast<Domain_Type>( domainPressure ), "Dirichlet", 1);
+
     } 
 
     if(this->parameterList_->sublist("General").get("Augmented Lagrange",false))  
         augmentedLagrange_ = true;
+
+    // Establish the non zero pattern of the system matrix in (0,0) block
+    NNZ_A_.reset(new Matrix_Type( this->getDomain(0)->getMapVecFieldUnique(), this->getDomain(0)->getDimension() * this->getDomain(0)->getApproxEntriesPerRow() ) );
+    establishNNZPattern();
 
 }
 
@@ -207,6 +224,32 @@ void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
     this->system_->addBlock( A_, 0, 0 );
     assembleDivAndStab();
     
+    // If pressure projection is used, we need to assemble the projection vector here
+    // Only for P2-P1 or Q2-Q1 elements in monolithic case
+    if(this->parameterList_->sublist("Parameter").get("Use Pressure Projection",false) && (!this->getFEType(0).compare("P2") || (!this->getFEType(0).compare("Q2") && !this->getFEType(1).compare("Q1"))) && !this->parameterList_->sublist("General").get("Preconditioner Method","Monolithic").compare("Monolithic")){ 
+        // Projection vector a: \int p dx, for pressure component and 0 for velocity.
+        BlockMultiVectorPtr_Type projection(new BlockMultiVector_Type (2));
+
+        MultiVectorPtr_Type P(new MultiVector_Type( this->getDomain(1)->getMapUnique(), 1 ) );
+
+        this->feFactory_->assemblyPressureMeanValue( this->dim_,this->getFEType(1),P) ;
+
+        // Velocity component is set to zero, such that the projection vector only influences the pressure part
+        MultiVectorPtr_Type vel0(new MultiVector_Type( this->getDomain(0)->getMapVecFieldUnique(), 1 ) );
+        vel0->putScalar(0.);
+
+        // Adding components to projection vector 
+        projection->addBlock(vel0,0);
+        projection->addBlock(P,1);
+
+        // Setting projection vector in preconditioner to later pass to parameterlist in FROSch
+        this->getPreconditionerConst()->setPressureProjection( projection );    
+
+        if (this->verbose_)
+            std::cout << "\n 'Use pressure correction' was set to 'true'. This requires a version of Trilinos that includes pressure correction in the FROSch_OverlappingOperator!!" << std::endl;  
+
+    }
+
 #ifdef FEDD_HAVE_TEKO
     if ( !this->parameterList_->sublist("General").get("Preconditioner Method","Monolithic").compare("Teko") 
     || !this->parameterList_->sublist("General").get("Preconditioner Method","Diagonal").compare("PCD")
@@ -279,10 +322,15 @@ void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
 
             // --------------------------------------------------------------------------------------------
             // Pressure Laplace matrix
+            SC density = this->parameterList_->sublist("Parameter").get("Density",1.); // Ap need to be scaled with viscosity
+
             MatrixPtr_Type Lp(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
             this->feFactory_->assemblyLaplace( this->dim_, this->domain_FEType_vec_.at(1), 2, Lp, true );
+            // Lp->resumeFill();
+            // Lp->scale(density);
+            // Lp->fillComplete();
             Ap_.reset(new Matrix_Type(Lp)); // Setting Ap_ as Lp without any BC
-        
+            
             // Adding boundary information to pressure Laplace operator
             BlockMatrixPtr_Type bcBlockMatrix(new BlockMatrix_Type (1));
             bcBlockMatrix->addBlock(Lp,0,0);
@@ -303,13 +351,18 @@ void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
             MatrixPtr_Type Ap2(new Matrix_Type( Ap_) );
 
             SC kinVisco = this->parameterList_->sublist("Parameter").get("Viscosity",1.); // Ap need to be scaled with viscosity
+
             Ap2->resumeFill();
             Ap2->scale(kinVisco);
+            // Ap2->scale(density);
             Ap2->fillComplete(); 
             
             
             MatrixPtr_Type K_robin(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getDimension() * this->getDomain(1)->getApproxEntriesPerRow()*2 ) );          
-            vec_dbl_Type funcParameter(1,kinVisco);
+            int flagInlet =this->parameterList_->sublist("General").get("Flag Inlet Fluid", 2);
+
+            vec_dbl_Type funcParameter(1,flagInlet);
+            funcParameter.push_back(0.0); // Dummy for flag
             this->feFactory_->assemblySurfaceRobinBC(this->dim_, this->getDomain(1)->getFEType(),this->getDomain(0)->getFEType(),u_rep_,K_robin, funcParameter, dummyFuncRhs,this->parameterList_);
             K_robin->addMatrix(-1.,Kp,1.); // adding robin boundary condition to to Kp
             
@@ -317,6 +370,7 @@ void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
             Ap2->addMatrix(1.,Kp,1.); // adding advection to diffusion
             AdvPressure->addMatrix(1.,Kp,1.); // adding advection to diffusion
             
+            // Kp->scale(density);
             Kp->fillComplete();
 
             bcBlockMatrix->addBlock(Kp,0,0);
@@ -347,12 +401,15 @@ void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
     }
 
     if (this->verbose_)
-        std::cout << " Call Reassemble FixedPoint and Newton to allocate the Matrix pattern " << std::endl;
+        std::cout << " Allocate the Matrix pattern " << std::endl;
     
-    // This was moved here from 'create_W_op'.
-    // Here it will definetly be called before create_W_op and create_W_prec is called.
-    this->reAssemble("FixedPoint");
-    this->reAssemble("Newton");
+    // After the constant matrices are assembled, we establish the matrix pattern for the (0,0) block for the advection term
+    MatrixPtr_Type A_withNNZ = Teuchos::rcp( new Matrix_Type( this->getDomain(0)->getMapVecFieldUnique(), this->getDomain(0)->getDimension() * this->getDomain(0)->getApproxEntriesPerRow() ) );
+    A_->addMatrix(1.,A_withNNZ,0.); // We add the previously computed laplacian
+    NNZ_A_->addMatrix(1.,A_withNNZ,1.); // We add the zero matrix containing the nnz pattern
+
+    A_withNNZ->fillComplete( this->getDomain(0)->getMapVecFieldUnique(), this->getDomain(0)->getMapVecFieldUnique());
+    this->system_->addBlock( A_withNNZ, 0, 0 ); // We replace the (0,0) block with the new matrix containing the laplacian and the nnz pattern for the advection term
 
     if (this->verbose_)
         std::cout << "done -- " << std::endl;
@@ -362,11 +419,11 @@ void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
 
 template<class SC,class LO,class GO,class NO>
 void NavierStokes<SC,LO,GO,NO>::updateConvectionDiffusionOperator() const{
-    
+
     if ( !this->parameterList_->sublist("Teko Parameters").sublist("Preconditioner Types").sublist("Teko").get("Inverse Type","SIMPLE").compare("PCD") 
                 || !this->parameterList_->sublist("General").get("Preconditioner Method","Monolithic").compare("PCD")) 
     {
-    
+        std::cout << "NavierStokes<SC,LO,GO,NO>::updateConvectionDiffusionOperator() set to TRUE" << std::endl;
         NAVIER_STOKES_START(ReassemblePCD," Reassembling Matrix for PCD ");
       
         MultiVectorConstPtr_Type u = this->solution_->getBlock(0);
@@ -382,6 +439,8 @@ void NavierStokes<SC,LO,GO,NO>::updateConvectionDiffusionOperator() const{
         // Diffusion component: \nu * \Delta
         MatrixPtr_Type Ap2(new Matrix_Type( Ap_ ) ); // We use A_p which we already stored
         SC kinVisco = this->parameterList_->sublist("Parameter").get("Viscosity",1.);
+        SC density = this->parameterList_->sublist("Parameter").get("Density",1.);
+
         Ap2->resumeFill();
         Ap2->scale(kinVisco);
         Ap2->fillComplete();
@@ -389,7 +448,10 @@ void NavierStokes<SC,LO,GO,NO>::updateConvectionDiffusionOperator() const{
         // ---------------------
         // Robin boundary
         MatrixPtr_Type Kext(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getDimension() * this->getDomain(1)->getApproxEntriesPerRow()*2 ) );          
-        vec_dbl_Type funcParameter(1,kinVisco);
+        int flagInlet =this->parameterList_->sublist("General").get("Flag Inlet Fluid", 2);
+        vec_dbl_Type funcParameter(1,flagInlet);
+        funcParameter.push_back(0.0); // Dummy for flag
+
         this->feFactory_->assemblySurfaceRobinBC(this->dim_, this->getDomain(1)->getFEType(),this->getDomain(0)->getFEType(),u_rep_,Kext, funcParameter, dummyFuncRhs,this->parameterList_);
         Kext->addMatrix(-1.,Fp,1.); // adding advection to diffusion
         
@@ -398,6 +460,7 @@ void NavierStokes<SC,LO,GO,NO>::updateConvectionDiffusionOperator() const{
         AdvPressure->addMatrix(1.,Fp,1.); // adding advection to diffusion
 
         // Finally if we deal with a transient problem we additionally add the Mass term 1/delta t M_p
+        ///TODO: Extract parameters from timestepping tool.
         if(this->parameterList_->sublist("Timestepping Parameter").get("dt",-1.)> -1 ){ // In case we have a timeproblem
             MatrixPtr_Type Mp2(new Matrix_Type( Mp_ ) );
             double dt = this->parameterList_->sublist("Timestepping Parameter").get("dt",-1.);
@@ -409,9 +472,11 @@ void NavierStokes<SC,LO,GO,NO>::updateConvectionDiffusionOperator() const{
             else
                 TEUCHOS_TEST_FOR_EXCEPTION( true, std::logic_error, "PCD operator for transient problems only defined for BDF-1 and BDF-2.");
 
+            // Mp2->scale(density);
             Mp2->fillComplete();
             Mp2->addMatrix(1.,Fp,1.);
         }
+        // Fp->scale(1./density);
         Fp->fillComplete();
 
         BlockMatrixPtr_Type bcBlockMatrix(new BlockMatrix_Type (1));
@@ -463,23 +528,15 @@ void NavierStokes<SC,LO,GO,NO>::assembleDivAndStab() const{
         C.reset(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
         this->feFactory_->assemblyBDStabilization( this->dim_, this->getFEType(0), C, true);
         C->resumeFill();
-        C->scale( -1. / ( viscosity * density ) );
+        C->scale( -1. / ( viscosity * density ) ); // scaled with dynamic viscosity with mu = nu*rho
         C->fillComplete( pressureMap, pressureMap );
         
         this->system_->addBlock( C, 1, 1 );
     }
 
-    
-
-    // MatrixPtr_Type Mp2(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
-    // this->feFactory_->assemblyIdentity( Mp2 );
-    // Mp2->resumeFill();
-    // Mp2->scale(3.0);
-    // Mp2->fillComplete();
-
-    // MatrixPtr_Type Mp(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
-    // this->feFactory_->assemblyIdentity( Mp );
-
+    // Implementation of augmented lagrange. This works in theory, but the resulting matrix changes the nnz pattern and has a wider FE Stenciln than before. This can present an issue for the algebraic overlap.
+    // Compare for example to 'ANALYSIS OF AUGMENTED LAGRANGIAN-BASED PRECONDITIONERS FOR THE STEADY INCOMPRESSIBLE NAVIER–STOKES EQUATIONS, MICHELE BENZI AND ZHEN WANG' for the theory behind this.
+    // In augmented lagrange, the term \gamma B^T M_p^{-1} B is added to the velocity-velocity block, where M_p is the pressure mass matrix.
     if(augmentedLagrange_){
         NAVIER_STOKES_START(AssembleAugmentedLagrangianComponent,"AssembleDivAndStab: AL - Assemble BT Mp B");
 
@@ -504,13 +561,9 @@ void NavierStokes<SC,LO,GO,NO>::assembleDivAndStab() const{
         BT_M_B->Multiply(BT_M,false,B,false);
 
         BT_Mp_B_ = BT_M_B;
-        // BT_Mp_B_->print();
-        // BT_Mp_B_->writeMM("BT_Mp_B_");
 
         NAVIER_STOKES_STOP(AssembleAugmentedLagrangianComponent);
     }
-
-    //k0 = MatrixMatrix<SC,LO,GO,NO>::Multiply(*B_T,false,*tmp,false,*fancy); //k0->describe(*fancy,VERB_EXTREME);
    
 };
 
@@ -565,6 +618,8 @@ void NavierStokes<SC,LO,GO,NO>::reAssemble(std::string type) const {
         std::cout << "-- Reassembly Navier-Stokes ("<< type <<") ... " << std::flush;
     
     double density = this->parameterList_->sublist("Parameter").get("Density",1.);
+
+    // If we use augmented lagrange, the matrix fe-stencil increases and we need to allocate more nnz entries
     int allocationFactor = 1;
     if(augmentedLagrange_)
         allocationFactor = 3;
@@ -603,6 +658,41 @@ void NavierStokes<SC,LO,GO,NO>::reAssemble(std::string type) const {
     ANW->fillComplete( this->getDomain(0)->getMapVecFieldUnique(), this->getDomain(0)->getMapVecFieldUnique() );
 
     this->system_->addBlock( ANW, 0, 0 );
+ 
+    if (this->verbose_)
+        std::cout << "done -- " << std::endl;
+}
+
+// This function assembles only the non zero pattern of the block (0,0) of the system matrix
+// This is done by using a zero solution vector zeroVec
+// Then, the advection matrices are assembled and added to an empty matrix ANW
+// The resulting matrix ANW contains then the non zero pattern 
+// This is then stored as NNZ_A_
+template<class SC,class LO,class GO,class NO>
+void NavierStokes<SC,LO,GO,NO>::establishNNZPattern() const {
+
+   
+    if (this->verbose_)
+        std::cout << "-- Establish NNZ Pattern Navier-Stokes ... " << std::flush;
+    
+    MatrixPtr_Type ANW = Teuchos::rcp(new Matrix_Type( this->getDomain(0)->getMapVecFieldUnique(), this->getDomain(0)->getDimension() * this->getDomain(0)->getApproxEntriesPerRow() ) );
+        
+    MultiVectorPtr_Type zeroVec = Teuchos::rcp( new MultiVector_Type( this->getDomain(0)->getMapVecFieldRepeated(), 1 ) );
+    zeroVec->putScalar(0.0);
+
+    MatrixPtr_Type N = Teuchos::rcp(new Matrix_Type( this->getDomain(0)->getMapVecFieldUnique(), this->getDomain(0)->getDimension() * this->getDomain(0)->getApproxEntriesPerRow() ) );
+    this->feFactory_->assemblyAdvectionVecField( this->dim_, this->domain_FEType_vec_.at(0), N, zeroVec, true );
+    
+    N->addMatrix(1.,ANW,0.);
+     
+    MatrixPtr_Type W = Teuchos::rcp(new Matrix_Type( this->getDomain(0)->getMapVecFieldUnique(), this->getDomain(0)->getDimension() * this->getDomain(0)->getApproxEntriesPerRow() ) );
+    this->feFactory_->assemblyAdvectionInUVecField( this->dim_, this->domain_FEType_vec_.at(0), W, zeroVec, true );
+ 
+    W->addMatrix(1.,ANW,1.);
+    
+    ANW->fillComplete( this->getDomain(0)->getMapVecFieldUnique(), this->getDomain(0)->getMapVecFieldUnique() );
+
+    NNZ_A_= ANW;
  
     if (this->verbose_)
         std::cout << "done -- " << std::endl;
@@ -654,116 +744,11 @@ void NavierStokes<SC,LO,GO,NO>::reAssembleExtrapolation(BlockMultiVectorPtrArray
         std::cout << "done -- " << std::endl;
 }
 
-//template<class SC,class LO,class GO,class NO>
-//int NavierStokes<SC,LO,GO,NO>::ComputeDragLift(vec_dbl_ptr_Type &values){
-//
-//    int dimension = this->domainPtr_vec_.at(0)->GetDimension();
-//    MultiVector_ptr_vec_ptr_Type sol_unique_vec(new std::vector<MultiVector_ptr_Type>(0));
-//    this->system_->FillSplitVector64(*this->solution_, sol_unique_vec);
-//    this->system_->BuildRepeatedVectorBlocks(sol_unique_vec);
-//    Vector_ptr_Type u_rep(new Epetra_Vector(*(this->system_->GetRepeatedVec(0))));
-//    Teuchos::RCP<Epetra_FECrsMatrix> 	N(new Epetra_FECrsMatrix(Epetra_DataAccess::Copy,*(this->domainPtr_vec_.at(0)->GetMapXDimUnique()),10));
-//    u_rep.reset(new Epetra_Vector(*(this->system_->GetRepeatedVec(0))));
-//    N.reset(new Epetra_FECrsMatrix(Epetra_DataAccess::Copy,*(this->domainPtr_vec_.at(0)->GetMapXDimUnique()),10));
-//    this->feFactory_->AssemblyAdvectionXDim(dimension, this->domain_FEType_vec_.at(0), 7, N, u_rep /* u */, setZeros);
-//
-//    Teuchos::RCP<Epetra_CrsMatrix>   	AN(new Epetra_CrsMatrix(Epetra_DataAccess::Copy,*(this->domainPtr_vec_.at(0)->GetMapXDimUnique()),10));
-//
-//    EpetraExt::MatrixMatrix::Add(*A_,false,1.,*AN,1.);
-//    EpetraExt::MatrixMatrix::Add(*N,false,1.,*AN,1.);
-//
-//    AN.reset(new Epetra_CrsMatrix(Epetra_DataAccess::Copy,*(this->domainPtr_vec_.at(0)->GetMapXDimUnique()),10));
-//    EpetraExt::MatrixMatrix::Add(*A_,false,1.,*AN,1.);
-//    EpetraExt::MatrixMatrix::Add(*N,false,1.,*AN,1.);
-//    AN->FillComplete();
-//
-//
-//    Teuchos::RCP<Epetra_FECrsMatrix> 	B_T (new Epetra_FECrsMatrix(Epetra_DataAccess::Copy,*(this->domainPtr_vec_.at(0)->GetMapXDimUnique()),5));
-//    Teuchos::RCP<Epetra_FECrsMatrix> 	B (new Epetra_FECrsMatrix(Epetra_DataAccess::Copy,*(this->domainPtr_vec_.at(1)->GetMapUnique()),5));
-//    this->feFactory_->AssemblyDivergence(dimension, this->domain_FEType_vec_.at(0), this->domain_FEType_vec_.at(1), 2, B, B_T, setZeros, this->domainPtr_vec_.at(0)->GetMapXDimUnique(), this->domainPtr_vec_.at(1)->GetMapUnique());
-//    B_T->Scale(-1.);
-//    Teuchos::RCP<BlockElement> 	BE_AN(new BlockElement(AN));
-//    Teuchos::RCP<BlockElement> 	BE_B_T(new BlockElement(B_T));
-//
-//    BE_AN.reset(new BlockElement(AN));
-//    BE_B_T.reset(new BlockElement(B_T));
-//
-//    this->system_->ReplaceBlock(BE_AN,0,0);
-//    this->system_->ReplaceBlock(BE_B_T,0,1);
-//
-//    Teuchos::RCP<BCBuilder> bCFactoryDrag(new BCBuilder(sublist(this->parameterList_,"Parameter")));
-//    Teuchos::RCP<BCBuilder> bCFactoryLift(new BCBuilder(sublist(this->parameterList_,"Parameter")));
-//
-//    bCFactoryDrag->AddBC(sxOne2D, 4, 0, this->domainPtr_vec_.at(0), "Dirichlet", dimension);
-//    bCFactoryDrag->AddBC(sDummyFunc, 666, 1, this->domainPtr_vec_.at(1), "Neumann", 1);
-//
-//    bCFactoryLift->AddBC(syOne2D, 4, 0, this->domainPtr_vec_.at(0), "Dirichlet", dimension);
-//    bCFactoryLift->AddBC(sDummyFunc, 666, 1, this->domainPtr_vec_.at(1), "Neumann", 1);
-//
-//    Teuchos::RCP<Epetra_Vector>  dragVec(new Epetra_Vector(*(*this->solution_)(0)));
-//    Teuchos::RCP<Epetra_Vector>	liftVec(new Epetra_Vector(*(*this->solution_)(0)));
-//    dragVec->PutScalar(0.);
-//    liftVec->PutScalar(0.);
-//    bCFactoryDrag->SetRHS(this->system_, dragVec);
-//    bCFactoryLift->SetRHS(this->system_, liftVec);
-//
-//    Teuchos::RCP<Epetra_Vector>	mat_sol(new Epetra_Vector(*(*this->solution_)(0)));
-//    this->system_->Apply(*this->solution_,*mat_sol);
-//    mat_sol->Scale(-1.);
-//    double dragCoeff;
-//    double liftCoeff;
-//    mat_sol->Dot(*dragVec,&dragCoeff);
-//    mat_sol->Dot(*liftVec,&liftCoeff);
-//    values->at(0) = dragCoeff;
-//    values->at(1) = liftCoeff;
-//    if (this->verbose_) {
-//        cout<< "Not scaled drag coefficient: " << dragCoeff<< endl;
-//        cout<< "Not scaled lift coefficient: " << liftCoeff<< endl;
-//    }
-//    Teuchos::RCP<Epetra_Vector>     pressureSolutuion( new Epetra_Vector(*((*(sol_unique_vec->at(1)))(0))));
-//    double p1 = numeric_limits<double>::min();
-//    double p2 = numeric_limits<double>::min();
-//    if (pressureIDsLoc->at(0)>-1) {
-//        p1 = (*pressureSolutuion)[pressureIDsLoc->at(0)];
-//
-//    }
-//    if (pressureIDsLoc->at(1)>-1) {
-//        p2 = (*pressureSolutuion)[pressureIDsLoc->at(1)];
-//    }
-//    this->comm_->Barrier();
-//    double res;
-//    this->comm_->MaxAll(&p1,&res,1);
-//    values->at(2) = res;
-//    this->comm_->MaxAll(&p2,&res,1);
-//    values->at(3) = res;
-//    return 0;
-//}
-
-//template<class SC,class LO,class GO,class NO>
-//typename NavierStokes<SC,LO,GO,NO>::MultiVector_Type NavierStokes<SC,LO,GO,NO>::GetExactSolution(double time){
-//#ifdef ASSERTS_WARNINGS
-//    MYASSERT(false,"no analytic solution.");
-//#endif
-//    return *this->solution_;
-//}
-
-
-//template<class SC,class LO,class GO,class NO>
-//void NavierStokes<SC,LO,GO,NO>::set_x0(const Teuchos::ArrayView<const SC> &x0_in){
-//#ifdef TEUCHOS_DEBUG
-//    TEUCHOS_ASSERT_EQUALITY(xSpace_->dim(), x0_in.size());
-//#endif
-//    Thyra::DetachedVectorView<SC> x0(x0_);
-//    x0.sv().values()().assign(x0_in);
-//}
-
 template<class SC,class LO,class GO,class NO>
 void NavierStokes<SC,LO,GO,NO>::calculateNonLinResidualVec(std::string type, double time) const{
     
     if (this->verbose_)
         std::cout << "-- NavierStokes::calculateNonLinResidualVec ("<< type <<") ... " << std::flush;
-
-    // this->updateConvectionDiffusionOperator();
     
     this->reAssemble("FixedPoint");
     // We need to account for different parameters of time discretizations here
@@ -773,6 +758,7 @@ void NavierStokes<SC,LO,GO,NO>::calculateNonLinResidualVec(std::string type, dou
     else
         this->system_->apply( *this->solution_, *this->residualVec_, this->coeff_ );
     
+    // The additional component needs to be acconted for in residual as well due to augmented lagrange
     if(augmentedLagrange_){
         MultiVectorPtr_Type rhsAL = Teuchos::rcp( new MultiVector_Type( this->residualVec_->getBlock(0) ) );
         BT_Mp_->apply( *this->residualVec_->getBlock(1), *rhsAL );
@@ -781,16 +767,12 @@ void NavierStokes<SC,LO,GO,NO>::calculateNonLinResidualVec(std::string type, dou
     }
     if (!type.compare("standard")){
         this->residualVec_->update(-1.,*this->rhs_,1.);
-//        if ( !this->sourceTerm_.is_null() )
-//            this->residualVec_->update(-1.,*this->sourceTerm_,1.);
         // this might be set again by the TimeProblem after addition of M*u
         this->bcFactory_->setVectorMinusBC( this->residualVec_, this->solution_, time );
         
     }
     else if(!type.compare("reverse")){
         this->residualVec_->update(1.,*this->rhs_,-1.); // this = -1*this + 1*rhs
-//        if ( !this->sourceTerm_.is_null() )
-//            this->residualVec_->update(1.,*this->sourceTerm_,1.);
         // this might be set again by the TimeProblem after addition of M*u
         this->bcFactory_->setBCMinusVector( this->residualVec_, this->solution_, time );    
     }
@@ -807,8 +789,7 @@ void NavierStokes<SC,LO,GO,NO>::calculateNonLinResidualVecWithMeshVelo(std::stri
     // This is ok for bdf with 1.0 scaling of the system. Would be wrong for Crank-Nicolson
     
     this->system_->apply( *this->solution_, *this->residualVec_ );
-//    this->residualVec_->getBlock(0)->writeMM("Ax.mm");
-//    this->rhs_->getBlock(0)->writeMM("nsRHS.mm");
+
     if (!type.compare("standard")){
         this->residualVec_->update(-1.,*this->rhs_,1.);
         if ( !this->sourceTerm_.is_null() )

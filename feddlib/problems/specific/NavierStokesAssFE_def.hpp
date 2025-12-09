@@ -1,7 +1,5 @@
 #ifndef NAVIERSTOKESASSFE_def_hpp
 #define NAVIERSTOKESASSFE_def_hpp
-#include "NavierStokesAssFE_decl.hpp"
-#include <stdexcept>
 
 /*!
  Definition of Navier-Stokes
@@ -11,6 +9,12 @@
  @version 1.0
  @copyright CH
  */
+
+#include "feddlib/core/FE/Domain.hpp"
+#include "feddlib//core/FE/FE.hpp"
+#include "feddlib/problems/Solver/Preconditioner.hpp"
+#include "feddlib/core/General/BCBuilder.hpp"
+
 
 /*void sxOne2D(double* x, double* res, double t, double* parameter){
 
@@ -176,7 +180,34 @@ void NavierStokesAssFE<SC,LO,GO,NO>::assembleConstantMatrices() const{
         this->system_->addBlock( C, 1, 1 );
     }
 
+    /* 
+       If pressure projection is used, we need to assemble the projection vector here
+       Only for P2-P1 or Q2-Q1 elements in monolithic case
+       In case of a monolithic preconditioner and a P2-P1 discretization we have the option to correct the pressure to have mean value = 0. This way, generally, we can improve scalabilty and results. 
+       The real correction is then done via projection in the Overlapping Operator of FROSch,here we only assemble a as \int p dx . a is assembled as a column vector but in the Dissertation of C. Hochmuth defined as row.
+    */
+    if(this->parameterList_->sublist("Parameter").get("Use Pressure Projection",false) && (!this->getFEType(0).compare("P2") || (!this->getFEType(0).compare("Q2") && !this->getFEType(1).compare("Q1"))) && !this->parameterList_->sublist("General").get("Preconditioner Method","Monolithic").compare("Monolithic")){ 
+        // Projection vector a: \int p dx, for pressure component and 0 for velocity.
+        BlockMultiVectorPtr_Type projection(new BlockMultiVector_Type (2));
 
+        MultiVectorPtr_Type P(new MultiVector_Type( this->getDomain(1)->getMapUnique(), 1 ) );
+
+        this->feFactory_->assemblyPressureMeanValue( this->dim_,"P1",P) ;
+
+        MultiVectorPtr_Type vel0(new MultiVector_Type( this->getDomain(0)->getMapVecFieldUnique(), 1 ) );
+        vel0->putScalar(0.);
+
+        // Adding components to projection vector 
+        projection->addBlock(vel0,0);
+        projection->addBlock(P,1);
+
+        // Setting projection vector in preconditioner to later pass to paramterlist in FROSch
+        this->getPreconditionerConst()->setPressureProjection( projection );    
+
+        if (this->verbose_)
+            std::cout << "\n 'Use pressure correction' was set to 'true'. This requieres a version of Trilinos of that includes pressure correction in the FROSch_OverlappingOperator!!" << std::endl;  
+
+    }
 
     
 #ifdef FEDD_HAVE_TEKO
@@ -238,9 +269,9 @@ void NavierStokesAssFE<SC,LO,GO,NO>::reAssemble(std::string type) const {
    if (type=="Rhs") {
 
    		this->system_->addBlock(ANW,0,0);
-
-        //TODO: [KH] why do we reassemble fixed point matrices here?
-        this->feFactory_->assemblyNavierStokes(this->dim_, this->getDomain(0)->getFEType(), this->getDomain(1)->getFEType(), 2, this->dim_,1,u_rep_,p_rep_,this->system_, this->residualVec_,this->coeff_,this->parameterList_, true, "FixedPoint",  true);  // We can also change that to "Jacobian"     
+        /* The next code line was unnecessary work load in solveNewton as it was also called but rewritten by assemble("Newton"), so instead we comment this out and call 
+           in solveFixedPoint the assemble("FixedPoint") function, and here in "RHS" only F*current_solution is computed necessary for computing the residual vector */
+        //this->feFactory_->assemblyNavierStokes(this->dim_, this->getDomain(0)->getFEType(), this->getDomain(1)->getFEType(), 2, this->dim_,1,u_rep_,p_rep_,this->system_, this->residualVec_,this->coeff_,this->parameterList_, true, "FixedPoint",  true);      
  		this->feFactory_->assemblyNavierStokes(this->dim_, this->getDomain(0)->getFEType(), this->getDomain(1)->getFEType(), 2, this->dim_,1,u_rep_,p_rep_,this->system_, this->residualVec_,this->coeff_,this->parameterList_, true, "Rhs",  true);
 
     }
@@ -440,7 +471,7 @@ void NavierStokesAssFE<SC,LO,GO,NO>::computeSteadyPostprocessingViscosity_Soluti
     
     // Reset here the viscosity so at this moment this makes only sense to call at the end of a simulation
     // to visualize viscosity field
-    // @ToDo Add possibility for transient problem to save viscosity solution in each time step
+    // TODO: Add possibility for transient problem to save viscosity solution in each time step
     viscosity_element_ = Teuchos::rcp( new MultiVector_Type( this->getDomain(0)->getElementMap() ) );
     this->feFactory_->computeSteadyViscosityFE_CM(this->dim_, this->getDomain(0)->getFEType(), this->getDomain(1)->getFEType(), this->dim_,1,u_rep_,p_rep_,this->parameterList_);        
   

@@ -1,16 +1,14 @@
 #include <Tpetra_Core.hpp>
 
 #include "feddlib/core/FEDDCore.hpp"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
-
 #include "feddlib/core/FE/Domain.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/General/HDF5Export.hpp"
 #include "feddlib/core/General/HDF5Import.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
-
 #include "feddlib/problems/specific/LinElas.hpp"
+#include "feddlib/core/General/BCBuilder.hpp"
 
 
 /*!
@@ -155,7 +153,7 @@ int main(int argc, char *argv[]) {
         parameterListAll->sublist("Parameter").set("Density",1.0);
         parameterListAll->sublist("Parameter").set("Poisson Ratio",0.4);
         parameterListAll->sublist("Parameter").set("Mu",3.0e0);
- 
+        parameterListAll->sublist("Parameter").set("Use AceGen Interface", false); // We don't want to use AceGen here
 
         LinElas<SC,LO,GO,NO> linElas( domain, FEType, parameterListAll );
 

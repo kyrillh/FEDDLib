@@ -1,12 +1,11 @@
-TRIBITS_REPOSITORY_DEFINE_TPLS(
+# PT: primary tested (high priority TPL)
+# ST: secondary tested (medium priority TPL)
+# EX: experimental TPL
+tribits_repository_define_tpls(
     MPI             "${${PROJECT_NAME}_TRIBITS_DIR}/core/std_tpls/"     PT
-    Trilinos        "cmake/TPLs/"                                       PT
-    AceGENInterface "cmake/TPLs/FindTPLAceGENInterface.cmake"           PT
+    Trilinos        "cmake/TPLs/FindTPLTrilinos.cmake"                  PT
+    AceGENInterface "cmake/TPLs/FindTPLAceGENInterface.cmake"           ST
+    HDF5            "cmake/TPLs/FindTPLHDF5.cmake"                      PT
+    Z               "cmake/TPLs/FindTPLZ.cmake"                         PT
+    DL              "cmake/TPLs/FindTPLDL.cmake"                        PT
 )
-
-# NOTES:
-#
-# (*) ParMETIS must be listed after Scotch because the
-#     ParMETIS include directories must come before the
-#     Scotch include directories.
-#

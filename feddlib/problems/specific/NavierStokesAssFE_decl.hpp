@@ -2,8 +2,6 @@
 #define NAVIERSTOKESASSFE_decl_hpp
 #include "feddlib/core/LinearAlgebra/BlockMap_decl.hpp"
 #include "feddlib/problems/abstract/NonLinearProblem.hpp"
-#include <Xpetra_ThyraUtils.hpp>
-#include <Xpetra_CrsMatrixWrap.hpp>
 #include <Thyra_ProductVectorBase.hpp>
 #include <Thyra_PreconditionerBase.hpp>
 #include <Thyra_ModelEvaluatorBase_decl.hpp>

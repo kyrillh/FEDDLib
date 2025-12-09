@@ -1,9 +1,12 @@
 #ifndef NONLINEARPROBLEM_DECL_hpp
 #define NONLINEARPROBLEM_DECL_hpp
 
-#include "Problem.hpp"
 #include <Thyra_StateFuncModelEvaluatorBase.hpp>
+#include <Thyra_ProductVectorBase.hpp>
+#include <Teko_Utilities.hpp>
 
+#include "feddlib/core/FEDDCore.hpp"
+#include "feddlib/problems/abstract/Problem.hpp"
 
 /*!
  Declaration of NonLinearProblem
@@ -15,8 +18,9 @@
  */
 
 namespace FEDD{
-template<class SC_, class LO_, class GO_, class NO_>
-class Problem;
+template<class LO_, class GO_, class NO_>
+class BlockMap;
+
 template <class SC = default_sc,
           class LO = default_lo,
           class GO = default_go,
@@ -52,55 +56,85 @@ public:
     typedef Teuchos::RCP<const BlockMap_Type> BlockMapConstPtr_Type;
     typedef Teuchos::Array<BlockMultiVectorPtr_Type> BlockMultiVectorPtrArray_Type;
 
-    typedef Thyra::VectorSpaceBase<SC> ThyraVecSpace_Type;
+    using ThyraTypes = ThyraTypedefs<SC>;
+    using TpetraTypes = TpetraTypedefs<SC,LO,GO,NO>;
+    using ThyraVecSpace_Type = typename ThyraTypes::ThyraVecSpace_Type;
     typedef Teuchos::RCP<const ThyraVecSpace_Type> ThyraVecSpaceConstPtr_Type;
-    typedef Thyra::VectorBase<SC> ThyraVec_Type;
-    typedef Tpetra::CrsMatrix<SC, LO, GO, NO> TpetraMatrix_Type;
-    typedef Thyra::LinearOpBase<SC> ThyraOp_Type;
-    typedef Tpetra::Operator<SC,LO,GO,NO> TpetraOp_Type;
+    using ThyraVec_Type = typename ThyraTypes::ThyraVec_Type;
+    using TpetraMatrix_Type = typename TpetraTypes::TpetraMatrix_Type;
+    using ThyraOp_Type = typename ThyraTypes::ThyraOp_Type;
+    using TpetraOp_Type = typename TpetraTypes::TpetraOp_Type;
     typedef Thyra::BlockedLinearOpBase<SC> ThyraBlockOp_Type;
 
+    /// @brief Constructor
+    /// @param comm 
     NonLinearProblem(CommConstPtr_Type comm);
 
+    /// @brief Constructor with parameterlist
+    /// @param parameterList 
+    /// @param comm 
     NonLinearProblem(ParameterListPtr_Type &parameterList, CommConstPtr_Type comm);
 
     ~NonLinearProblem();
 
     virtual void info() = 0;
 
+    /// @brief Information about the non-linear problem
     void infoNonlinProblem();
 
+    /// @brief Initialisation of the non-linear problem with system, vectors, and Thyra vector spaces for NOX
+    /// @param nmbVectors 
     void initializeProblem(int nmbVectors=1);
     
+    /// @brief assemble of type exectuted by the derived specific non-linear problem classes
+    /// @param type for example Newton
     virtual void assemble( std::string type = "" ) const = 0;
 
+    /// @brief  Virtual class to extract values of interest that are computed during the solve
+    /// @param values 
     virtual void getValuesOfInterest( vec_dbl_Type& values ) = 0;
     
+    /// @brief Solving the non-linear problem and updating the solution
+    /// @param criterion Update or Residual
+    /// @param criterionValue The actual value of the criterion
+    /// @return number of linear iterations
     int solveAndUpdate( const std::string& criterion , double& criterionValue, const int myRank = 0, const bool useBT = false);
 
+    /// @brief This is where the linear solve specifically happens
+    /// @return Number of linear iterations
     int solveUpdate( );
 
-//    virtual void reAssemble(std::string type="FixedPoint") const = 0;
 
+    /// @brief Reassemble with previous solution. I think it is not used anymore. @TODO: Look into this.
+    /// @param previousSolution 
     virtual void reAssemble( BlockMultiVectorPtr_Type previousSolution ) const = 0;
     
     void reAssembleAndFill( BlockMatrixPtr_Type bMat, std::string type="FixedPoint" );
 
     virtual void reAssembleExtrapolation(BlockMultiVectorPtrArray_Type previousSolutions) = 0;
-    //MultiVector_ptr_vec_ptr_Type allPreviousSolutions
-//    virtual int ComputeDragLift(vec_dbl_ptr_Type &values) = 0;    
 
+    /// @brief Initialisation of the non-linear vectors like residual and previous solution
+    /// @param nmbVectors 
     void initializeVectorsNonLinear(int nmbVectors=1);
 
+    /// @brief Calculate the 2-norm of the residual vector
+    /// @return Value of the norm of the residual
     double calculateResidualNorm() const;
 
+    /// @brief Virtual function which is implemented in the specific non-linear problem classes to calculate the non-linear residual vector
+    /// @param type standard or reverse depending on Newton formulation, e.g. as in NOX or FEDDLib-Newton
+    /// @param time current timestep
     virtual void calculateNonLinResidualVec(std::string type="standard", double time=0.) const = 0; //type=standard or reverse
 
-    // if used for timeproblem
-    virtual void calculateNonLinResidualVec(SmallMatrix<double>& coeff, std::string type="standard", double time=0.); //type=standard or reverse
+    /// @brief Calculate the non-linear residual vector with given coefficients for time-dependent problems (if used for timeproblem)
+    virtual void calculateNonLinResidualVec(SmallMatrix<double>& coeff, std::string type="standard", double time=0., BlockMatrixPtr_Type systemMass = Teuchos::null); //type=standard or reverse
     
+    /// @brief Get the residual vector
+    /// @return residual vector
     BlockMultiVectorPtr_Type getResidualVector() const;
     
+    /// @brief Get previous solution. Needed for time-dependent problems
+    /// @return 
     BlockMultiVectorPtr_Type getPreviousSolution() const{ return previousSolution_; }
 
     virtual Thyra::ModelEvaluatorBase::InArgs<SC> getNominalValues() const;
@@ -119,10 +153,12 @@ public:
 
     void initVectorSpacesBlock( );
 
-    // virtual void evalModelImpl(const ::Thyra::ModelEvaluatorBase::InArgs<SC> &inArgs,
-                            //    const ::Thyra::ModelEvaluatorBase::OutArgs<SC> &outArgs) const = 0;
-
     virtual ::Thyra::ModelEvaluatorBase::OutArgs<SC> createOutArgsImpl() const;
+
+    
+    void setNonlinearIterationStep(int newtonStep)  { this->newtonStep_ = newtonStep;}   // For SolveFixedPoint etc. we need to set the Newton Step manually
+    int  getNonlinearIterationStep() const override { return newtonStep_; }              // This overrides the default in Problem to provide the actual Newton step
+
 
     // ################ Nonlinear Schwarz related functions ################
 
@@ -172,8 +208,8 @@ private:
 
     Thyra::ModelEvaluatorBase::InArgs<SC> nominalValues_;
 
-    ::Thyra::ModelEvaluatorBase::InArgs<SC> prototypeInArgs_;
-    ::Thyra::ModelEvaluatorBase::OutArgs<SC> prototypeOutArgs_;
+    Thyra::ModelEvaluatorBase::InArgs<SC> prototypeInArgs_;
+    Thyra::ModelEvaluatorBase::OutArgs<SC> prototypeOutArgs_;
 
     Teuchos::RCP<const ThyraVecSpace_Type> xSpace_;
     Teuchos::RCP<const ThyraVecSpace_Type> fSpace_;

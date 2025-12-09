@@ -9,6 +9,8 @@
 #include "feddlib/core/LinearAlgebra/BlockMatrix.hpp"
 #include "feddlib/core/FE/TriangleElements.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
+#include "feddlib/core/LinearAlgebra/MultiVector.hpp"
+
 /*!
  Declaration of MeshUnstructured
  
@@ -68,7 +70,7 @@ public:
 
     MeshUnstructured();
     
-    MeshUnstructured( CommConstPtr_Type comm, int volumeID=10 );
+    MeshUnstructured( CommConstPtr_Type comm, int volumeID=10, std::string meshUnit = "cm", bool convertToCM = false );
     
     ~MeshUnstructured();
        
@@ -264,6 +266,9 @@ public:
     int numSurfaces_;
     int numEdges_;
     int numNodes_;
+	bool convertToCM_; // Whether to convert it into cm Unit
+	std::string meshUnitFinal_; // If converted unit changes
+	std::string meshUnitRead_; // Input mesh unit
 
 private:
     

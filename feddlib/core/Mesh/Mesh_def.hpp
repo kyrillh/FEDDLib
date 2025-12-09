@@ -1,10 +1,6 @@
 #ifndef Mesh_def_hpp
 #define Mesh_def_hpp
 
-#include "Mesh_decl.hpp"
-#include "feddlib/core/FE/Elements.hpp"
-#include "feddlib/core/FEDDCore.hpp"
-
 /*!
 Definition of Mesh
 

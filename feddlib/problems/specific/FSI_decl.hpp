@@ -1,15 +1,14 @@
 #ifndef FSI_decl_hpp
 #define FSI_decl_hpp
-#include "feddlib/problems/abstract/TimeProblem.hpp"
-#include "feddlib/problems/specific/NavierStokes.hpp"
-#include "feddlib/problems/specific/LinElas.hpp"
-#include "feddlib/problems/specific/NonLinElasticity.hpp"
-#include "feddlib/problems/specific/Geometry.hpp"
+
+#include "feddlib/problems/abstract/Problem.hpp"
+#include "feddlib/core/FE/Domain.hpp"
+#include "feddlib/problems/abstract/NonLinearProblem.hpp"
 #include "feddlib/problems/Solver/TimeSteppingTools.hpp"
-#include <Xpetra_ThyraUtils.hpp>
-#include <Xpetra_CrsMatrixWrap.hpp>
+
 #include <Thyra_PreconditionerBase.hpp>
 #include <Thyra_ModelEvaluatorBase_decl.hpp>
+
 namespace FEDD{
 
 template <class SC , class LO , class GO , class NO >
@@ -22,6 +21,11 @@ template <class SC , class LO , class GO , class NO >
 class LinElas;
 template <class SC , class LO , class GO , class NO >
 class NonLinElasticity;
+template <class SC , class LO , class GO , class NO >
+class MeshUnstructured;
+template <class SC , class LO , class GO , class NO >
+class ExporterParaView;
+
 template <class SC = default_sc, class LO = default_lo, class GO = default_go, class NO = default_no>
 class FSI : public NonLinearProblem<SC,LO,GO,NO>  {
 
@@ -55,9 +59,15 @@ public:
     typedef TimeProblem<SC,LO,GO,NO> TimeProblem_Type;
     typedef Teuchos::RCP<TimeProblem_Type> TimeProblemPtr_Type;
 
-    typedef NavierStokes<SC,LO,GO,NO> FluidProblem_Type;
+// #ifdef FEDD_HAVE_ACEGENINTERFACE
+//     typedef LinElasAssFE<SC,LO,GO,NO> StructureProblem_Type;
+//     typedef NonLinElasAssFE<SC,LO,GO,NO> StructureNonLinProblem_Type;
+// #else
     typedef LinElas<SC,LO,GO,NO> StructureProblem_Type;
     typedef NonLinElasticity<SC,LO,GO,NO> StructureNonLinProblem_Type;
+
+
+    typedef NavierStokes<SC,LO,GO,NO> FluidProblem_Type;
     typedef Geometry<SC,LO,GO,NO> GeometryProblem_Type;
     
     typedef Teuchos::RCP<FluidProblem_Type> FluidProblemPtr_Type;
@@ -113,7 +123,10 @@ public:
     
     virtual void reAssembleExtrapolation(BlockMultiVectorPtrArray_Type previousSolutions);
 
-    virtual void calculateNonLinResidualVec(std::string type="standard", double time=0.) const; //standard or reverse    
+    virtual void calculateNonLinResidualVec(std::string type="standard", double time=0.) const override; //standard or reverse
+
+    /// @brief Calculate the non-linear residual vector with given coefficients for time-dependent problems (if used for timeproblem)
+    void calculateNonLinResidualVec(SmallMatrix<double>& coeff, std::string type="standard", double time=0., BlockMatrixPtr_Type systemMass = Teuchos::null) override; //type=standard or reverse
     
     virtual void getValuesOfInterest( vec_dbl_Type& values );
     
@@ -147,6 +160,7 @@ public:
 
     void computeSolidRHSInTime() const;
     
+    void computePressureRHSInTime() const;
     // Hier wird timeSteppingTool_->t_ inkrementiert
     void updateTime() const;
 
@@ -198,6 +212,9 @@ public:
     void getValuesOfInterest3DBenchmark( vec_dbl_Type& values );
     
     virtual void computeValuesOfInterestAndExport();
+
+    double getPressureOutlet(){return pressureOutlet_;};
+
     /*####################*/
 
     // Alternativ wie in reAssembleExtrapolation() in NS?
@@ -234,6 +251,13 @@ private:
     ExporterTxtPtr_Type exporterTxtLift_;
     mutable ExporterPtr_Type exporterGeo_;
     /*####################*/
+    ExporterTxtPtr_Type exporterBoundaryCondition_; // Values for absorbing boundary condition
+    mutable double areaInlet_init_=0.;
+    mutable double areaOutlet_init_ =0.;
+    mutable double areaOutlet_T_ =0.;
+    mutable double flowRateOutlet_n_ =0.; // Current flowrate
+    mutable double flowRateOutlet_n_1_ =0.; // flowrate from previous timestep
+    mutable double pressureOutlet_ =0.;
 
 public:
         // NOX and FSI only implement in combination with TimeProblem

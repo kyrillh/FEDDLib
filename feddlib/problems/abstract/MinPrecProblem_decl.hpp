@@ -22,6 +22,7 @@ template <class SC , class LO , class GO , class NO >
 class Problem;
 template <class SC , class LO , class GO , class NO >
 class Preconditioner;
+
 template <class SC = default_sc, class LO = default_lo, class GO = default_go, class NO = default_no>
 class MinPrecProblem : public Problem<SC,LO,GO,NO> {
 
@@ -37,10 +38,14 @@ public:
     typedef typename Problem_Type::Comm_Type Comm_Type;
     typedef typename Problem_Type::CommConstPtr_Type CommConstPtr_Type;
 
+    typedef typename Problem_Type::PreconditionerPtr_Type PreconditionerPtr_Type;
+
     typedef typename Problem_Type::LinSolverBuilderPtr_Type  LinSolverBuilderPtr_Type;
     
     // hasSourceTerm and boolLinearProblem should be irrelevant, as this class should be only used when constructing a precondtioner
     MinPrecProblem(ParameterListPtr_Type pl, CommConstPtr_Type comm);
+
+    MinPrecProblem(ParameterListPtr_Type pl, CommConstPtr_Type comm, PreconditionerPtr_Type prec);
 
     ~MinPrecProblem();
     

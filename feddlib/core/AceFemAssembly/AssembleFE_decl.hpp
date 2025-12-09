@@ -21,7 +21,7 @@ namespace FEDD {
     \tparam SC The scalar type. So far, this is always double, but having it as a template parameter would allow flexibily, e.g., for using complex instead
     \tparam LO The local ordinal type. The is the index type for local indices
     \tparam GO The global ordinal type. The is the index type for global indices
-    @todo This should actually be removed since the class should operate only on element level)
+    TODO: This should actually be removed since the class should operate only on element level)
     \tparam NO The Kokkos Node type. This would allow for performance portibility when using Kokkos. Currently, this is not used.
 
     Any new assembly routine on element level should implemented following the interface provided in this class. During the setup of a specific boundary value problem one AssembleFE object will be constructed using the AssembleFEFactory for each finite element. This is can be understood roughly as follows:
@@ -151,7 +151,6 @@ namespace FEDD {
 
         /*!
          \brief Update the solution vector.
-         @todo We still have to fix the ordering of the dofs.
          @param[in] solution
         */
         void updateSolution(vec_dbl_Type solution);
@@ -171,7 +170,7 @@ namespace FEDD {
          \brief This function is called at the end of each Newton step after updating the solution vector.
         */
         void postProcessing();
-		/// @todo PostProcessing: Teuchos::Array with values and one global Array with Strings and names
+		/// TODO: PostProcessing: Teuchos::Array with values and one global Array with Strings and names
 
         /*!
          \brief Get the spatial dimension. (Typically 2 or 3)
@@ -182,12 +181,12 @@ namespace FEDD {
         /*!
          \brief Return the coordnates of the finite element nodes.
          \return a 2D array with the coordnates for each nodes
-         @todo How is the ordering?
+         TODO: How is the ordering?
         */
         vec2D_dbl_Type getNodesRefConfig();
 
         /*!
-         @todo Still work in Progress with RHS and Mass Matrix
+         TODO: Still work in Progress with RHS and Mass Matrix
         */
         void addRHSFunc(RhsFunc_Type rhsFunc){ rhsFunc_ = rhsFunc;}
 
@@ -219,6 +218,11 @@ namespace FEDD {
         vec_dbl_Type getLocalconstOutputField() {return constOutputField_;}
 
 
+         /*!
+         \brief Switch e.g. from FixedPoint assembly to Newton method during runtime
+            @param[in] linearization string defining the linearization type e.g. "FixedPoint
+        */
+        void changeLinearization(std::string linearization) {this->linearization_ = linearization;};
     protected:
 
         /*!
@@ -233,7 +237,7 @@ namespace FEDD {
                    ParameterListPtr_Type parameters,
 		   		tuple_disk_vec_ptr_Type tuple);
 
-		//void readTuple(); /// @todo To have tuple information in basis class as well?
+		//void readTuple(); /// TODO: To have tuple information in basis class as well?
 		//tuple_disk_vec_ptr_Type getTuple();  
 
 		SmallMatrixPtr_Type jacobian_;
@@ -247,7 +251,7 @@ namespace FEDD {
 
 		tuple_disk_vec_ptr_Type diskTuple_;
 		tuple_sd_vec_ptr_Type elementIntormation_;
-        /// @todo Why "Reference Configuration"? 
+        /// TODO: Why "Reference Configuration"? 
         vec2D_dbl_Type nodesRefConfig_;
         bool timeProblem_;
         int flag_;
@@ -259,6 +263,7 @@ namespace FEDD {
         double timeIncrement_;
         GO globalElementID_;
 
+        std::string linearization_; // Store in here which linearization e.g. FixedPoint or Newton is used -> Relevant for assembleFEElement-Specific construction of Jacobian in NavierStokes
 
         // This can be any postprocessing output field ddefined inside an element using converged solution
         vec_dbl_Type constOutputField_ ; // can be a vector with values on P1/ P2 nodes or just averaged element value

@@ -6,21 +6,19 @@
 #define MAIN_TIMER_STOP(A) A.reset();
 #endif
 
+#include <Teuchos_TestForException.hpp>
+#include <Teuchos_GlobalMPISession.hpp>
+#include <Tpetra_Core.hpp>
+
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
-
+#include "feddlib/core/General/BCBuilder.hpp"
 #include "feddlib/core/FE/Domain.hpp"
-#include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 
 #include "feddlib/problems/specific/Stokes.hpp"
 #include "feddlib/amr/AdaptiveMeshRefinement.hpp"
-
-#include <Teuchos_TestForException.hpp>
-#include <Teuchos_GlobalMPISession.hpp>
-#include <Xpetra_DefaultPlatform.hpp>
-
 #include "feddlib/problems/abstract/Problem.hpp"
 
 /*!
@@ -469,7 +467,7 @@ int main(int argc, char *argv[]) {
     Teuchos::oblackholestream blackhole;
     Teuchos::GlobalMPISession mpiSession(&argc,&argv,&blackhole);
     
-    Teuchos::RCP<const Teuchos::Comm<int> > comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
+    Teuchos::RCP<const Teuchos::Comm<int> > comm = Tpetra::getDefaultComm();
     bool verbose (comm->getRank() == 0);
     if (verbose) {
         cout << "#################################################" <<endl;

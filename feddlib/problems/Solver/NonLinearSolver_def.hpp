@@ -1,10 +1,5 @@
 #ifndef NONLINEARSOLVER_DEF_hpp
 #define NONLINEARSOLVER_DEF_hpp
-#include "NonLinearSolver_decl.hpp"
-#include "feddlib/core/General/BCBuilder_decl.hpp"
-#include "feddlib/core/LinearAlgebra/Map_decl.hpp"
-#include "feddlib/core/LinearAlgebra/MultiVector_decl.hpp"
-#include "feddlib/core/Utils/FEDDUtils.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/CoarseNonLinearSchwarzOperator_decl.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/H1Operator_decl.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearH1Operator_decl.hpp"
@@ -13,18 +8,7 @@
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSumOperator_decl.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleCoarseOperator_decl.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleOverlappingOperator_decl.hpp"
-#include <Teuchos_RCPDecl.hpp>
-#include <Teuchos_VerboseObject.hpp>
-#include <Teuchos_VerbosityLevel.hpp>
-#include <Tpetra_CrsMatrix_decl.hpp>
-#include <Xpetra_TpetraCrsGraph_decl.hpp>
-#include <Xpetra_TpetraExport_decl.hpp>
-#include <Xpetra_TpetraImport_decl.hpp>
-#include <Xpetra_TpetraMap_decl.hpp>
-#include <Xpetra_TpetraMultiVector_decl.hpp>
-#include <algorithm>
-#include <string>
-#include <vector>
+#include "feddlib/core/General/BCBuilder.hpp"
 
 /*!
  Definition of NonLinearSolver
@@ -62,6 +46,9 @@ void NonLinearSolver<SC,LO,GO,NO>::solve(NonLinearProblem_Type &problem,vec_dbl_
     }
     else if(!type_.compare("Newton")){
         solveNewton(problem,valuesForExport);
+    }
+    else if(!type_.compare("FixedPointNewton")){
+        solveFixedPointNewton(problem, valuesForExport);
     }
     else if(!type_.compare("NOX")){
 #ifdef FEDD_HAVE_NOX
@@ -275,7 +262,6 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNOX(TimeProblem_Type &problem, vec_dbl_p
     
     // Create nox parameter list
     Teuchos::RCP<Teuchos::ParameterList> nl_params = sublist(problemPtr->getParameterList(),"NOXSolver");
-    
     // Create the solver
     Teuchos::RCP<NOX::Solver::Generic> solver =
     NOX::Solver::buildSolver(nox_group, combo, nl_params);
@@ -323,9 +309,14 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(NonLinearProblem_Type &proble
     double criterionValue = 1.;
     std::string criterion = problem.getParameterList()->sublist("Parameter").get("Criterion","Residual");
 
+
     while ( nlIts < maxNonLinIts ) {
 
+        // This will compute the residual vector
         problem.calculateNonLinResidualVec("reverse");
+
+        // Analogous to Newton but we assemble here only the parts which are needed for Fixed Point Iteration 
+        problem.assemble("FixedPoint");
 
         problem.setBoundariesSystem();
         
@@ -343,7 +334,8 @@ void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(NonLinearProblem_Type &proble
                 break;
         }
 
-
+        // Set the current Nonlinear Step in the Problem class
+        problem.setNonlinearIterationStep(nlIts);
         gmresIts += problem.solveAndUpdate( criterion, criterionValue );
         nlIts++;
         if(criterion=="Update"){
@@ -406,6 +398,8 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, 
                 break;
         }
 
+        // Set the current Nonlinear Step in the Problem class
+        problem.setNonlinearIterationStep(nlIts);
         gmresIts += problem.solveAndUpdate( criterion, criterionValue, problem.getComm()->getRank(), useBT);
         nlIts++;
         if(criterion=="Update"){
@@ -432,6 +426,107 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, 
         }
     }
 }
+
+
+/*
+@TODO: In future user would like to switch between linearization based on the fact that the criteriumValue is not
+       decreasing "enough" or that the it is increasing -> For this one would need to store the previous criterionValues in a vector
+*/
+template<class SC,class LO,class GO,class NO>
+void NonLinearSolver<SC,LO,GO,NO>::solveFixedPointNewton( NonLinearProblem_Type &problem, vec_dbl_ptr_Type valuesForExport ){
+
+    bool verbose = problem.getVerbose();
+
+    TEUCHOS_TEST_FOR_EXCEPTION(problem.getRhs()->getNumVectors()!=1,std::logic_error,"We need to change the code for numVectors>1.")
+    // -------
+    // FixedPoint-Newton
+    // -------
+    double	gmresIts = 0.;
+    double residual0 = 1.;
+    double residual = 1.;
+    double tol = problem.getParameterList()->sublist("Parameter").get("relNonLinTol",1.0e-6);
+    int nlIts=0;
+    int maxNonLinIts = problem.getParameterList()->sublist("Parameter").get("MaxNonLinIts",10);
+    double criterionValue = 1.;
+    std::string criterion = problem.getParameterList()->sublist("Parameter").get("Criterion","Residual");
+
+    std::string linearization = problem.getParameterList()->sublist("General").get("Initial_Linearization", "FixedPoint"); // Default is FixedPoint for first iteration
+    Teuchos::RCP<NonLinearProblem<SC,LO,GO,NO> > problemPtr = Teuchos::rcpFromRef(problem);
+    Teuchos::RCP<Teuchos::ParameterList> parameterListGeneral = sublist(problemPtr->getParameterList(),"General");
+    bool linearizationChanged = false;
+
+
+    if (verbose)
+        std::cout << "####### Run FixedPoint-Newton Combination with Initial Linearization: " << linearization << " ####### " << std::endl;
+
+    while ( nlIts < maxNonLinIts ) { // User still can decinde on a maximum number of nonlinear iterations
+
+        // Compute residual vector 
+        problem.calculateNonLinResidualVec("reverse");    // Based on current solution (which is in first iteration the initial guess) compute the nonlinear residual vector
+
+        if (criterion=="Residual")
+            residual = problem.calculateResidualNorm();   // Compute norm of nonlinear residual vector
+
+
+        if (nlIts==0) 
+            residual0 = residual;                         // Store initial residual for relative convergence check
+        
+        if (criterion=="Residual"){                       // Check convergence based on relative nonlinear residual
+            criterionValue = residual/residual0;
+            if (verbose)
+                std::cout << "### " << linearization << "  iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << std::endl;
+            // One could add here a check for if nlIts=0 then initial linearization is shown which is not used for assemble?
+            if ( criterionValue < tol )
+                break;
+        }
+
+        // Use the user-defined switching strategy to decide whether to switch linearization and which one to use
+        linearizationChanged = this->switchingStrategy_(linearization, nlIts, criterionValue, parameterListGeneral); // Get the next linearization type
+        if (linearizationChanged) 
+        {
+            if (verbose)
+                std::cout << "### Switching linearization to " << linearization << " in iteration " << nlIts << std::endl;
+            problem.changeAssFELinearization(linearization); // Change linearization in all elements based on chosen strategy (Picard/ Newton) - But only if different from previous one
+        }
+
+        problem.assemble(linearization);
+
+
+        problem.setBoundariesSystem();
+
+
+        // PRINT INFOS
+        // Set the current Nonlinear Step in the Problem class
+        problem.setNonlinearIterationStep(nlIts);
+        gmresIts += problem.solveAndUpdate( criterion, criterionValue );
+        nlIts++;
+        if(criterion=="Update"){
+            if (verbose)
+                std::cout << "### " << linearization << " iteration : " << nlIts << "  residual of update : " << criterionValue << std::endl;
+            if ( criterionValue < tol )
+                break;
+        }
+
+        // ####### end FPI #######
+    }
+
+    gmresIts/=nlIts;
+    if (verbose)
+        std::cout << "### Total " << "nonlinear" << "  iterations : " << nlIts << "  with average gmres its : " << gmresIts << std::endl;
+    if ( problem.getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts",false) ) {
+        TEUCHOS_TEST_FOR_EXCEPTION(nlIts == maxNonLinIts ,std::runtime_error,"Maximum nonlinear Iterations reached. Problem might have converged in the last step. Still we cancel here.");
+    }
+
+    if (!valuesForExport.is_null()) {
+        if (valuesForExport->size() == 2){
+            (*valuesForExport)[0] = gmresIts;
+            (*valuesForExport)[1] = nlIts;
+        }
+    }
+}
+
+
+
 
 template<class SC,class LO,class GO,class NO>
 void NonLinearSolver<SC,LO,GO,NO>::solveFixedPoint(TimeProblem_Type &problem, double time){
@@ -544,8 +639,6 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton(TimeProblem_Type &problem, double
         problem.assemble("Newton"); 
 
         problem.setBoundariesSystem();
-
-        problem.getSystem()->writeMM("Assembled");
 
 
         if (timestepping == "External"){//AceGen
