@@ -1,4 +1,4 @@
-#include "NonLinearSchwarzOperator_decl.hpp"
+#include "NonLinearSchwarzOperator.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "NonLinearSchwarzOperator_def.hpp"

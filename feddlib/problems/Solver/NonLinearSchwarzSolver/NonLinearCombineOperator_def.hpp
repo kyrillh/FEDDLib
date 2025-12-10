@@ -3,7 +3,6 @@
 
 #include "CombineOperator_decl.hpp"
 #include "NonLinearCombineOperator_decl.hpp"
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearOperator_decl.hpp"
 #include <Teuchos_BLAS_types.hpp>
 #include <Teuchos_RCPDecl.hpp>
 /*!

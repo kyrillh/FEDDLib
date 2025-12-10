@@ -125,7 +125,7 @@ void NonLinElasticity<SC,LO,GO,NO>::reAssemble(std::string type) const {
         
     #ifdef FEDD_HAVE_ACEGENINTERFACE
         bool useInterface = this->parameterList_->sublist("Parameter").get("Use AceGen Interface", true);
-        if(this->getFEType(0) =="P2" && useInterface && this->dim_==3 && material_model == "Neo-Hooke"){
+        if(useInterface && material_model == "Neo-Hooke"){
             this->system_->addBlock( W, 0, 0 );  
            
             f->putScalar(0.);   

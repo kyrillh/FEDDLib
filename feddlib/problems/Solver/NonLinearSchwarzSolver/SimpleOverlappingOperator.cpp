@@ -1,4 +1,4 @@
-#include "SimpleOverlappingOperator_decl.hpp"
+#include "SimpleOverlappingOperator.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "SimpleOverlappingOperator_def.hpp"

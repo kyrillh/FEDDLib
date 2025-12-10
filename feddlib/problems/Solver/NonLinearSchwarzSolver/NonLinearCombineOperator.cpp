@@ -1,4 +1,4 @@
-#include "NonLinearCombineOperator_decl.hpp"
+#include "NonLinearCombineOperator.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "NonLinearCombineOperator_def.hpp"

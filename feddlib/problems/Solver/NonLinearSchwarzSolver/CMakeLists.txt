@@ -51,11 +51,5 @@ set(nonlinear_schwarz_SOURCES
 set(LOCAL_HEADERS)
 foreach(INC ${nonlinear_schwarz_HEADERS})
   string(REPLACE "NonLinearSchwarzSolver/" "" LOCAL_INC ${INC})
-  set(LOCAL_HEADERS ${LOCAL_HEADERS} ${LOCAL_INC})
+  append_set(LOCAL_HEADERS ${LOCAL_INC})
 endforeach()
-
-install(
-  FILES ${LOCAL_HEADERS}
-  DESTINATION
-    "${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}/feddlib/problems/Solver/NonLinearSchwarzSolver"
-  COMPONENT ${PACKAGE_NAME})

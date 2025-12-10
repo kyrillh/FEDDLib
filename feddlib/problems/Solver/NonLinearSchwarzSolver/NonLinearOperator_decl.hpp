@@ -4,7 +4,7 @@
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMultiVector_decl.hpp"
 #include "feddlib/core/LinearAlgebra/Map.hpp"
-#include <FROSch_SchwarzOperator_def.hpp>
+#include <FROSch_SchwarzOperator_decl.hpp>
 
 /*!
  Declaration of a nonlinear operator

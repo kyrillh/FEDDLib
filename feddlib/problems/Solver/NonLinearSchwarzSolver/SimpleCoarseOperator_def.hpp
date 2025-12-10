@@ -2,7 +2,6 @@
 #define SIMPLECOARSEOPERATPR_DEF_HPP
 
 #include "SimpleCoarseOperator_decl.hpp"
-#include "feddlib/core/Utils/FEDDUtils.hpp"
 #include <FROSch_CoarseOperator_decl.hpp>
 #include <Teuchos_Array.hpp>
 #include <Teuchos_ArrayViewDecl.hpp>

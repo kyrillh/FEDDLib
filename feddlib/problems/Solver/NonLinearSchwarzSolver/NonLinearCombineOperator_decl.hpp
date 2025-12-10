@@ -2,7 +2,7 @@
 #define NONLINEARCOMBINEOPERATOR_DECL_HPP
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearOperator_decl.hpp"
-#include <FROSch_SchwarzOperator_def.hpp>
+#include <FROSch_SchwarzOperator_decl.hpp>
 #include <Teuchos_ArrayRCPDecl.hpp>
 #include <Teuchos_ScalarTraitsDecl.hpp>
 #include "CombineOperator_decl.hpp"

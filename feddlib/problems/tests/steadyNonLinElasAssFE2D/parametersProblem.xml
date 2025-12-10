@@ -11,6 +11,7 @@
         <Parameter name="MaxNonLinIts" type="int" value="15"/>
         <Parameter name="Criterion" type="string" value="Residual"/>     
         <Parameter name="Use Backtracking" type="bool" value="false" />
+        <Parameter name="Use AceGen Interface" type="bool" value="true" />
  	<Parameter name="Material model" type="string" value="Neo-Hooke"/><!--Saint Venant-Kirchhoff,Neo-Hooke, Mooney-Rivlin -->
         <Parameter name="Neo-Hooke Modell" type="int" value="2"/><!--different energy functions -->
         <Parameter name="Density" type="double"   value="7.83e-6."/>

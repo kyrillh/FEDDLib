@@ -2,11 +2,13 @@
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 
 #include "feddlib/core/FE/Domain.hpp"
+#include "feddlib/core/General/BCBuilder.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
-#include "feddlib/problems/specific/NonLinElasAssFE.hpp"
+#include "feddlib/problems/specific/NonLinElasticity.hpp"
+#include "feddlib/problems/specific/NonLinElasticity_decl.hpp"
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
 
@@ -158,23 +160,23 @@ int main(int argc, char *argv[]) {
     std::vector<double> funcParams{static_cast<double>(dim)};
     bcFactory->addBC(Helper::currentSolutionDirichlet, -99, 0, domain, "Dirichlet", dim, funcParams);
 
-    NonLinElasAssFE<SC, LO, GO, NO> NonLinElasAssFE(domain, FEType, parameterListAll);
+    NonLinElasticity<SC, LO, GO, NO> nonlinearElasticity(domain, FEType, parameterListAll);
 
-    NonLinElasAssFE.addBoundaries(bcFactory);
-    NonLinElasAssFE.addRhsFunction(rhs2D);
+    nonlinearElasticity.addBoundaries(bcFactory);
+    nonlinearElasticity.addRhsFunction(rhs2D);
 
     double force = parameterListAll->sublist("Parameter").get("Volume force", 0.);
     double degree = 0;
-    NonLinElasAssFE.addParemeterRhs(force);
-    NonLinElasAssFE.addParemeterRhs(degree);
+    nonlinearElasticity.addParemeterRhs(force);
+    nonlinearElasticity.addParemeterRhs(degree);
 
-    NonLinElasAssFE.initializeProblem();
+    nonlinearElasticity.initializeProblem();
 
     // std::string nlSolverType = parameterListProblem->sublist("General").get("Linearization", "Newton");
     std::string nlSolverType = "NonLinearSchwarz";
     NonLinearSolver<SC, LO, GO, NO> nlSolver(nlSolverType);
     FEDD_TIMER_START(SolveTimer, " - Schwarz - global solve");
-    nlSolver.solve(NonLinElasAssFE);
+    nlSolver.solve(nonlinearElasticity);
     FEDD_TIMER_STOP(SolveTimer);
 
     comm->barrier();
@@ -193,7 +195,7 @@ int main(int argc, char *argv[]) {
 
         exPara->setup("displacements", domain->getMesh(), FEType);
 
-        MultiVectorConstPtr_Type valuesSolidConst = NonLinElasAssFE.getSolution()->getBlock(0);
+        MultiVectorConstPtr_Type valuesSolidConst = nonlinearElasticity.getSolution()->getBlock(0);
         MultiVectorConstPtr_Type rank = rankVec;
 
         exPara->addVariable(valuesSolidConst, "valuesNonLinElasAssFE", "Vector", dim, domain->getMapUnique());

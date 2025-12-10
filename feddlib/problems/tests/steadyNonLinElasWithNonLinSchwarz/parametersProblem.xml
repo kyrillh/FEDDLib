@@ -13,6 +13,7 @@
     <Parameter name="MaxNonLinIts" type="int" value="10" />
     <!-- <Parameter name="MaxNonLinIts" type="int" value="10" /> -->
     <Parameter name="Criterion" type="string" value="Residual" />
+    <Parameter name="Use AceGen Interface" type="bool" value="true" />
     <Parameter name="Material model" type="string" value="Neo-Hooke" /><!--Saint
     Venant-Kirchhoff,Neo-Hooke, Mooney-Rivlin -->
     <Parameter name="Neo-Hooke Modell" type="int" value="2" /><!--different

@@ -1,5 +1,6 @@
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
+#include "feddlib/core/General/BCBuilder.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMultiVector_decl.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner_decl.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"

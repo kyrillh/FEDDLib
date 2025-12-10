@@ -2,7 +2,7 @@
 #define COMBINEOPERATOR_DECL_HPP
 
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
-#include <FROSch_SchwarzOperator_def.hpp>
+#include <FROSch_SchwarzOperator_decl.hpp>
 
 /*!
  Declaration of CombineOperator. This is an interface operator which is specialized into e.g. SumOperator,

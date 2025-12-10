@@ -1,6 +1,7 @@
 #ifndef COARSENONLINEARSCHWARZOPERATOR_DECL_HPP
 #define COARSENONLINEARSCHWARZOPERATOR_DECL_HPP
 
+#include "feddlib/core/General/BCBuilder_decl.hpp"
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMatrix_decl.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMultiVector_decl.hpp"
@@ -9,7 +10,7 @@
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearOperator_decl.hpp"
 #include "feddlib/problems/abstract/NonLinearProblem_decl.hpp"
 #include <FROSch_IPOUHarmonicCoarseOperator_decl.hpp>
-#include <FROSch_SchwarzOperator_def.hpp>
+#include <FROSch_SchwarzOperator_decl.hpp>
 #include <Teuchos_Describable.hpp>
 #include <Teuchos_FancyOStream.hpp>
 #include <Teuchos_RCPDecl.hpp>
@@ -56,11 +57,9 @@ class CoarseNonLinearSchwarzOperator : public IPOUHarmonicCoarseOperator<SC, LO,
 
     // the compute method is implemented in FROSch_CoarseOperator_def
 
-    void apply(const BlockMultiVectorPtrFEDD x, BlockMultiVectorPtrFEDD y, SC alpha = ST::one(),
-               SC beta = ST::zero());
+    void apply(const BlockMultiVectorPtrFEDD x, BlockMultiVectorPtrFEDD y, SC alpha = ST::one(), SC beta = ST::zero());
 
-    void apply(TMultiVector &x, TMultiVector &y, SC alpha = ST::one(),
-               SC beta = ST::zero()) override;
+    void apply(TMultiVector &x, TMultiVector &y, SC alpha = ST::one(), SC beta = ST::zero()) override;
 
     // This apply method must be overridden but does not make sense in the context of nonlinear operators
     void apply(const XMultiVector &x, XMultiVector &y, bool usePreconditionerOnly, ETransp mode = NO_TRANS,

@@ -1,4 +1,4 @@
-#include "SumOperator_decl.hpp"
+#include "SumOperator_def.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "SumOperator_def.hpp"

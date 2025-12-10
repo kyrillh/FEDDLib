@@ -10,7 +10,7 @@
 #include "feddlib/core/Mesh/Mesh_decl.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearOperator_decl.hpp"
 #include "feddlib/problems/abstract/NonLinearProblem_decl.hpp"
-#include <FROSch_SchwarzOperator_def.hpp>
+#include <FROSch_SchwarzOperator_decl.hpp>
 #include <Teuchos_Describable.hpp>
 #include <Teuchos_FancyOStream.hpp>
 #include <Teuchos_RCPDecl.hpp>

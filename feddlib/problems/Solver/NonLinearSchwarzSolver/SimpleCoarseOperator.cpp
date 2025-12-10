@@ -1,4 +1,4 @@
-#include "SimpleCoarseOperator_decl.hpp"
+#include "SimpleCoarseOperator.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "SimpleCoarseOperator_def.hpp"

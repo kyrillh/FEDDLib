@@ -1,4 +1,4 @@
-#include "H1Operator_decl.hpp"
+#include "H1Operator.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "H1Operator_def.hpp"

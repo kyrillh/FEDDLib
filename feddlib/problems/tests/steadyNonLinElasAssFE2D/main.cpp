@@ -3,10 +3,12 @@
 
 #include "feddlib/core/FE/Domain.hpp"
 #include "feddlib/core/General/ExporterParaView.hpp"
+#include "feddlib/core/General/BCBuilder.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
-#include "feddlib/problems/specific/NonLinElasAssFE.hpp"
+#include "feddlib/problems/specific/NonLinElasticity.hpp"
+#include "feddlib/problems/specific/NonLinElasticity_decl.hpp"
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
 #include <Xpetra_DefaultPlatform.hpp>
@@ -37,6 +39,7 @@ typedef default_no NO;
 using namespace FEDD;
 using namespace Teuchos;
 using namespace std;
+
 int main(int argc, char *argv[]) {
 
     typedef MeshUnstructured<SC, LO, GO, NO> MeshUnstr_Type;
@@ -163,27 +166,27 @@ int main(int argc, char *argv[]) {
     bcFactory->addBC(zeroDirichlet2D, 2, 0, domain, "Dirichlet", dim);
     bcFactory->addBC(zeroDirichlet2D, 4, 0, domain, "Dirichlet", dim);
 
-    NonLinElasAssFE<SC, LO, GO, NO> NonLinElasAssFE(domain, FEType, parameterListAll);
+    NonLinElasticity<SC, LO, GO, NO> nonlinearElasticity(domain, FEType, parameterListAll);
 
-    NonLinElasAssFE.addBoundaries(bcFactory);
+    nonlinearElasticity.addBoundaries(bcFactory);
 
-    NonLinElasAssFE.addRhsFunction(rhs2D);
+    nonlinearElasticity.addRhsFunction(rhs2D);
 
     double force = parameterListAll->sublist("Parameter").get("Volume force", 0.);
     double degree = 0;
 
-    NonLinElasAssFE.addParemeterRhs(force);
-    NonLinElasAssFE.addParemeterRhs(degree);
+    nonlinearElasticity.addParemeterRhs(force);
+    nonlinearElasticity.addParemeterRhs(degree);
 
-    NonLinElasAssFE.initializeProblem();
-    NonLinElasAssFE.assemble();
-    NonLinElasAssFE.setBoundaries();
-    NonLinElasAssFE.setBoundariesRHS();
+    nonlinearElasticity.initializeProblem();
+    nonlinearElasticity.assemble();
+    nonlinearElasticity.setBoundaries();
+    nonlinearElasticity.setBoundariesRHS();
 
     std::string nlSolverType = "Newton";
     NonLinearSolver<SC, LO, GO, NO> nlSolverAssFE(nlSolverType);
     FEDD_TIMER_START(SolveTimer, " - NKS - global solve");
-    nlSolverAssFE.solve(NonLinElasAssFE);
+    nlSolverAssFE.solve(nonlinearElasticity);
     FEDD_TIMER_STOP(SolveTimer);
 
     comm->barrier();
@@ -198,7 +201,7 @@ int main(int argc, char *argv[]) {
 
     exPara->setup("displacements", domain->getMesh(), FEType);
 
-    MultiVectorConstPtr_Type solution = NonLinElasAssFE.getSolution()->getBlock(0);
+    MultiVectorConstPtr_Type solution = nonlinearElasticity.getSolution()->getBlock(0);
     exPara->addVariable(solution, "valuesNonLinElasAssFE", "Vector", dim, domain->getMapUnique());
 
     exPara->save(0.0);

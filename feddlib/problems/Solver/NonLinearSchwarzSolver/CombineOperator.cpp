@@ -1,4 +1,4 @@
-#include "CombineOperator_decl.hpp"
+#include "CombineOperator.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "CombineOperator_def.hpp"

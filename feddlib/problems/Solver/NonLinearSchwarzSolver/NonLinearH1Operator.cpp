@@ -1,4 +1,4 @@
-#include "NonLinearH1Operator_decl.hpp"
+#include "NonLinearH1Operator.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "NonLinearH1Operator_def.hpp"

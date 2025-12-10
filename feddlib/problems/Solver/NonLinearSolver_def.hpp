@@ -9,6 +9,7 @@
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleCoarseOperator_decl.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleOverlappingOperator_decl.hpp"
 #include "feddlib/core/General/BCBuilder.hpp"
+#include <FROSch_TpetraPreconditioner_decl.hpp>
 
 /*!
  Definition of NonLinearSolver

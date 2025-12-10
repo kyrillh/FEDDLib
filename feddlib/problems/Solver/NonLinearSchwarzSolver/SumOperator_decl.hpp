@@ -3,7 +3,7 @@
 
 #include "feddlib/core/General/DefaultTypeDefs.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/CombineOperator_decl.hpp"
-#include <FROSch_SchwarzOperator_def.hpp>
+#include <FROSch_SchwarzOperator_decl.hpp>
 
 /*!
  Declaration of SumOperator. This is a reimplementation of the FROSch::SumOperator that inherits from the

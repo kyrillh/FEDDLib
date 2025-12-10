@@ -9,8 +9,6 @@
 #define NAVIER_STOKES_STOP(A) A.reset();
 #endif
 
-#include "feddlib/core/LinearAlgebra/Matrix.hpp"
-#include "feddlib/core/General/BCBuilder.hpp"
 #include "feddlib/problems/Solver/Preconditioner.hpp"
 
 /*!
@@ -809,6 +807,7 @@ void NavierStokes<SC,LO,GO,NO>::calculateNonLinResidualVecWithMeshVelo(std::stri
 template <class SC, class LO, class GO, class NO>
 void NavierStokes<SC, LO, GO, NO>::reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) {
     this->u_rep_ = Teuchos::rcp(new MultiVector_Type(newMap->getBlock(0)));
+    establishNNZPattern();
     assembleConstantMatrices();
 }
 

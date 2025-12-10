@@ -6,9 +6,8 @@
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMatrix_decl.hpp"
 #include "feddlib/core/LinearAlgebra/Map_decl.hpp"
-#include "feddlib/core/LinearAlgebra/Matrix_decl.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector_decl.hpp"
-#include "feddlib/core/General/BCBuilder.hpp"
+#include "feddlib/core/General/BCBuilder_decl.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"
 #include <Tacho_Driver.hpp>
 #include <Teuchos_Array.hpp>
@@ -24,8 +23,6 @@
 #include <Teuchos_VerbosityLevel.hpp>
 #include <Tpetra_MultiVector_decl.hpp>
 #include <algorithm>
-#include <iterator>
-#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <vector>
