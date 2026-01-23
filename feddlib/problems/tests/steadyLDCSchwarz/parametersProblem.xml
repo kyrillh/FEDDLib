@@ -16,7 +16,7 @@
         <Parameter name="absNonLinTol" type="double" value="1.0e-6" />
         <Parameter name="MaxNonLinIts" type="int" value="10" />
         <Parameter name="Set Zeros" type="bool" value="false" />
-
+        <Parameter name="Use Pressure Projection" type="bool" value="true"/>   
     </ParameterList>
     <ParameterList name="Mesh Partitioner">
         <Parameter name="Contiguous" type="bool" value="true" />

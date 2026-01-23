@@ -5,6 +5,7 @@
 #include "feddlib/core/FE/FE_decl.hpp"
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMatrix_decl.hpp"
+#include "feddlib/core/LinearAlgebra/BlockMultiVector_decl.hpp"
 #include "feddlib/core/LinearAlgebra/Map_decl.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector_decl.hpp"
 #include "feddlib/core/General/BCBuilder_decl.hpp"
@@ -22,6 +23,7 @@
 #include <Teuchos_TestForException.hpp>
 #include <Teuchos_VerbosityLevel.hpp>
 #include <Tpetra_MultiVector_decl.hpp>
+#include <Xpetra_TpetraExport_decl.hpp>
 #include <algorithm>
 #include <stdexcept>
 #include <string>
@@ -45,7 +47,8 @@ namespace FROSch {
 template <class SC, class LO, class GO, class NO>
 NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr serialComm, NonLinearProblemPtrFEDD problem,
                                                                    ParameterListPtr parameterList)
-    : SchwarzOperator<SC, LO, GO, NO>(FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
+    : SchwarzOperator<SC, LO, GO, NO>(
+          FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
       problem_{problem}, x_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
       y_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
       localJacobianGhosts_{Teuchos::rcp(new FEDD::BlockMatrix<SC, LO, GO, NO>(1))},
@@ -53,7 +56,7 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
       blockMapOverlappingGhostsLocal_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
       blockMapVecFieldOverlappingGhostsLocal_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))}, relNewtonTol_{},
       absNewtonTol_{}, maxNumIts_{}, combinationMode_{},
-      multiplicity_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
+      multiplicity_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))}, aProjection_{}, sumAA_{-1.},
       blockElementMapMpiTmp_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
       blockMapRepeatedMpiTmp_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
       blockMapUniqueMpiTmp_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
@@ -99,6 +102,16 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
         // Initialize members that cannot be null after construction
         x_->addBlock(Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(map, 1)), i);
         feFactoryGhostsLocal_->addFE(domainVec.at(i));
+    }
+
+    if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
+        // sumAA_ = -1 set in the init. list.
+        auto tempA = ExtractPtrFromParameterList<XMultiVector>(*this->ParameterList_, "Projection");
+        Teuchos::RCP<Tpetra::MultiVector<SC, LO, GO, NO>> tempATpetra = Xpetra::toTpetra(tempA);
+        auto tempAFEDD = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(tempATpetra));
+        aProjection_ = Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(problem->solution_->getMap(), 1));
+        aProjection_->setMergedVector(tempAFEDD);
+        aProjection_->split();
     }
 }
 
@@ -532,6 +545,45 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
         // }
 
         y_overlapping->replaceMap(mapOverlappingGhosts);
+
+        if (!aProjection_.is_null() &&
+            (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false) == true)) {
+
+            FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection");
+
+            RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+            // Here OverlappingMap_ represents the overlapping subdomain distribution including ghost layer on the
+            // global comm
+            auto a = FEDD::MultiVector<SC, LO, GO, NO>(mapOverlappingGhosts, y_overlapping->getNumVectors());
+
+            // Get the projection on the overlapping subdomain
+            // INSERT and ADD should be the same here since we are going from unique to overlapping
+            a.importFromVector(aProjection_->getBlock(i), true);
+
+            // Perform local dot products
+            auto a_values = a.getDataNonConst(0);
+            auto y_values = y_overlapping->getDataNonConst(0);
+            double sumAY = 0.;
+            for (int i = 0; i < a_values.size(); i++) {
+                sumAY += a_values[i] * y_values[i];
+            }
+            // We calculate a^Ta once. If it is not zero, we use it to scale.
+            if (sumAA_ < 0.) {
+                sumAA_ = 0.;
+                for (int i = 0; i < a_values.size(); i++) {
+                    sumAA_ += a_values[i] * a_values[i];
+                }
+            }
+            if (sumAA_ > 0.) {
+                double aint = 1. / sumAA_;
+                SC scaling = aint * sumAY;
+                // y_overlapping = y_overlapping - scaling*a
+                y_overlapping->update(-scaling, a, 1);
+            }
+        }
+
+        // FEDD::logGreen("After scaling", this->MpiComm_);
+        // y_overlapping->print(VERB_EXTREME);
 
         auto y_unique = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(mapUnique));
         if (combinationMode_ == CombinationMode::Restricted) {

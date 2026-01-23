@@ -117,6 +117,8 @@ void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMu
     FEDD_TIMER_START(DFuTimer, " - Schwarz - apply DFu");
     // y = alpha*f(x) + beta*y
     // move the input to the local serial overlapping ghosts map
+    // this->OverlappingMap_ partitions the subdomains with overlap and ghost layer and uses the global comm
+    // this->OverlappingMatrix_->rowMap_ has the same partitioning but uses a serial comm
     if (x_Ghosts_.is_null()) {
         x_Ghosts_ = Xpetra::MultiVectorFactory<SC, LO, GO, NO>::Build(this->OverlappingMap_, x.getNumVectors());
     } else {
@@ -155,6 +157,39 @@ void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMu
     }
     this->SubdomainSolver_->apply(*x_Ghosts_, *y_Ghosts_, mode, ST::one(), ST::zero());
     y_Ghosts_->replaceMap(this->OverlappingMap_);
+
+    // Apply local pressure correction
+    if (!this->aProjection_.is_null() &&
+        (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false) == true)) {
+
+        FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection");
+
+        RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+        // Here OverlappingMap_ represents the overlapping subdomain distribution including ghost layer on the global comm
+        XMultiVectorPtr a = MultiVectorFactory<SC, LO, GO, NO>::Build(this->OverlappingMap_, x.getNumVectors());
+
+        // Get the projection on the overlapping subdomain
+        // INSERT and ADD should be the same here since we are going from unique to overlapping
+        a->doImport(*this->aProjection_, *this->Scatter_, INSERT);
+
+        // Perform local dot products
+        SCVecPtr a_values = a->getDataNonConst(0);
+        SCVecPtr y_values = this->y_Ghosts_->getDataNonConst(0);
+        double sumAY = 0.;
+        for (int i = 0; i < a_values.size(); i++) {
+            sumAY += a_values[i] * y_values[i];
+        }
+        double sumAA = 0.;
+        if (this->sumAA_ < 0.) {
+            for (int i = 0; i < a_values.size(); i++) {
+                sumAA += a_values[i] * a_values[i];
+            }
+            this->sumAA_ = sumAA;
+        }
+        double aint = 1. / this->sumAA_;
+        SC scaling = aint * sumAY;
+        y_Ghosts_->update(-scaling, *a, 1);
+    }
 
     if (y_unique_.is_null()) {
         y_unique_ = Xpetra::MultiVectorFactory<SC, LO, GO>::Build(uniqueMap_, x.getNumVectors());

@@ -43,10 +43,13 @@ class SimpleOverlappingOperator : public OverlappingOperator<SC, LO, GO, NO> {
 
     using XMultiVector = typename SchwarzOperator<SC, LO, GO, NO>::XMultiVector;
     using XMultiVectorPtr = typename SchwarzOperator<SC, LO, GO, NO>::XMultiVectorPtr;
+    using XMultiVectorConstPtr = const XMultiVectorPtr;
 
     using XImportPtr = typename SchwarzOperator<SC, LO, GO, NO>::XImportPtr;
 
     using ParameterListPtr = typename SchwarzOperator<SC, LO, GO, NO>::ParameterListPtr;
+
+    using SCVecPtr              = typename SchwarzOperator<SC,LO,GO,NO>::SCVecPtr;
 
     using NonLinearProblemPtrFEDD = typename Teuchos::RCP<FEDD::NonLinearProblem<SC, LO, GO, NO>>;
     using ST = typename Teuchos::ScalarTraits<SC>;
