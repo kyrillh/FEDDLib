@@ -4,11 +4,11 @@
 #include "NonLinearSchwarzOperator_decl.hpp"
 #include "feddlib/core/FE/FE_decl.hpp"
 #include "feddlib/core/FEDDCore.hpp"
+#include "feddlib/core/General/BCBuilder_decl.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMatrix_decl.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMultiVector_decl.hpp"
 #include "feddlib/core/LinearAlgebra/Map_decl.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector_decl.hpp"
-#include "feddlib/core/General/BCBuilder_decl.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"
 #include <Tacho_Driver.hpp>
 #include <Teuchos_Array.hpp>
@@ -146,18 +146,16 @@ template <class SC, class LO, class GO, class NO> int NonLinearSchwarzOperator<S
     // version of the map as well for replaceRepeatedMembers and replaceUniqueMembers.
     for (int i = 0; i < domainVec.size(); i++) {
         auto tmpMPIMap = domainVec.at(i)->getMesh()->getMapOverlappingGhosts();
-        auto mapOverlappingGhostsLocal =
-            Teuchos::rcp(new FEDD::Map<LO, GO, NO>(tmpMPIMap->getNodeNumElements(),
-                                                   tmpMPIMap->getNodeNumElements(), 0, this->SerialComm_));
+        auto mapOverlappingGhostsLocal = Teuchos::rcp(new FEDD::Map<LO, GO, NO>(
+            tmpMPIMap->getNodeNumElements(), tmpMPIMap->getNodeNumElements(), 0, this->SerialComm_));
         auto mapVecFieldOverlappingGhostsLocal =
             mapOverlappingGhostsLocal->buildVecFieldMap(problem_->getDofsPerNode(i));
 
         blockMapOverlappingGhostsLocal_->addBlock(mapOverlappingGhostsLocal, i);
         blockMapVecFieldOverlappingGhostsLocal_->addBlock(mapVecFieldOverlappingGhostsLocal, i);
         tmpMPIMap = rcp(new FEDD::Map<LO, GO, NO>(domainVec.at(i)->getDualGraph()->getRowMap()));
-        auto mapElementsOverlappingGhostsLocal =
-            Teuchos::rcp(new FEDD::Map<LO, GO, NO>(tmpMPIMap->getNodeNumElements(),
-                                                   tmpMPIMap->getNodeNumElements(), 0, this->SerialComm_));
+        auto mapElementsOverlappingGhostsLocal = Teuchos::rcp(new FEDD::Map<LO, GO, NO>(
+            tmpMPIMap->getNodeNumElements(), tmpMPIMap->getNodeNumElements(), 0, this->SerialComm_));
         blockElementMapLocal_->addBlock(mapElementsOverlappingGhostsLocal, i);
     }
 
@@ -271,7 +269,6 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     // 6. feFactory. Needs replacing because stores an AssembleFEFactoryObject
     problem_->feFactory_ = feFactoryGhostsLocal_;
 
-
     // 7. rebuild problem->u_rep_ to use overlapping map
     problem_->reInitSpecificProblemVectors(blockMapVecFieldOverlappingGhostsLocal_);
 
@@ -375,9 +372,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
             }
         }
     }
-    // The currently assembled Jacobian is from the previous Newton iteration. The error this causes is negligable.
-    // Worth it since a reassemble is avoided. Set the rows corresponding to Dirichlet nodes to unity since some problem
-    // classes reassemble the tangent when calculating the residual
+    // Store the current local Jacobian for building the Jacobian of \mathcal{F} in the outer Newton
+    // Note: rows corresponding to ghost nodes are set to unity in setBoundariesSystem().
     auto blockMatDim = problem_->system_->size();
     for (int i = 0; i < blockMatDim; i++) {
         for (int j = 0; j < blockMatDim; j++) {
@@ -558,32 +554,39 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
 
             // Get the projection on the overlapping subdomain
             // INSERT and ADD should be the same here since we are going from unique to overlapping
-            a.importFromVector(aProjection_->getBlock(i), true);
+            //TODO:[KH] move this into init so it is only done once
+            a.importFromVector(aProjection_->getBlock(i), true, "Insert");
 
-            // Perform local dot products
-            auto a_values = a.getDataNonConst(0);
-            auto y_values = y_overlapping->getDataNonConst(0);
-            double sumAY = 0.;
-            for (int i = 0; i < a_values.size(); i++) {
-                sumAY += a_values[i] * y_values[i];
-            }
-            // We calculate a^Ta once. If it is not zero, we use it to scale.
-            if (sumAA_ < 0.) {
-                sumAA_ = 0.;
-                for (int i = 0; i < a_values.size(); i++) {
-                    sumAA_ += a_values[i] * a_values[i];
+            for (int j = 0; j < domainVec.at(i)->getMesh()->bcFlagOverlappingGhosts_->size(); j++) {
+                if (domainVec.at(i)->getMesh()->bcFlagOverlappingGhosts_->at(j) == -99) {
+                    for (int k = 0; k < problem_->getDofsPerNode(i); k++) {
+                        a.replaceLocalValue(static_cast<LO>(problem_->getDofsPerNode(i) * j + k), 0, ST::zero());
+                    }
                 }
             }
+
+            // Perform local dot products
+            auto a_values = a.getData(0);
+            auto y_values = y_overlapping->getData(0);
+            double sumAY = 0.;
+            for (int j = 0; j < a_values.size(); j++) {
+                sumAY += a.getData(0)[j] * y_values[j];
+            }
+            // We calculate a^Ta once. If it is not zero, we use it to scale.
+            // TODO: [KH] the problem is that sumAA_ is used for both pressure and velocity. Make a vector with num
+            // domains entries and save them seperately.
+            sumAA_ = 0.;
+            for (int j = 0; j < a_values.size(); j++) {
+                sumAA_ += a.getData(0)[j] * a.getData(0)[j];
+            }
+            SC projectionScaling = -1;
             if (sumAA_ > 0.) {
                 double aint = 1. / sumAA_;
-                SC scaling = aint * sumAY;
+                projectionScaling = aint * sumAY;
                 // y_overlapping = y_overlapping - scaling*a
-                y_overlapping->update(-scaling, a, 1);
+                y_overlapping->update(-projectionScaling, a, 1);
             }
         }
-
-        // FEDD::logGreen("After scaling", this->MpiComm_);
-        // y_overlapping->print(VERB_EXTREME);
 
         auto y_unique = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(mapUnique));
         if (combinationMode_ == CombinationMode::Restricted) {
@@ -597,12 +600,12 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
             //  Conclusion: using an Importer results in a correct distribution. Probably because order in which mapping
             //  is done happens to be correct. Probably cannot be relied on.
             /* y_unique_->importFromVector(y_overlapping, true, "Insert", "Forward"); */
-            for (auto i = 0; i < y_unique->getNumVectors(); i++) {
-                auto y_overlappingData = y_overlapping->getData(i);
-                for (auto j = 0; j < mapUnique->getNodeNumElements(); j++) {
-                    globalID = mapUnique->getGlobalElement(j);
+            for (auto j = 0; j < y_unique->getNumVectors(); j++) {
+                auto y_overlappingData = y_overlapping->getData(j);
+                for (auto k = 0; k < mapUnique->getNodeNumElements(); k++) {
+                    globalID = mapUnique->getGlobalElement(k);
                     localID = mapOverlappingGhosts->getLocalElement(globalID);
-                    y_unique->getDataNonConst(i)[j] = y_overlappingData[localID];
+                    y_unique->getDataNonConst(j)[k] = y_overlappingData[localID];
                 }
             }
         } else {
@@ -611,12 +614,11 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
             y_unique->exportFromVector(y_overlapping, true, "Add", "Forward");
         }
         if (combinationMode_ == CombinationMode::Averaging) {
-
-            auto scaling = multiplicity_->getBlock(i)->getData(0);
-            for (auto j = 0; j < y_unique->getNumVectors(); j++) {
-                auto values = y_unique->getDataNonConst(j);
-                for (auto i = 0; i < values.size(); i++) {
-                    values[i] = values[i] / scaling[i];
+            auto multiplicityScaling = multiplicity_->getBlock(i)->getData(0);
+            for (auto k = 0; k < y_unique->getNumVectors(); k++) {
+                auto values = y_unique->getDataNonConst(k);
+                for (auto j = 0; j < values.size(); j++) {
+                    values[j] = values[j] / multiplicityScaling[j];
                 }
             }
         }

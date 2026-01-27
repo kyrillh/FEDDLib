@@ -3,6 +3,7 @@
 
 #include "SimpleOverlappingOperator_decl.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"
+#include "feddlib/core/FE/Domain_decl.hpp"
 #include <FROSch_OverlappingOperator_decl.hpp>
 #include <Teuchos_Array.hpp>
 #include <Teuchos_ArrayViewDecl.hpp>
@@ -29,7 +30,8 @@ namespace FROSch {
 template <class SC, class LO, class GO, class NO>
 SimpleOverlappingOperator<SC, LO, GO, NO>::SimpleOverlappingOperator(NonLinearProblemPtrFEDD problem,
                                                                      ParameterListPtr parameterList)
-    : OverlappingOperator<SC, LO, GO, NO>(FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
+    : OverlappingOperator<SC, LO, GO, NO>(
+          FEDD::toXpetraMatrix(problem->system_->getMergedMatrix()->getTpetraMatrixNonConst()), parameterList),
       uniqueMap_(), importerUniqueToGhosts_(), x_Ghosts_(), y_unique_(), y_Ghosts_(), bcFlagOverlappingGhostsVec_(),
       problem_(problem) {
     // Override the combine mode of the FROSch operator base object from the nonlinear Schwarz configuration
@@ -86,6 +88,8 @@ int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(
     this->initializeOverlappingOperator();
     // Distributed map corresponding to OverlappingMatrix_
     this->OverlappingMap_ = overlappingGhostsMap;
+    // Need to rebuild Scatter_ to use the correct overlapping map
+    this->Scatter_ = ImportFactory<LO,GO,NO>::Build(this->getDomainMap(),this->OverlappingMap_);
 
     // Compute symbolic factorization
     this->initializeSubdomainSolver(this->OverlappingMatrix_);
@@ -133,11 +137,12 @@ void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMu
     //  Apply DF(u_i)
     this->OverlappingMatrix_->apply(*x_Ghosts_, *x_Ghosts_, mode, ST::one(), ST::zero());
     // Set solution on ghost points to zero so that column entries in (R_iDF(u_i)P_i)^-1 corresponding to ghost nodes do
-    // not affect the solution. This is equivalent to applying the restriction opertor R_i
+    // not affect the solution. This is equivalent to applying the restriction operator R_i. This should also result in
+    // ghost entries that are zero after the solve since rows in R_iDF(u_i)P_i corresponding to ghost nodes were set to
+    // zero during inner Newton solves in NonLinearSchwarzOperator.
     int blockOffset = 0;
     for (int i = 0; i < bcFlagOverlappingGhostsVec_.size(); i++) {
-        auto bcFlagOverlappingGhosts = bcFlagOverlappingGhostsVec_.at(i);
-        auto numNodesBlock = bcFlagOverlappingGhosts->size();
+        auto numNodesBlock = bcFlagOverlappingGhostsVec_.at(i)->size();
         auto dofsPerNode = problem_->getDofsPerNode(i);
         for (int j = 0; j < numNodesBlock; j++) {
             if (bcFlagOverlappingGhostsVec_.at(i)->at(j) == -99) {
@@ -165,12 +170,28 @@ void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMu
         FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection");
 
         RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
-        // Here OverlappingMap_ represents the overlapping subdomain distribution including ghost layer on the global comm
+        // Here OverlappingMap_ represents the overlapping subdomain distribution including ghost layer on the global
+        // comm
         XMultiVectorPtr a = MultiVectorFactory<SC, LO, GO, NO>::Build(this->OverlappingMap_, x.getNumVectors());
+        auto importer = ImportFactory<LO, GO, NO>::Build(this->uniqueMap_, this->OverlappingMap_);
 
         // Get the projection on the overlapping subdomain
         // INSERT and ADD should be the same here since we are going from unique to overlapping
+        //TODO:[KH] move this into init so it is only done once
         a->doImport(*this->aProjection_, *this->Scatter_, INSERT);
+        blockOffset = 0;
+        for (int i = 0; i < bcFlagOverlappingGhostsVec_.size(); i++) {
+            auto numNodesBlock = bcFlagOverlappingGhostsVec_.at(i)->size();
+            auto dofsPerNode = problem_->getDofsPerNode(i);
+            for (int j = 0; j < numNodesBlock; j++) {
+                if (bcFlagOverlappingGhostsVec_.at(i)->at(j) == -99) {
+                    for (int k = 0; k < dofsPerNode; k++) {
+                        a->replaceLocalValue(static_cast<LO>(blockOffset + dofsPerNode * j + k), 0, ST::zero());
+                    }
+                }
+            }
+            blockOffset += numNodesBlock * dofsPerNode;
+        }
 
         // Perform local dot products
         SCVecPtr a_values = a->getDataNonConst(0);
