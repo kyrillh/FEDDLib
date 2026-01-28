@@ -2,8 +2,9 @@
 #define SIMPLEOVERLAPPINGOPERATPR_DEF_HPP
 
 #include "SimpleOverlappingOperator_decl.hpp"
-#include "feddlib/core/Utils/FEDDUtils.hpp"
 #include "feddlib/core/FE/Domain_decl.hpp"
+#include "feddlib/core/LinearAlgebra/BlockMap_decl.hpp"
+#include "feddlib/core/Utils/FEDDUtils.hpp"
 #include <FROSch_OverlappingOperator_decl.hpp>
 #include <Teuchos_Array.hpp>
 #include <Teuchos_ArrayViewDecl.hpp>
@@ -49,12 +50,68 @@ SimpleOverlappingOperator<SC, LO, GO, NO>::SimpleOverlappingOperator(NonLinearPr
         }
         this->Combine_ = OverlappingOperator<SC, LO, GO, NO>::CombinationType::Restricted;
     }
+    // Extract overlappingGhostFlags
+    auto numDomains = problem_->getDomainVector().size();
+    bcFlagOverlappingGhostsVec_ = std::vector<FEDD::vec_int_ptr_Type>(2);
+    for (int i = 0; i < numDomains; i++) {
+        bcFlagOverlappingGhostsVec_[i] = problem_->getDomain(i)->getMesh()->bcFlagOverlappingGhosts_;
+    }
+    
+
+    
+    // Build the pressure projection if required.
+    if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
+        // First build the overlapping map including ghost layer from the domain maps e.g. fuse velocity and pressure
+        // maps if solving Navier-Stokes
+        auto blockMapOverlappingGhosts = Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(numDomains));
+        auto blockMapUnique = Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(numDomains));
+        for (int i = 0; i < numDomains; i++) {
+            if (problem_->getDofsPerNode(i) > 1) {
+                blockMapOverlappingGhosts->addBlock(problem_->getDomain(i)->getMapVecFieldOverlappingGhosts(), i);
+                blockMapUnique->addBlock(problem_->getDomain(i)->getMapVecFieldUnique(), i);
+            } else {
+                blockMapOverlappingGhosts->addBlock(problem_->getDomain(i)->getMapOverlappingGhosts(), i);
+                blockMapUnique->addBlock(problem_->getDomain(i)->getMapUnique(), i);
+            }
+        }
+        // Here blockMapOverlappingGhosts represents the overlapping subdomain distribution including ghost layer on the global
+        // comm
+        XMultiVectorPtr a = MultiVectorFactory<SC, LO, GO, NO>::Build(Xpetra::toXpetra(blockMapOverlappingGhosts->getMergedMap()->getTpetraMap()), 1);
+        // Build the correct importer object
+        this->Scatter_ = Xpetra::ImportFactory<LO, GO, NO>::Build(Xpetra::toXpetra(blockMapUnique->getMergedMap()->getTpetraMap()), Xpetra::toXpetra(blockMapOverlappingGhosts->getMergedMap()->getTpetraMap()));
+
+        // Get the projection on the overlapping subdomain including ghost nodes
+        // INSERT and ADD should be the same here since we are going from unique to overlapping
+        a->doImport(*this->aProjection_, *this->Scatter_, INSERT);
+        int blockOffset = 0;
+        for (int i = 0; i < numDomains; i++) {
+            auto numNodesBlock = bcFlagOverlappingGhostsVec_[i]->size();
+            auto dofsPerNode = problem_->getDofsPerNode(i);
+            for (int j = 0; j < numNodesBlock; j++) {
+                if ((*bcFlagOverlappingGhostsVec_[i])[j] == -99) {
+                    for (int k = 0; k < dofsPerNode; k++) {
+                        a->replaceLocalValue(static_cast<LO>(blockOffset + dofsPerNode * j + k), 0, ST::zero());
+                    }
+                }
+            }
+            blockOffset += numNodesBlock * dofsPerNode;
+        }
+        // Overwrite with the updated projection
+        this->aProjection_ = a;
+
+        // Perform local dot products
+        auto a_values = a->getData(0);
+        this->sumAA_ = 0.;
+        for (int i = 0; i < a_values.size(); i++) {
+            this->sumAA_ += a_values[i] * a_values[i];
+        }
+    }
 }
 
 template <class SC, class LO, class GO, class NO>
-int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(
-    CommPtr serialComm, ConstXMatrixPtr jacobianGhosts, ConstXMapPtr overlappingMap, ConstXMapPtr overlappingGhostsMap,
-    ConstXMapPtr uniqueMap, std::vector<FEDD::vec_int_ptr_Type> bcFlagOverlappingGhostsVec) {
+int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(CommPtr serialComm, ConstXMatrixPtr jacobianGhosts,
+                                                          ConstXMapPtr overlappingMap,
+                                                          ConstXMapPtr overlappingGhostsMap, ConstXMapPtr uniqueMap) {
     FROSCH_TIMER_START(SimpleOverlappingInitialize, " SimpleOverlapping::initialize");
     // AlgebraicOverlappingOperator does: calculates overlap multiplicity if needed and does symbolic extraction
     // of local subdomain matrix and initialization of solver (symbolic factorization)
@@ -78,7 +135,6 @@ int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(
     this->SerialComm_ = serialComm;
     this->OverlappingMatrix_ = jacobianGhosts;
     uniqueMap_ = uniqueMap;
-    bcFlagOverlappingGhostsVec_ = bcFlagOverlappingGhostsVec;
 
     // Initialize importer Ghosts -> Ghosts
     importerUniqueToGhosts_ = Xpetra::ImportFactory<LO, GO>::Build(uniqueMap, overlappingGhostsMap);
@@ -88,8 +144,9 @@ int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(
     this->initializeOverlappingOperator();
     // Distributed map corresponding to OverlappingMatrix_
     this->OverlappingMap_ = overlappingGhostsMap;
-    // Need to rebuild Scatter_ to use the correct overlapping map
-    this->Scatter_ = ImportFactory<LO,GO,NO>::Build(this->getDomainMap(),this->OverlappingMap_);
+    // The old Scatter_ is no longer valid because its using the incorrect map. Since it's not used later on, don't
+    // bother building it properly here
+    this->Scatter_ = Teuchos::null;
 
     // Compute symbolic factorization
     this->initializeSubdomainSolver(this->OverlappingMatrix_);
@@ -170,46 +227,17 @@ void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMu
         FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection");
 
         RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
-        // Here OverlappingMap_ represents the overlapping subdomain distribution including ghost layer on the global
-        // comm
-        XMultiVectorPtr a = MultiVectorFactory<SC, LO, GO, NO>::Build(this->OverlappingMap_, x.getNumVectors());
-        auto importer = ImportFactory<LO, GO, NO>::Build(this->uniqueMap_, this->OverlappingMap_);
-
-        // Get the projection on the overlapping subdomain
-        // INSERT and ADD should be the same here since we are going from unique to overlapping
-        //TODO:[KH] move this into init so it is only done once
-        a->doImport(*this->aProjection_, *this->Scatter_, INSERT);
-        blockOffset = 0;
-        for (int i = 0; i < bcFlagOverlappingGhostsVec_.size(); i++) {
-            auto numNodesBlock = bcFlagOverlappingGhostsVec_.at(i)->size();
-            auto dofsPerNode = problem_->getDofsPerNode(i);
-            for (int j = 0; j < numNodesBlock; j++) {
-                if (bcFlagOverlappingGhostsVec_.at(i)->at(j) == -99) {
-                    for (int k = 0; k < dofsPerNode; k++) {
-                        a->replaceLocalValue(static_cast<LO>(blockOffset + dofsPerNode * j + k), 0, ST::zero());
-                    }
-                }
-            }
-            blockOffset += numNodesBlock * dofsPerNode;
-        }
 
         // Perform local dot products
-        SCVecPtr a_values = a->getDataNonConst(0);
-        SCVecPtr y_values = this->y_Ghosts_->getDataNonConst(0);
-        double sumAY = 0.;
+        auto a_values = this->aProjection_->getData(0);
+        auto y_values = this->y_Ghosts_->getData(0);
+        SC sumAY = 0.;
         for (int i = 0; i < a_values.size(); i++) {
             sumAY += a_values[i] * y_values[i];
         }
-        double sumAA = 0.;
-        if (this->sumAA_ < 0.) {
-            for (int i = 0; i < a_values.size(); i++) {
-                sumAA += a_values[i] * a_values[i];
-            }
-            this->sumAA_ = sumAA;
-        }
-        double aint = 1. / this->sumAA_;
+        SC aint = 1. / this->sumAA_;
         SC scaling = aint * sumAY;
-        y_Ghosts_->update(-scaling, *a, 1);
+        y_Ghosts_->update(-scaling, *this->aProjection_, 1);
     }
 
     if (y_unique_.is_null()) {

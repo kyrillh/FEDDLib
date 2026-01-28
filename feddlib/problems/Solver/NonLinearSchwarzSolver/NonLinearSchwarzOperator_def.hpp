@@ -56,7 +56,7 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
       blockMapOverlappingGhostsLocal_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
       blockMapVecFieldOverlappingGhostsLocal_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))}, relNewtonTol_{},
       absNewtonTol_{}, maxNumIts_{}, combinationMode_{},
-      multiplicity_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))}, aProjection_{}, sumAA_{-1.},
+      multiplicity_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))}, aProjection_{}, sumAA_{},
       blockElementMapMpiTmp_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
       blockMapRepeatedMpiTmp_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
       blockMapUniqueMpiTmp_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
@@ -90,6 +90,16 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
     // Assigning parent class protected members is not good practice, but is done here to avoid modifying FROSch code
     this->SerialComm_ = serialComm;
 
+    if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
+        sumAA_ = std::vector<SC>(numDomains);
+        auto tempA = ExtractPtrFromParameterList<XMultiVector>(*this->ParameterList_, "Projection");
+        Teuchos::RCP<Tpetra::MultiVector<SC, LO, GO, NO>> tempATpetra = Xpetra::toTpetra(tempA);
+        auto tempAFEDD = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(tempATpetra));
+        aProjection_ = Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(problem->solution_->getMap(), 1));
+        aProjection_->setMergedVector(tempAFEDD);
+        aProjection_->split();
+    }
+
     // If we have more than one dof per node we need a special map to store these since e.g. mapOverlappingGhosts maps
     // nodes and not dofs
     for (int i = 0; i < numDomains; i++) {
@@ -102,16 +112,46 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
         // Initialize members that cannot be null after construction
         x_->addBlock(Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(map, 1)), i);
         feFactoryGhostsLocal_->addFE(domainVec.at(i));
-    }
 
-    if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
-        // sumAA_ = -1 set in the init. list.
-        auto tempA = ExtractPtrFromParameterList<XMultiVector>(*this->ParameterList_, "Projection");
-        Teuchos::RCP<Tpetra::MultiVector<SC, LO, GO, NO>> tempATpetra = Xpetra::toTpetra(tempA);
-        auto tempAFEDD = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(tempATpetra));
-        aProjection_ = Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(problem->solution_->getMap(), 1));
-        aProjection_->setMergedVector(tempAFEDD);
-        aProjection_->split();
+        // Source pressure projection and calculate constants if local pressure projections are to be used
+        if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
+            MapConstPtrFEDD mapUnique;
+            MapConstPtrFEDD mapOverlappingGhosts;
+            if (problem_->getDofsPerNode(i) > 1) {
+                mapUnique = domainVec.at(i)->getMapVecFieldUnique();
+                mapOverlappingGhosts = domainVec.at(i)->getMapVecFieldOverlappingGhosts();
+            } else {
+                mapUnique = domainVec.at(i)->getMapUnique();
+                mapOverlappingGhosts = domainVec.at(i)->getMapOverlappingGhosts();
+            }
+
+            // Here OverlappingMap_ represents the overlapping subdomain distribution including ghost layer on the
+            // global comm
+            auto a = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(mapOverlappingGhosts, 1));
+
+            // Get the projection on the overlapping subdomain
+            // INSERT and ADD should be the same here since we are going from unique to overlapping
+            a->importFromVector(aProjection_->getBlock(i), true, "Insert");
+
+            // Set projection values on ghost nodes to zero. The projection is only applied on the overlapping subdomain
+            // (without ghost nodes). Setting these values to zero, together with the input vector being zero on the
+            // ghost nodes, results in zeros on ghost nodes after applying the projection
+            for (int j = 0; j < domainVec.at(i)->getMesh()->bcFlagOverlappingGhosts_->size(); j++) {
+                if (domainVec.at(i)->getMesh()->bcFlagOverlappingGhosts_->at(j) == -99) {
+                    for (int k = 0; k < problem_->getDofsPerNode(i); k++) {
+                        a->replaceLocalValue(static_cast<LO>(problem_->getDofsPerNode(i) * j + k), 0, ST::zero());
+                    }
+                }
+            }
+            // Overwrite the current block with the overlapping projection
+            aProjection_->addBlock(a, i);
+
+            // We calculate a^Ta once. If it is not zero, we use it to scale in replaceMapAndExportProblem()
+            sumAA_[i] = 0.;
+            for (int j = 0; j < a->getData(0).size(); j++) {
+                sumAA_[i] += a->getData(0)[j] * a->getData(0)[j];
+            }
+        }
     }
 }
 
@@ -301,9 +341,9 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     // Solve local nonlinear problems
     bool useBT = problem_->getParameterList()->sublist("Inner Newton Nonlinear Schwarz").get("Use Backtracking", true);
     bool verbose = problem_->getVerbose();
-    double residual0 = 1.;
-    double relResidual = 1.;
-    double absResidual = 1.;
+    SC residual0 = 1.;
+    SC relResidual = 1.;
+    SC absResidual = 1.;
     int nlIts = 0;
 
     // Need to initialize the rhs_ and set boundary values in rhs_
@@ -546,45 +586,21 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
             (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false) == true)) {
 
             FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection");
-
             RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
-            // Here OverlappingMap_ represents the overlapping subdomain distribution including ghost layer on the
-            // global comm
-            auto a = FEDD::MultiVector<SC, LO, GO, NO>(mapOverlappingGhosts, y_overlapping->getNumVectors());
-
-            // Get the projection on the overlapping subdomain
-            // INSERT and ADD should be the same here since we are going from unique to overlapping
-            //TODO:[KH] move this into init so it is only done once
-            a.importFromVector(aProjection_->getBlock(i), true, "Insert");
-
-            for (int j = 0; j < domainVec.at(i)->getMesh()->bcFlagOverlappingGhosts_->size(); j++) {
-                if (domainVec.at(i)->getMesh()->bcFlagOverlappingGhosts_->at(j) == -99) {
-                    for (int k = 0; k < problem_->getDofsPerNode(i); k++) {
-                        a.replaceLocalValue(static_cast<LO>(problem_->getDofsPerNode(i) * j + k), 0, ST::zero());
-                    }
-                }
-            }
 
             // Perform local dot products
-            auto a_values = a.getData(0);
+            auto a_values = aProjection_->getBlock(i)->getData(0);
             auto y_values = y_overlapping->getData(0);
-            double sumAY = 0.;
+            SC sumAY = 0.;
             for (int j = 0; j < a_values.size(); j++) {
-                sumAY += a.getData(0)[j] * y_values[j];
+                sumAY += a_values[j] * y_values[j];
             }
-            // We calculate a^Ta once. If it is not zero, we use it to scale.
-            // TODO: [KH] the problem is that sumAA_ is used for both pressure and velocity. Make a vector with num
-            // domains entries and save them seperately.
-            sumAA_ = 0.;
-            for (int j = 0; j < a_values.size(); j++) {
-                sumAA_ += a.getData(0)[j] * a.getData(0)[j];
-            }
-            SC projectionScaling = -1;
-            if (sumAA_ > 0.) {
-                double aint = 1. / sumAA_;
-                projectionScaling = aint * sumAY;
+
+            if (sumAA_[i] > 0.) {
+                SC aint = 1. / sumAA_[i];
+                SC projectionScaling = aint * sumAY;
                 // y_overlapping = y_overlapping - scaling*a
-                y_overlapping->update(-projectionScaling, a, 1);
+                y_overlapping->update(-projectionScaling, aProjection_->getBlock(i), 1);
             }
         }
 

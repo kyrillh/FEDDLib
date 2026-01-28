@@ -52,6 +52,7 @@ class SimpleOverlappingOperator : public OverlappingOperator<SC, LO, GO, NO> {
     using SCVecPtr              = typename SchwarzOperator<SC,LO,GO,NO>::SCVecPtr;
 
     using NonLinearProblemPtrFEDD = typename Teuchos::RCP<FEDD::NonLinearProblem<SC, LO, GO, NO>>;
+    using MapConstPtrFEDD = typename Teuchos::RCP<const FEDD::Map<LO, GO, NO>>;
     using ST = typename Teuchos::ScalarTraits<SC>;
 
   public:
@@ -66,8 +67,7 @@ class SimpleOverlappingOperator : public OverlappingOperator<SC, LO, GO, NO> {
             "and mpi comms during initialization");
     };
     int initialize(CommPtr serialComm, ConstXMatrixPtr jacobianGhosts, ConstXMapPtr overlappingMap,
-                   ConstXMapPtr overlappingGhostsMap, ConstXMapPtr uniqueMap,
-                   std::vector<FEDD::vec_int_ptr_Type> bcFlagOverlappingGhostsVec);
+                   ConstXMapPtr overlappingGhostsMap, ConstXMapPtr uniqueMap);
 
     int compute() override;
 

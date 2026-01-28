@@ -1,13 +1,13 @@
 #ifndef NONLINEARSOLVER_DEF_hpp
 #define NONLINEARSOLVER_DEF_hpp
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/CoarseNonLinearSchwarzOperator_decl.hpp"
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/H1Operator_decl.hpp"
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearH1Operator_decl.hpp"
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSchwarzOperator_decl.hpp"
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/SumOperator_decl.hpp"
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSumOperator_decl.hpp"
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleCoarseOperator_decl.hpp"
-#include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleOverlappingOperator_decl.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/CoarseNonLinearSchwarzOperator.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/H1Operator.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearH1Operator.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSchwarzOperator.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/SumOperator.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSumOperator.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleCoarseOperator.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleOverlappingOperator.hpp"
 #include "feddlib/problems/Solver/Preconditioner.hpp"
 #include "feddlib/core/General/BCBuilder.hpp"
 #include <FROSch_TpetraPreconditioner_decl.hpp>
@@ -827,11 +827,6 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     auto simpleOverlappingOperator = Teuchos::rcp(new FROSch::SimpleOverlappingOperator<SC, LO, GO, NO>(
         Teuchos::rcpFromRef(problem), problem.getParameterList()));
     simpleCombineOperator->addOperator(simpleOverlappingOperator);
-    // Build vector of overlapping ghost boundary flags for the simple overlapping operator
-    auto bcFlagOverlappingGhostsVec = std::vector<vec_int_ptr_Type>(domainVec.size());
-    for (int i = 0; i < domainVec.size(); i++) {
-        bcFlagOverlappingGhostsVec.at(i) = domainVec.at(i)->getMesh()->getBCFlagOverlappingGhosts();
-    }
 
     auto simpleCoarseOperator = Teuchos::rcp(new FROSch::SimpleCoarseOperator<SC, LO, GO, NO>(
         toXpetraMatrix(problem.system_->getMergedMatrix()->getTpetraMatrixNonConst()), problem.getParameterList()));
@@ -925,7 +920,7 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
         }
         simpleOverlappingOperator->initialize(serialComm, localJacobian, Xpetra::toXpetra(mapOverlappingMerged()->getTpetraMap()),
                                               Xpetra::toXpetra(mapOverlappingGhostsMerged()->getTpetraMap()),
-                                              Xpetra::toXpetra(mapUniqueMerged()->getTpetraMap()), bcFlagOverlappingGhostsVec);
+                                              Xpetra::toXpetra(mapUniqueMerged()->getTpetraMap()));
         simpleOverlappingOperator->compute();
         // Convert SchwarzOperator to Thyra::LinearOpBase
         auto xpetraOverlappingOperator =

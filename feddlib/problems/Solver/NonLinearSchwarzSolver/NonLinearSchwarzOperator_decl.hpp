@@ -93,8 +93,8 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
     BlockMapPtrFEDD blockMapOverlappingGhostsLocal_;
 
     // Newtons method params
-    double relNewtonTol_;
-    double absNewtonTol_;
+    SC relNewtonTol_;
+    SC absNewtonTol_;
     int maxNumIts_;
 
     // Recombination mode. [Restricted, Averaging, Addition]
@@ -104,7 +104,7 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
     // The vector "a" from the local pressure projections found e.g. in dissertation of Christian Hochmuth.
     // Analogue variable to OverlappingOperator->aProjection_.
     BlockMultiVectorPtrFEDD aProjection_;
-    double sumAA_;
+    std::vector<SC> sumAA_;
 
     // Maps for saving the mpiComm maps of the problems domain when replacing them with serial maps
     BlockMapPtrFEDD blockElementMapMpiTmp_;
