@@ -24,13 +24,15 @@ namespace FEDD {
 template<class SC,class LO,class GO,class NO>
 BCBuilder<SC,LO,GO,NO>::BCBuilder():
     vecBC_func_(),
+    vecBC_func_flowRate_(),
     vecFlag_(),
+    vecFlowRateBool_(),
     vecBlockID_(),
     vecDomain_(),
     vecBCType_(),
     vecDofs_(),
     vecBC_Parameters_(),
-    vecExternalSol_(0),
+    vecExternalSol_(),
     resultPtr_(),
     pointPtr_()
 #ifdef BCBuilder_TIMER

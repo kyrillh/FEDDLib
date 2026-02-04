@@ -15,18 +15,6 @@
  */
 
 namespace FEDD {
-class DataElement {
-    public:
-        DataElement();
-        DataElement(int size);
-        std::vector<double> getHp();
-        std::vector<double> getHt();
-        void setHp( double* ht);
-    private:
-        std::vector<double> ht_;
-        std::vector<double> hp_;
-};
-
 
 template <class SC = default_sc, class LO = default_lo, class GO = default_go, class NO = default_no>
 class FE: public FE_ElementAssembly<SC,LO,GO,NO> {
@@ -578,7 +566,6 @@ private:
                    SmallMatrix<SC>& diffT);
     
     
-    std::vector<Teuchos::RCP<DataElement> > ed_;
 };
 }
 #endif

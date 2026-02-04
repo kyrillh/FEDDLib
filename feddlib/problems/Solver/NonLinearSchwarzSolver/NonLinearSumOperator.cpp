@@ -1,4 +1,4 @@
-#include "NonLinearSumOperator.hpp"
+#include "NonLinearSumOperator_decl.hpp"
 
 #ifdef HAVE_EXPLICIT_INSTANTIATION
 #include "NonLinearSumOperator_def.hpp"
