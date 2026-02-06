@@ -804,16 +804,7 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     auto coarseOperator = Teuchos::rcp(new FROSch::CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>(
         Teuchos::rcpFromRef(problem), sublist(problem.getParameterList(), "Coarse Nonlinear Schwarz")));
     if (numLevels == 2) {
-        // This ensures that the coarse operator gets the required connectivity information for building the coarse space
-        problem.assembleCoarseConnectivity();
-        auto tempMat = Teuchos::rcp_const_cast<const Xpetra::Matrix<SC, LO, GO, NO>>(toXpetraMatrix(problem.system_->getMergedMatrix()->getTpetraMatrixNonConst()));
-        coarseOperator->resetMatrix(tempMat);
         coarseOperator->initialize();
-        // Remove the coarse connectivity again once we are done
-        problem.removeCoarseConnectivity();
-        problem.setBoundariesSystem();
-        tempMat = Teuchos::rcp_const_cast<const Xpetra::Matrix<SC, LO, GO, NO>>(toXpetraMatrix(problem.system_->getMergedMatrix()->getTpetraMatrixNonConst()));
-        coarseOperator->resetMatrix(tempMat);
         coarseOperator->compute();
 
         if (problem.getParameterList()->sublist("Exporter").get("Export coarse functions", false)) {

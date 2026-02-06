@@ -65,8 +65,6 @@ public:
     /// @param map local to global indexing of rows
     /// @param i block id
     void addBlock(MapConstPtr_Type map, int i);
-
-    void removeBlock(int i);
     
     /// @brief Merging the map of different blocks together. Relevant for monolithic solving/precondtioning
     void merge();

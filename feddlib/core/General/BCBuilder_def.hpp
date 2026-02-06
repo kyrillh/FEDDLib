@@ -955,11 +955,6 @@ vec_int_Type BCBuilder<SC, LO, GO, NO>::getVecFlag() const {
 }
 
 template <class SC, class LO, class GO, class NO>
-    std::string BCBuilder<SC, LO, GO, NO>::getBCType(const int i) const {
-    return vecBCType_.at(i);
-}
-
-template <class SC, class LO, class GO, class NO>
 std::vector<typename BCBuilder<SC, LO, GO, NO>::DomainPtr_Type> BCBuilder<SC, LO, GO, NO>::getVecDomain() const {
     return vecDomain_;
 }

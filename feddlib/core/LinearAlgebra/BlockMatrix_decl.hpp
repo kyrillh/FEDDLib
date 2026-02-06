@@ -71,8 +71,6 @@ public:
 
     void addBlock(const MatrixPtr_Type& matrix, int i, int j);
 
-    void removeBlock(int i, int j);
-
     void merge();
 
     void mergeBlockNew(UN blockRow, UN blockCol);

@@ -161,28 +161,10 @@ public:
 
 
     // ################ Nonlinear Schwarz related functions ################
-
-    /**
-     * @brief Any specific nonlinear problem that wants to use the nonlinear Schwarz solver needs to override this function.
-     * Reinitializes the vectors used to store intermediate results in the assembly process etc. The nonlinear Schwarz
-     * solvers requires this when moving between local subdomain solves and the global solve.
-     * @param newMap The map used to initialize said vectors
-     */
+    // Can be implemented by specific nonlinear problems so that nonlinear Schwarz solver can be used
+    // Reinitializes the vectors used to store intermediate results using the provided map
+    // Uggly that this needs to be added here like this
     virtual void reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap){}
-
-    /**
-     * @brief For modified RGDSW-type coarse spaces that treat Dirichlet, Neumann, do-nothing etc. boundary conditions
-     * individually, FROSch gathers node connectivity information from the system matrix. Some problems e.g.
-     * saddle-point problems do not assemble all matrix blocks by default. This function provides the option assemble
-     * missing matrix components for FROSch. Note that FROSch only requires this information once during initialization.
-     * It is not required during the nonlinear solve.
-     */
-    virtual void assembleCoarseConnectivity(){}
-
-    /**
-     * @brief remove the matrix components added by assembleCoarseConnectivity()
-     */
-    virtual void removeCoarseConnectivity(){}
     
     double nonLinearTolerance_;
     BlockMultiVectorPtr_Type    previousSolution_;

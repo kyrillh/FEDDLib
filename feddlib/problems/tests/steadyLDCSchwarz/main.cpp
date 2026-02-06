@@ -6,7 +6,7 @@
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
-#include "feddlib/problems/specific/NavierStokes.hpp"
+#include "feddlib/problems/specific/NavierStokesAssFE.hpp"
 
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
@@ -35,11 +35,6 @@ void currentSolutionDirichlet1D(double *x, double *res, double t, const double *
 
 void zeroDirichlet(double *x, double *res, double t, const double *parameters) {
     res[0] = 0.;
-    return;
-}
-
-void customBC(double *x, double *res, double t, const double *parameters) {
-    TEUCHOS_TEST_FOR_EXCEPTION(true, std::runtime_error, "customBC() does nothing and should never be called");
     return;
 }
 
@@ -154,6 +149,10 @@ int main(int argc, char *argv[]) {
         std::cout << "-- Building Mesh ..." << std::flush;
     }
 
+    MeshPartitioner_Type::DomainPtrArray_Type domainArray(2);
+    domainArray[0] = domainPressure;
+    domainArray[1] = domainVelocity;
+
     ParameterListPtr_Type pListPartitioner = sublist(parameterListAll, "Mesh Partitioner");
     MeshPartitioner<SC, LO, GO, NO> partitioner;
 
@@ -179,7 +178,6 @@ int main(int argc, char *argv[]) {
     domainPressure->buildMesh(5, "Square", dim, discPressure, n, m, numProcsCoarseSolve);
     domainVelocity->buildMesh(5, "Square", dim, discVelocity, n, m, numProcsCoarseSolve);
 
-    MeshPartitioner_Type::DomainPtrArray_Type domainArray(2);
     domainArray[0] = domainPressure;
     domainArray[1] = domainVelocity;
     // The FE type passed here is not used. The MeshPartitioner gets the FE type directly from each domain
@@ -201,12 +199,6 @@ int main(int argc, char *argv[]) {
         bcFactory->addBC(zeroDirichlet2D, 1, 0, domainVelocity, "Dirichlet", dim);
         bcFactory->addBC(zeroDirichlet2D, 3, 0, domainVelocity, "Dirichlet", dim);
         bcFactory->addBC(ldcFunc2D, 2, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
-        // We only want to build the modified coarse space in the corner with the Dirichlet node. On other subdomains we
-        // want to leave the existing custom boundary.
-        if (comm->getRank() == 0) {
-            bcFactory->addBC(customBC, 1, 1, domainPressure, "CustomBC", 1);
-            bcFactory->addBC(customBC, 2, 1, domainPressure, "CustomBC", 1);
-        }
         bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1);
         // The current global solution must be set as the Dirichlet BC on the ghost nodes for nonlinear Schwarz solver
         // to correctly solve on the subdomains
@@ -219,7 +211,7 @@ int main(int argc, char *argv[]) {
     }
     bcFactory->addBC(currentSolutionDirichlet1D, -99, 1, domainPressure, "Dirichlet", 1);
 
-    NavierStokes<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,
+    NavierStokesAssFE<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,
                                                    parameterListAll);
 
     domainVelocity->info();

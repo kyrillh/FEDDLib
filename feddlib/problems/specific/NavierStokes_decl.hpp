@@ -116,8 +116,6 @@ public:
     bool augmentedLagrange_=false;
 
     void reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) override;
-    void assembleCoarseConnectivity() override;
-    void removeCoarseConnectivity() override;
 private:
 
     void establishNNZPattern() const;

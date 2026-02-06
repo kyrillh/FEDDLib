@@ -50,11 +50,6 @@ void BlockMap<LO,GO,NO>::addBlock(MapConstPtr_Type map, int i){
     blockMap_[i] = mapNonConst;
 }
 
-template <class LO, class GO, class NO>
-void BlockMap<LO,GO,NO>::removeBlock(int i){
-    TEUCHOS_TEST_FOR_EXCEPTION( blockMap_[i].is_null(), std::runtime_error,"Map being removed doesn't exist.");
-    blockMap_[i] = Teuchos::null;
-}
     
 template <class LO, class GO, class NO>
 void BlockMap<LO,GO,NO>::merge( ){
