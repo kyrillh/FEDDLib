@@ -1,6 +1,7 @@
 #ifndef FE_ELEMENTASSEMBLY_DEF_hpp
 #define FE_ELEMENTASSEMBLY_DEF_hpp
 
+#include <Teuchos_Assert.hpp>
 #include <string>
 #include "feddlib/core/core_config.h"
 #ifdef FEDD_HAVE_ACEGENINTERFACE
@@ -1048,10 +1049,17 @@ void FE_ElementAssembly<SC,LO,GO,NO>::assemblyNavierStokes(int dim,
 	                                    bool callFillComplete,
 	                                    int FELocExternal){
 	
-
-    UN FElocVel = checkFE(dim,FETypeVelocity); // Checks for different domains which belongs to a certain fetype
-    UN FElocPres = checkFE(dim,FETypePressure); // Checks for different domains which belongs to a certain fetype
-
+    UN FElocVel = 0;
+    UN FElocPres = 1;
+    // This test does not work for e.g. P1P1, in which case the same location is returned for both pressure and velocity.
+    // For now we just override this behavior and assume the default position.
+    if (FETypePressure != FETypeVelocity) {
+        UN FElocVel = checkFE(dim,FETypeVelocity); // Checks for different domains which belongs to a certain fetype
+        UN FElocPres = checkFE(dim,FETypePressure); // Checks for different domains which belongs to a certain fetype
+    } else {
+        // If the discretizations are equal, ensure we are dealing with P1-P1
+        TEUCHOS_ASSERT(FETypePressure == "P1");
+    }
 	ElementsPtr_Type elements = domainVec_.at(FElocVel)->getElementsC();
 
 	ElementsPtr_Type elementsPres = domainVec_.at(FElocPres)->getElementsC();
@@ -1088,10 +1096,14 @@ void FE_ElementAssembly<SC,LO,GO,NO>::assemblyNavierStokes(int dim,
 	problemDisk->push_back(pres);
 
 	if(assemblyFEElements_.size()== 0){
-        if(params->sublist("Material").get("Newtonian",true) == false)
+        if(params->sublist("Material").get("Newtonian",true) == false) {
 	 	    initAssembleFEElements("GeneralizedNewtonian",problemDisk,elements, params,pointsRep,domainVec_.at(FElocVel)->getElementMap()); // In cas of non Newtonian Fluid
-        else
+        } else if (params->sublist("Parameter").get("Use feat3 interface", false) == true){
+            initAssembleFEElements("NavierStokesFEAT", problemDisk, elements, params, pointsRep,
+                                   domainVec_.at(FElocVel)->getElementMap());
+        } else {
         	initAssembleFEElements("NavierStokes",problemDisk,elements, params,pointsRep,domainVec_.at(FElocVel)->getElementMap());
+        }
     }
 	else if(assemblyFEElements_.size() != elements->numberElements())
 	     TEUCHOS_TEST_FOR_EXCEPTION( true, std::logic_error, "Number Elements not the same as number assembleFE elements." );
@@ -1140,6 +1152,13 @@ void FE_ElementAssembly<SC,LO,GO,NO>::assemblyNavierStokes(int dim,
                 AssembleFEGeneralizedNewtonianPtr_Type elTmp = Teuchos::rcp_dynamic_cast<AssembleFEGeneralizedNewtonian_Type>( assemblyFEElements_[T] );
                 elTmp->assembleFixedPoint();
                 elementMatrix =  elTmp->getFixedPointMatrix(); 
+            }
+            else if (params->sublist("Parameter").get("Use feat3 interface", false) == true) {
+                Teuchos::RCP<AssembleFENavierStokesFEAT<SC, LO, GO, NO>> elTmp =
+                    Teuchos::rcp_dynamic_cast<AssembleFENavierStokesFEAT<SC, LO, GO, NO>>(assemblyFEElements_[T]);
+                elTmp->assembleFixedPoint();
+                elementMatrix = elTmp->getFixedPointMatrix();
+ 
             }
             else // Newtonian Case
             {

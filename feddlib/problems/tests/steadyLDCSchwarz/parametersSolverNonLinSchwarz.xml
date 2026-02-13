@@ -83,8 +83,8 @@
                         <!--Specify
                         the RGDSW coarse space type here 1.0 (Constant) or 2.2 (Inverse
                         Euclidean)-->
-                        <!-- <Parameter name="Distance Function" type="string" value="Constant" /> -->
-                        <Parameter name="Distance Function" type="string" value="Inverse Euclidean" />
+                        <Parameter name="Distance Function" type="string" value="Constant" />
+                        <!-- <Parameter name="Distance Function" type="string" value="Inverse Euclidean" /> -->
                         <Parameter name="Interface Communication Strategy" type="string"
                             value="CrsGraph" />
                         <Parameter name="Type" type="string" value="Full" />
@@ -108,8 +108,8 @@
                         <!--Specify
                         the RGDSW coarse space type here 1.0 (Constant) or 2.2 (Inverse
                         Euclidean)-->
-                        <!-- <Parameter name="Distance Function" type="string" value="Constant" /> -->
-                        <Parameter name="Distance Function" type="string" value="Inverse Euclidean" />
+                        <Parameter name="Distance Function" type="string" value="Constant" />
+                        <!-- <Parameter name="Distance Function" type="string" value="Inverse Euclidean" /> -->
                         <Parameter name="Interface Communication Strategy" type="string"
                             value="CrsGraph" />
                         <Parameter name="Type" type="string" value="Full" />

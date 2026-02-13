@@ -93,6 +93,7 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
     if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
         sumAA_ = std::vector<SC>(numDomains);
         auto tempA = ExtractPtrFromParameterList<XMultiVector>(*this->ParameterList_, "Projection");
+        FROSCH_ASSERT(!tempA.is_null(), "FROSch::NonLinearSchwarzOperator: Trying to use the projection, but it is does not exist.")
         Teuchos::RCP<Tpetra::MultiVector<SC, LO, GO, NO>> tempATpetra = Xpetra::toTpetra(tempA);
         auto tempAFEDD = Teuchos::rcp(new FEDD::MultiVector<SC, LO, GO, NO>(tempATpetra));
         aProjection_ = Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(problem->solution_->getMap(), 1));
@@ -115,6 +116,7 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
 
         // Source pressure projection and calculate constants if local pressure projections are to be used
         if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
+            FROSCH_ASSERT(!aProjection_.is_null(), "FROSch::NonLinearSchwarzOperator: Trying to use the projection, but it is does not exist.")
             MapConstPtrFEDD mapUnique;
             MapConstPtrFEDD mapOverlappingGhosts;
             if (problem_->getDofsPerNode(i) > 1) {
@@ -584,8 +586,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
 
         if (!aProjection_.is_null() &&
             (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false) == true)) {
-
-            FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection");
+            FROSCH_ASSERT(!aProjection_.is_null(), "FROSch::NonLinearSchwarzOperator: Trying to use the projection, but it is does not exist.")
+            FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection")
             RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
 
             // Perform local dot products
