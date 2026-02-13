@@ -1,7 +1,7 @@
 <ParameterList name="solver">
-    <Parameter name="Nonlin Schwarz Variant" type="string" value="Additive" /><!-- Additive, H1 -->
+    <Parameter name="Nonlin Schwarz Variant" type="string" value="H1" /><!-- Additive, H1 -->
     <Parameter name="Use ASPEN" type="bool" value="true" />
-    <Parameter name="Levels" type="int" value="1" />
+    <Parameter name="Levels" type="int" value="2" />
     <Parameter name="Overlap" type="int" value="2" />
     <Parameter name="Combine Mode" type="string" value="Averaging" /> <!-- Averaging, Full,
     Restricted -->
@@ -63,7 +63,7 @@
     IPOUHarmonicCoarseOperator in FROSch -->
         <Parameter name="Number of blocks" type="int" value="2" />
         <Parameter name="Store Phi" type="bool" value="true" />
-        <Parameter name="DofsPerNode1" type="int" value="3" />
+        <Parameter name="DofsPerNode1" type="int" value="2" />
         <Parameter name="DofsPerNode2" type="int" value="1" />
         <!--Set
         to false for inverse Euclidean drop at the edges and true for constant until the edges in
@@ -83,8 +83,8 @@
                         <!--Specify
                         the RGDSW coarse space type here 1.0 (Constant) or 2.2 (Inverse
                         Euclidean)-->
-                        <!-- <Parameter name="Distance Function" type="string" value="Constant" /> -->
-                        <Parameter name="Distance Function" type="string" value="Inverse Euclidean" />
+                        <Parameter name="Distance Function" type="string" value="Constant" />
+                        <!-- <Parameter name="Distance Function" type="string" value="Inverse Euclidean" /> -->
                         <Parameter name="Interface Communication Strategy" type="string"
                             value="CrsGraph" />
                         <Parameter name="Type" type="string" value="Full" />
@@ -108,8 +108,8 @@
                         <!--Specify
                         the RGDSW coarse space type here 1.0 (Constant) or 2.2 (Inverse
                         Euclidean)-->
-                        <!-- <Parameter name="Distance Function" type="string" value="Constant" /> -->
-                        <Parameter name="Distance Function" type="string" value="Inverse Euclidean" />
+                        <Parameter name="Distance Function" type="string" value="Constant" />
+                        <!-- <Parameter name="Distance Function" type="string" value="Inverse Euclidean" /> -->
                         <Parameter name="Interface Communication Strategy" type="string"
                             value="CrsGraph" />
                         <Parameter name="Type" type="string" value="Full" />

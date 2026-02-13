@@ -10,7 +10,9 @@
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleOverlappingOperator.hpp"
 #include "feddlib/problems/Solver/Preconditioner.hpp"
 #include "feddlib/core/General/BCBuilder.hpp"
+#include "feddlib/problems/abstract/Problem_decl.hpp"
 #include <FROSch_TpetraPreconditioner_decl.hpp>
+#include <Teuchos_Assert.hpp>
 
 /*!
  Definition of NonLinearSolver
@@ -727,13 +729,10 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     print("###############################################################\n", problem.getComm());
 
     // If local pressure projection is to be used, modify the parameter list as required
-    // This a pressure projection is only used for saddle point problems. We check here if we have a pressure projection set and if we have more than one block or one block with dim dof per node (i.e. fluid problem)
     auto pressureProjection = problem.getPreconditioner()->getPressureProjection();
-    
-    if(!pressureProjection.is_null() && ( problem.dofsPerNode_vec_.size() > 1 || problem.dofsPerNode_vec_[0] == 1) ){
+    if (problem.getParameterList()->sublist("Parameter").get("Use Pressure Projection", false)) {
+        TEUCHOS_ASSERT(!pressureProjection.is_null())
         pressureProjection->merge(); // We merge the projection vector, as FROSch does not distinguish between blocks
-        problem.getParameterList()->set("Projection FEDD", pressureProjection);
-
         Teuchos::RCP< Tpetra::MultiVector<SC,LO,GO,NO> > vectorTpetra =  pressureProjection->getMergedVectorNonConst()->getTpetraMultiVectorNonConst();
         Teuchos::RCP< Xpetra::TpetraMultiVector<SC,LO,GO,NO> > vectorXpetraTpetra = Teuchos::rcp(new Xpetra::TpetraMultiVector<SC,LO,GO,NO>(vectorTpetra));
         Teuchos::RCP< Xpetra::MultiVector<SC,LO,GO,NO> > vectorXpetra = Teuchos::rcp_dynamic_cast<Xpetra::MultiVector<SC,LO,GO,NO>>(vectorXpetraTpetra);

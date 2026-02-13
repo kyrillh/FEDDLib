@@ -61,6 +61,7 @@ SimpleOverlappingOperator<SC, LO, GO, NO>::SimpleOverlappingOperator(NonLinearPr
     
     // Build the pressure projection if required.
     if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
+        FROSCH_ASSERT(!this->aProjection_.is_null(), "FROSch::SimpleOverlappingOperator: Trying to use the projection, but it is does not exist.")
         // First build the overlapping map including ghost layer from the domain maps e.g. fuse velocity and pressure
         // maps if solving Navier-Stokes
         auto blockMapOverlappingGhosts = Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(numDomains));
@@ -221,10 +222,9 @@ void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMu
     y_Ghosts_->replaceMap(this->OverlappingMap_);
 
     // Apply local pressure correction
-    if (!this->aProjection_.is_null() &&
-        (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false) == true)) {
-
-        FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection");
+    if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false) == true) {
+        FROSCH_ASSERT(!this->aProjection_.is_null(), "FROSch::SimpleOverlappingOperator: Trying to use the projection, but it is does not exist.")
+        FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection")
 
         RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
 
@@ -246,7 +246,7 @@ void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMu
         y_unique_->putScalar(ST::zero());
     }
 
-    FEDD_TIMER_START(ExportTimer, " - Schwarz - export x");
+    FEDD_TIMER_START(ExportTimer, " - Schwarz - export x")
     if (this->Combine_ == OverlappingOperator<SC, LO, GO, NO>::CombinationType::Restricted) {
         GO globalID = 0;
         LO localID = 0;
