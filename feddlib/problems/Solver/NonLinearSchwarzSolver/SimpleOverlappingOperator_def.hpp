@@ -5,7 +5,7 @@
 #include "feddlib/core/FE/Domain_decl.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMap_decl.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"
-#include <FROSch_OverlappingOperator_decl.hpp>
+#include <FROSch_OverlappingOperator_def.hpp>
 #include <Teuchos_Array.hpp>
 #include <Teuchos_ArrayViewDecl.hpp>
 #include <Teuchos_CommHelpers.hpp>

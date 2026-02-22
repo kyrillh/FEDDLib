@@ -10,6 +10,7 @@
 #include "feddlib/problems/abstract/NonLinearProblem_decl.hpp"
 #include <FROSch_CoarseOperator_decl.hpp>
 #include <FROSch_SchwarzOperator_decl.hpp>
+#include <FROSch_CoarseSpace_decl.hpp>
 #include <Teuchos_Describable.hpp>
 #include <Teuchos_FancyOStream.hpp>
 #include <Teuchos_RCPDecl.hpp>

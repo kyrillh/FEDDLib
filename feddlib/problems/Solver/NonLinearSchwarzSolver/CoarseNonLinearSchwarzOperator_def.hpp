@@ -1,7 +1,7 @@
 #ifndef COARSENONLINEARSCHWARZOPERATOR_DEF_HPP
 #define COARSENONLINEARSCHWARZOPERATOR_DEF_HPP
 
-#include "CoarseNonLinearSchwarzOperator_decl.hpp"
+#include "CoarseNonLinearSchwarzOperator_def.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMatrix_decl.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMultiVector_decl.hpp"
 #include "feddlib/core/LinearAlgebra/Map_decl.hpp"
