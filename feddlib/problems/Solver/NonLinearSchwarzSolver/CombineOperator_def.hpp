@@ -2,6 +2,7 @@
 #define COMBINEOPERATOR_DEF_HPP
 
 #include "CombineOperator_decl.hpp"
+#include <FROSch_SchwarzOperator_def.hpp>
 
 namespace FROSch {
 
