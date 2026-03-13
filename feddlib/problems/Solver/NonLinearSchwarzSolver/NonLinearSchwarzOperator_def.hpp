@@ -235,8 +235,7 @@ template <class SC, class LO, class GO, class NO> int NonLinearSchwarzOperator<S
 template <class SC, class LO, class GO, class NO>
 void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFEDD x, BlockMultiVectorPtrFEDD y,
                                                      SC alpha, SC beta) {
-
-    FROSCH_TIMER_START(NonLinearSchwarzApply2, "NonLinearSchwarz::apply - 2");
+    FEDD_TIMER_START(NonLinearSchwarzApply, " - Schwarz - apply NonLinearSchwarzOperator");
     auto domainVec = problem_->getDomainVector();
 
     // Store distributed problem properties
@@ -392,6 +391,12 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
 
         nlIts++;
     }
+
+    if (nlIts == maxNumIts_) {
+        std::cout << "==> Warning!! local nonlinear solver only reached rel. res. = " << relResidual << " after "
+                  << nlIts << " iters. on subdomain " << this->MpiComm_->getRank() << std::endl << std::flush;
+    }
+    FROSCH_ASSERT(relResidual < 1, "FROSch::NonLinearSchwarzOperator: The relative residual is greater than 1 after solving.")
 
     // Set solution_ to g_i
     problem_->solution_->update(ST::one(), *x_, -ST::one());

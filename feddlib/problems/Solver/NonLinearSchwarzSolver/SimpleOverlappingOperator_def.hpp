@@ -176,7 +176,7 @@ template <class SC, class LO, class GO, class NO>
 void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, ETransp mode, SC alpha,
                                                       SC beta) const {
 
-    FEDD_TIMER_START(DFuTimer, " - Schwarz - apply DFu");
+    FEDD_TIMER_START(DFuLevelOneTimer, " - Schwarz - apply DFu level one");
     // y = alpha*f(x) + beta*y
     // move the input to the local serial overlapping ghosts map
     // this->OverlappingMap_ partitions the subdomains with overlap and ghost layer and uses the global comm

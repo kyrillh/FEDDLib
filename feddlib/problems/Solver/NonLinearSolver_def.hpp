@@ -864,18 +864,22 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     int maxOuterNonLinIts = problem.getParameterList()->sublist("Parameter").get("MaxNonLinIts", 10);
 
     // Print solver settings
-    logGreen("Nonlinear Schwarz solver settings", mpiComm);
-    print("\tUse ASPEN: ", mpiComm);
-    if (mpiComm->getRank() == 0) {
-        std::cout << std::boolalpha << useASPEN;
-    }
-    print("\n\tSolver variant: " + variantString, mpiComm);
-    print("\n\tCombine mode: " + problem.getParameterList()->get("Combine Mode", "Restricted"), mpiComm);
-    print("\n\tOverlap: " + std::to_string(problem.getParameterList()->get("Overlap", 1)), mpiComm);
-    print("\n\tNum. levels: " + std::to_string(numLevels), mpiComm);
-    print("\n\tRel. tol: " + std::to_string(outerRelTol), mpiComm);
-    print("\n\tAbs. tol: " + std::to_string(outerAbsTol), mpiComm);
-    print("\n\tMax outer Newton iters.: " + std::to_string(maxOuterNonLinIts) + "\n", mpiComm);
+    // Print solver settings
+    print("+++++++++ Nonlinear Schwarz solver configuration ++++++++++\n", mpiComm);
+    print("==> Use ASPEN: " + std::to_string(useASPEN) + "\n", mpiComm);
+    print("==> Variant: " + variantString + "\n", mpiComm);
+    print("==> Combine mode: " + problem.getParameterList()->get("Combine Mode", "Restricted") + "\n", mpiComm);
+    print("==> Overlap: " + std::to_string(problem.getParameterList()->get("Overlap", 1)) + "\n", mpiComm);
+    print("==> Use Backtracking: " + std::to_string(problem.getParameterList()->sublist("Inner Newton Nonlinear Schwarz").get("Use Backtracking",false)) + "\n", mpiComm);
+    print("==> Remove Dirichlet Nodes: " + std::to_string(problem.getParameterList()->sublist("Coarse Nonlinear Schwarz").get("Remove Dirichlet Nodes",false)) + "\n", mpiComm);
+    print("==> IPOU type block 1: " + problem.getParameterList()->sublist("Coarse Nonlinear Schwarz").sublist("Blocks").sublist("1").sublist("InterfacePartitionOfUnity").get("Type","Use must provide a IPOU type for block 1") + "\n", mpiComm);
+    print("==> Distance function block 1: " + problem.getParameterList()->sublist("Coarse Nonlinear Schwarz").sublist("Blocks").sublist("1").sublist("InterfacePartitionOfUnity").sublist("RGDSW").get("Distance Function","None provided") + "\n", mpiComm);
+    print("==> IPOU type block 2: " + problem.getParameterList()->sublist("Coarse Nonlinear Schwarz").sublist("Blocks").sublist("2").sublist("InterfacePartitionOfUnity").get("Type","Use must provide a IPOU type for block 2") + "\n", mpiComm);
+    print("==> Distance function block 2: " + problem.getParameterList()->sublist("Coarse Nonlinear Schwarz").sublist("Blocks").sublist("2").sublist("InterfacePartitionOfUnity").sublist("RGDSW").get("Distance Function","None provided") + "\n", mpiComm);
+    print("==> Rel. tol: " + std::to_string(outerRelTol) + "\n", mpiComm);
+    print("==> Abs. tol: " + std::to_string(outerAbsTol) + "\n", mpiComm);
+    print("==> Max outer Newton iters.: " + std::to_string(maxOuterNonLinIts) + "\n", mpiComm);
+    print("++++++++++++++++++++++++++++++++++++++++++\n", mpiComm);
 
     // Compute the residual
     problem.calculateNonLinResidualVec("reverse");
