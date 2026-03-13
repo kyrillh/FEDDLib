@@ -2,6 +2,7 @@
 #define SUMOPERATOR_DEF_HPP
 
 #include "SumOperator_decl.hpp"
+#include "feddlib/core/Utils/FEDDUtils.hpp"
 
 namespace FROSch {
 
@@ -16,7 +17,7 @@ NewSumOperator<SC, LO, GO, NO>::NewSumOperator(SchwarzOperatorPtrVecPtr operator
 template <class SC, class LO, class GO, class NO>
 void NewSumOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMultiVector &y, bool usePreconditionerOnly,
                                            ETransp mode, SC alpha, SC beta) const {
-    FROSCH_TIMER_START(SumApply, " Sum::Apply");
+    FEDD_TIMER_START(SumApply, " - Schwarz - apply Sum");
     if (this->OperatorVector_.size() > 0) {
         if (this->XTmp_.is_null())
             this->XTmp_ = MultiVectorFactory<SC, LO, GO, NO>::Build(x.getMap(), x.getNumVectors());

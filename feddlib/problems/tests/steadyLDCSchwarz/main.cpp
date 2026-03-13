@@ -206,9 +206,9 @@ int main(int argc, char *argv[]) {
     } else if (dim == 3) {
         bcFactory->addBC(zeroDirichlet3D, 1, 0, domainVelocity, "Dirichlet", dim);
         bcFactory->addBC(ldcFunc3D, 2, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
-        bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1); // Pressure Node
         bcFactory->addBC(currentSolutionDirichlet3D, -99, 0, domainVelocity, "Dirichlet", dim);
     }
+    bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1); // Pressure Node
     bcFactory->addBC(currentSolutionDirichlet1D, -99, 1, domainPressure, "Dirichlet", 1);
 
     NavierStokesAssFE<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,

@@ -3,6 +3,7 @@
 
 #include "NonLinearCombineOperator_decl.hpp"
 #include "NonLinearH1Operator_decl.hpp"
+#include "feddlib/core/Utils/FEDDUtils.hpp"
 #include <Teuchos_BLAS_types.hpp>
 #include <Teuchos_RCPDecl.hpp>
 #include <Tpetra_MultiVector_decl.hpp>
@@ -21,7 +22,7 @@ NonLinearH1Operator<SC, LO, GO, NO>::NonLinearH1Operator(CommPtr comm)
 // Y = alpha * A^mode * X + beta * Y
 template <class SC, class LO, class GO, class NO>
 void NonLinearH1Operator<SC, LO, GO, NO>::apply(TMultiVector &x, TMultiVector &y, SC alpha, SC beta) {
-    FROSCH_TIMER_START(NonLinearH1Apply, "NonLinearH1::apply");
+    FEDD_TIMER_START(NonLinearH1Apply, " - Schwarz - apply NonLinearH1");
     FROSCH_ASSERT(this->NonLinearOperatorVector_.size() == 2, "H1 operator can only be applied with two levels")
 
     // We do not explicitly check if the operators have been activated here as is done e.g. in the SumOperator
