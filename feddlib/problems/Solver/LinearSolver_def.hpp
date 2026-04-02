@@ -1,9 +1,14 @@
 #ifndef LinearSolver_DEF_hpp
 #define LinearSolver_DEF_hpp
 
+#include "feddlib/problems/Solver/LinearSolver_decl.hpp"
 #include "feddlib/problems/abstract/TimeProblem.hpp"
 #include "feddlib/problems/Solver/Preconditioner.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMatrix.hpp"
+#include <Teuchos_RCPDecl.hpp>
+#include <Thyra_LinearOpWithSolveFactoryHelpers.hpp>
+#include <Thyra_Amesos2LinearOpWithSolve_decl.hpp>
+#include <stdexcept>
 
 /*!
  Definition of LinearSolver
@@ -15,13 +20,29 @@
  */
 namespace FEDD {
 
+template<class SC,class LO,class GO,class NO>
+Teuchos::RCP<Thyra::LinearOpWithSolveBase<SC>> LinearSolver<SC, LO, GO, NO>::solver_ = Teuchos::null;
 
 template<class SC,class LO,class GO,class NO>
 LinearSolver<SC,LO,GO,NO>::LinearSolver(){}
 
-
 template<class SC,class LO,class GO,class NO>
 LinearSolver<SC,LO,GO,NO>::~LinearSolver(){}
+
+template<class SC,class LO,class GO,class NO>
+void LinearSolver<SC, LO, GO, NO>::cleanup(){solver_ = Teuchos::null;}
+
+template<class SC,class LO,class GO,class NO>
+Teuchos::RCP<typename Thyra::Amesos2LinearOpWithSolve<SC>::Solver> LinearSolver<SC, LO, GO, NO>::getSolver(){
+    Teuchos::RCP<typename Thyra::Amesos2LinearOpWithSolve<SC>::Solver> amesos2S = Teuchos::null;
+    if (!solver_.is_null()) {
+        auto amesos2LOWS = Teuchos::rcp_dynamic_cast<Thyra::Amesos2LinearOpWithSolve<SC>>(solver_);
+        TEUCHOS_TEST_FOR_EXCEPTION( amesos2LOWS.is_null(), std::runtime_error, "FEDD::LinearSolver: solver_ should be an Amesos2LinearOpWithSolve object.");
+        // If the solver object is an amesos2 linear operator with solve, extract the internal amesos2 solver object
+        amesos2S = amesos2LOWS->get_amesos2Solver();
+    }
+    return amesos2S;
+}
 
 template<class SC,class LO,class GO,class NO>
 int LinearSolver<SC,LO,GO,NO>::solve(Problem_Type* problem, BlockMultiVectorPtr_Type rhs, std::string type ){
@@ -124,19 +145,24 @@ int LinearSolver<SC,LO,GO,NO>::solveMonolithic(Problem_Type* problem, BlockMulti
     lowsFactory->setOStream(out);
     lowsFactory->setVerbLevel(Teuchos::VERB_HIGH);
 
-    Teuchos::RCP<Thyra::LinearOpWithSolveBase<SC> > solver = lowsFactory->createOp();
-//    Teuchos::RCP<Thyra::LinearOpWithSolveBase<SC> > solver = linearOpWithSolve(*lowsFactory, problem->getSystem()->getThyraLinOp());
+    if (solver_.is_null()) {
+        solver_ = lowsFactory->createOp();
+    }
     ThyraLinOpConstPtr_Type thyraMatrix = problem->getSystem()->getThyraLinOp();
     if ( iterativeSolve ) {
         ThyraPrecPtr_Type thyraPrec = problem->getPreconditioner()->getThyraPrec();
-        Thyra::initializePreconditionedOp<SC>(*lowsFactory, thyraMatrix, thyraPrec.getConst(), solver.ptr());
+        Thyra::initializePreconditionedOp<SC>(*lowsFactory, thyraMatrix, thyraPrec.getConst(), solver_.ptr());
     }
     else{
-        Thyra::initializeOp<SC>(*lowsFactory, thyraMatrix, solver.ptr());
+        if (!pListThyraSolver->get("Linear Solver Type", "Belos").compare("Amesos2") && !solver_->range().is_null()) {
+            Thyra::initializeAndReuseOp<SC>(*lowsFactory, thyraMatrix, solver_.ptr());
+        } else {
+            Thyra::initializeOp<SC>(*lowsFactory, thyraMatrix, solver_.ptr());
+        }
     }
 
     {
-        Thyra::SolveStatus<SC> status = Thyra::solve<SC>(*solver, Thyra::NOTRANS, *thyraB, thyraX.ptr());
+        Thyra::SolveStatus<SC> status = Thyra::solve<SC>(*solver_, Thyra::NOTRANS, *thyraB, thyraX.ptr());
         if (verbose)
             std::cout << status << std::endl;
         if ( !pListThyraSolver->get("Linear Solver Type","Belos").compare("Belos") )

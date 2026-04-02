@@ -5,6 +5,7 @@
 #include "feddlib/core/FEDDCore.hpp"
 #include "feddlib/core/LinearAlgebra/BlockMultiVector.hpp"
 
+#include <Thyra_Amesos2LinearOpWithSolve_decl.hpp>
 #include <Thyra_PreconditionerBase.hpp>
 #include <Thyra_DefaultZeroLinearOp_decl.hpp>
 #include <Thyra_BlockedLinearOpBase.hpp>
@@ -49,7 +50,18 @@ public:
     LinearSolver();
     
     ~LinearSolver();
-    
+
+    /*!
+       \brief Clean up the static member variable solver_ if used. This must be done before
+       Kokkos::finalize() is called, typically by the Teuchos::GlobalMPISession destructor.
+   */
+    static void cleanup();
+
+    /*!
+       \brief Getter for the static solver_ variable
+    */
+    static Teuchos::RCP<typename Thyra::Amesos2LinearOpWithSolve<SC>::Solver> getSolver();
+
     /*!
         \brief Call to solve a linear/linearized problem with right-hand side rhs. Depending on 'type' solveMonolithic, solveTeko, solveBlock is called
 		@param[in] problem
@@ -100,9 +112,16 @@ public:
 		@param[in] precTypes
     */
     int solveBlock(TimeProblem_Type* problem, BlockMultiVectorPtr_Type rhs, std::string precType );
-    
-private:
 
+  private:
+    // This member variable was introduced for the following use case: a direct solver is called repeatedly within
+    // Newton's method. The LinearSolver object is recreated in each iteration causing symbolic and numerical
+    // factorizations to be performed in each iteration. To avoid unnecessary symbolic factorizations the static solver
+    // object saves the previous state across iterations. Required e.g. for the local nonlinear solves in the nonlinear
+    // Schwarz solver.
+    // Caveate: FEDD::LinearSolver cannot be used to solve any other linear problem with a direct solver without
+    // explicitly rebuilding solver_
+    static Teuchos::RCP<Thyra::LinearOpWithSolveBase<SC>> solver_;
 };
 }
 #endif
