@@ -1,5 +1,6 @@
 #ifndef NONLINEARSOLVER_DEF_hpp
 #define NONLINEARSOLVER_DEF_hpp
+#include "feddlib/problems/Solver/LinearSolver_decl.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/CoarseNonLinearSchwarzOperator.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/H1Operator.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearH1Operator.hpp"
@@ -61,7 +62,8 @@ void NonLinearSolver<SC,LO,GO,NO>::solve(NonLinearProblem_Type &problem,vec_dbl_
     } else if (!type_.compare("NonLinearSchwarz")) {
         solveNonLinearSchwarz(problem);
     }
-
+    // Done solving so cleanup the static solver_ variable in LinearSolver
+    LinearSolver<SC, LO, GO, NO>::cleanup();
 }
 
 template<class SC,class LO,class GO,class NO>
@@ -956,6 +958,7 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
 
         outerNonLinIts += 1;
     }
+
     auto itersVecSubdomains = nonLinearSchwarzOp->getRunStats();
     auto itersVecCoarse = coarseOperator->getRunStats();
     print("================= Nonlinear Schwarz terminated =========================", mpiComm);
