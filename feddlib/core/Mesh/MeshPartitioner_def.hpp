@@ -1302,7 +1302,7 @@ void MeshPartitioner<SC, LO, GO, NO>::buildOverlappingDualGraphFromDistributedPa
     for (auto &val : eindVec) {
         val = mesh->getMapRepeated()->getGlobalElement(val);
     }
-    // [KH]  TODO: need to make this use subset of ranks at some point for coarse solving
+    // TODO: [KH] need to make this use subset of ranks at some point for coarse solving
     /* idx_t nparts = get<1>(rankRanges_[meshNumber]) - get<0>(rankRanges_[meshNumber]) + 1; */
     idx_t nparts = comm_->getSize();
     vec_idx_Type elmdistVec(nparts + 1);
@@ -1810,7 +1810,7 @@ void MeshPartitioner<SC, LO, GO, NO>::buildSubdomainFromDualGraphUnstructured(co
             tmpElement.push_back(index);
         }
         FiniteElement tempFE(tmpElement, elementsMesh->getElement(globalID).getFlag());
-        // NOTE [KH] Surfaces are not added here for now. Since they probably will not be needed.
+        //NOTE: [KH] Surfaces are not added here for now. Since they probably will not be needed.
         meshUnstr->elementsOverlappingGhosts_->addElement(tempFE);
     }
     for (auto i = 0; i < elementMap->getNodeNumElements(); i++) {
@@ -1824,7 +1824,7 @@ void MeshPartitioner<SC, LO, GO, NO>::buildSubdomainFromDualGraphUnstructured(co
             tmpElement.push_back(index);
         }
         FiniteElement tempFE(tmpElement, elementsMesh->getElement(globalID).getFlag());
-        // NOTE [KH] Surfaces are not added here for now. Since they probably will not be needed.
+        //NOTE: [KH] Surfaces are not added here for now. Since they probably will not be needed.
         meshUnstr->elementsC_->addElement(tempFE);
     }
 }

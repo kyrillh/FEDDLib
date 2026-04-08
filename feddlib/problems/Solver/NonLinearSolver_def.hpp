@@ -716,7 +716,7 @@ void NonLinearSolver<SC,LO,GO,NO>::solveExtrapolation(TimeProblem<SC,LO,GO,NO> &
 // together with e.g.
 // void initialValue2D(double *x, double *res, double *parameters) { res[0] = x[0] * x[1] * (1 - x[0]) * (1 - x[1]); }
 //
-// - TODO: [KH] 25.07.25 Epetra and hence Xpetra are being deprecated in 2025. We have already migrated the FEDDLib to
+// - NOTE: [KH] 25.07.25 Epetra and hence Xpetra are being deprecated in 2025. We have already migrated the FEDDLib to
 // Tpetra. However, since the nonlinear Schwarz operators inherit from FROSch, which currently still uses Xpetra, we
 // cannot migrate the nonlinear Schwarz implementation yet. For now, Tpetra and Xpetra conversions are done in
 // solveNonLinearSchwarz() since this is where the nonlinear Schwarz operators and the FEDDLib "meet".
@@ -822,7 +822,8 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
             Teuchos::rcp_implicit_cast<FROSch::NonLinearOperator<SC, LO, GO, NO>>(coarseOperator));
     }
 
-    // NOTE: [KH] 28.07.25 all the nonlinear Schwarz ops will continue working with Xpetra until FROSch migrates to Tpetra.
+    // NOTE: [KH] 28.07.25 all the nonlinear Schwarz ops will continue working with Xpetra until FROSch migrates to
+    // Tpetra.
     auto simpleOverlappingOperator = Teuchos::rcp(new FROSch::SimpleOverlappingOperator<SC, LO, GO, NO>(
         Teuchos::rcpFromRef(problem), problem.getParameterList()));
     simpleCombineOperator->addOperator(simpleOverlappingOperator);
