@@ -817,8 +817,14 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
 
     // NOTE: [KH] 28.07.25 all the nonlinear Schwarz ops will continue working with Xpetra until FROSch migrates to
     // Tpetra.
+
+    // Define and initialize simpleOverlappingOperator for evaluating D\mathcal{F} i.e. the tangent of the
+    // preconditioned nonlinear problem.
     auto simpleOverlappingOperator = Teuchos::rcp(new FROSch::SimpleOverlappingOperator<SC, LO, GO, NO>(
         Teuchos::rcpFromRef(problem), problem.getParameterList()));
+    simpleOverlappingOperator->initialize(serialComm, Xpetra::toXpetra(mapOverlappingMerged()->getTpetraMap()),
+                                          Xpetra::toXpetra(mapOverlappingGhostsMerged()->getTpetraMap()),
+                                          Xpetra::toXpetra(mapUniqueMerged()->getTpetraMap()));
     simpleCombineOperator->addOperator(simpleOverlappingOperator);
 
     auto simpleCoarseOperator = Teuchos::rcp(new FROSch::SimpleCoarseOperator<SC, LO, GO, NO>(
@@ -915,10 +921,11 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
             localJacobian = FROSch::ExtractLocalSubdomainMatrix(jacobianGhosts.getConst(),
                                                                 Xpetra::toXpetra(mapOverlappingGhostsMerged()->getTpetraMap()));
         }
-        simpleOverlappingOperator->initialize(serialComm, localJacobian, Xpetra::toXpetra(mapOverlappingMerged()->getTpetraMap()),
-                                              Xpetra::toXpetra(mapOverlappingGhostsMerged()->getTpetraMap()),
-                                              Xpetra::toXpetra(mapUniqueMerged()->getTpetraMap()));
+
+        auto localLinearSolver = LinearSolver<SC, LO, GO, NO>::getSolver();
+        simpleOverlappingOperator->updateMatrixAndSolver(localJacobian, localLinearSolver);
         simpleOverlappingOperator->compute();
+
         // Convert SchwarzOperator to Thyra::LinearOpBase
         auto xpetraOverlappingOperator =
             Teuchos::rcp_static_cast<Xpetra::Operator<SC, LO, GO, NO>>(simpleCombineOperator);

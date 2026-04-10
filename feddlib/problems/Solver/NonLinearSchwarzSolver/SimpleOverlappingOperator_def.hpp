@@ -6,6 +6,8 @@
 #include "feddlib/core/LinearAlgebra/BlockMap_decl.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"
 #include <FROSch_OverlappingOperator_def.hpp>
+#include <FROSch_Amesos2SolverTpetra_decl.hpp>
+#include <FROSch_SolverFactory_decl.hpp>
 #include <Teuchos_Array.hpp>
 #include <Teuchos_ArrayViewDecl.hpp>
 #include <Teuchos_CommHelpers.hpp>
@@ -21,6 +23,7 @@
 #include <Xpetra_ImportFactory.hpp>
 #include <Xpetra_Map_decl.hpp>
 #include <Xpetra_MatrixFactory.hpp>
+#include <Xpetra_MatrixFactory_decl.hpp>
 #include <Xpetra_MultiVectorFactory_decl.hpp>
 #include <stdexcept>
 #include <string>
@@ -56,9 +59,7 @@ SimpleOverlappingOperator<SC, LO, GO, NO>::SimpleOverlappingOperator(NonLinearPr
     for (int i = 0; i < numDomains; i++) {
         bcFlagOverlappingGhostsVec_[i] = problem_->getDomain(i)->getMesh()->bcFlagOverlappingGhosts_;
     }
-    
 
-    
     // Build the pressure projection if required.
     if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false)) {
         FROSCH_ASSERT(!this->aProjection_.is_null(), "FROSch::SimpleOverlappingOperator: Trying to use the projection, but it is does not exist.")
@@ -110,6 +111,43 @@ SimpleOverlappingOperator<SC, LO, GO, NO>::SimpleOverlappingOperator(NonLinearPr
 }
 
 template <class SC, class LO, class GO, class NO>
+int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(CommPtr serialComm, ConstXMapPtr overlappingMap,
+                                                          ConstXMapPtr overlappingGhostsMap, ConstXMapPtr uniqueMap) {
+    FROSCH_TIMER_START(SimpleOverlappingInitialize, " SimpleOverlapping::initialize");
+    // AlgebraicOverlappingOperator does: calculates overlap multiplicity if needed and does symbolic extraction
+    // of local subdomain matrix and initialization of solver (symbolic factorization). Here we don't need to do any of
+    // this since the matrix and the symbolically factorized solver created when solving local nonlinear Problems are
+    // passed in using updateMatrixAndSolver(). Need to pass the serial communicator on which localJacobian lives
+    this->SerialComm_ = serialComm;
+    uniqueMap_ = uniqueMap;
+    // Initialize importer Ghosts -> Ghosts
+    importerUniqueToGhosts_ = Xpetra::ImportFactory<LO, GO>::Build(uniqueMap, overlappingGhostsMap);
+    //  Calculate overlap multiplicity if needed. OverlappingMap without ghosts required for this
+    this->OverlappingMap_ = overlappingMap;
+    this->initializeOverlappingOperator();
+    // Distributed map corresponding to OverlappingMatrix_
+    this->OverlappingMap_ = overlappingGhostsMap;
+    // The old Scatter_ is no longer valid because its using the incorrect map. Since it's not used later on, don't
+    // bother building it properly here
+    this->Scatter_ = Teuchos::null;
+    // Need to build an empty FROSch::SolverObject here since it is later dynamically cast to an amesos2SolverTpetra
+    // object and its underlying amesos2 solver member is replaced in updateMatrixAndSolver().
+    Teuchos::RCP<const Xpetra::Map<LO, GO, NO>> dummyMap =
+        Xpetra::MapFactory<LO, GO, NO>::Build(this->OverlappingMap_->lib(), 0, 0, this->MpiComm_);
+    Teuchos::RCP<const Xpetra::Matrix<SC, LO, GO, NO>> dummyMat =
+        Xpetra::MatrixFactory<SC, LO, GO, NO>::Build(dummyMap);
+    this->SubdomainSolver_ =
+        SolverFactory<SC, LO, GO, NO>::Build(dummyMat, sublist(this->ParameterList_, "Solver"),
+                                             string("Solver (Level ") + to_string(this->LevelID_) + string(")"), false);
+    // Conterintuitive, but SimpleOverlappingOperator is not truly initialized because it still does not have a symbolic
+    // factorization.
+    this->IsInitialized_ = false;
+    this->IsComputed_ = false;
+    return 0;
+}
+
+// Legacy initialize function. Not in use but kept for possible future use.
+template <class SC, class LO, class GO, class NO>
 int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(CommPtr serialComm, ConstXMatrixPtr jacobianGhosts,
                                                           ConstXMapPtr overlappingMap,
                                                           ConstXMapPtr overlappingGhostsMap, ConstXMapPtr uniqueMap) {
@@ -151,6 +189,29 @@ int SimpleOverlappingOperator<SC, LO, GO, NO>::initialize(CommPtr serialComm, Co
 
     // Compute symbolic factorization
     this->initializeSubdomainSolver(this->OverlappingMatrix_);
+    this->IsInitialized_ = true;
+    this->IsComputed_ = false;
+    return 0;
+}
+
+template <class SC, class LO, class GO, class NO>
+int SimpleOverlappingOperator<SC, LO, GO, NO>::updateMatrixAndSolver(
+    ConstXMatrixPtr jacobianGhosts, Amesos2SolverPtr amesos2SolverTpetra) {
+    TEUCHOS_TEST_FOR_EXCEPTION(jacobianGhosts.is_null(), std::runtime_error,
+                               "SimpleOverlappingOperator::updateMatrixAndFactorizedSolver() got null matrix");
+    TEUCHOS_TEST_FOR_EXCEPTION(amesos2SolverTpetra.is_null(), std::runtime_error,
+                               "SimpleOverlappingOperator::updateMatrixAndFactorizedSolver() got null solver");
+    this->OverlappingMatrix_ = jacobianGhosts;
+    auto amesos2SubdomainSolver =
+        Teuchos::rcp_dynamic_cast<FROSch::Amesos2SolverTpetra<SC, LO, GO, NO>>(this->SubdomainSolver_);
+    TEUCHOS_TEST_FOR_EXCEPTION(amesos2SubdomainSolver.is_null(), std::runtime_error,
+                               "SimpleOverlappingOperator::updateMatrixAndFactorizedSolver() requires "
+                               "FROSch::Amesos2SolverTpetra as SubdomainSolver_");
+    // Overwrites the internal amesos2 solver object
+    amesos2SubdomainSolver->setExternalSolver(amesos2SolverTpetra);
+    // Overwrites the matrix stored within the internal amesos2 solver object.
+    // true -> reuse an existing symbolic factorization
+    amesos2SubdomainSolver->updateMatrix(this->OverlappingMatrix_, true);
     this->IsInitialized_ = true;
     this->IsComputed_ = false;
     return 0;
