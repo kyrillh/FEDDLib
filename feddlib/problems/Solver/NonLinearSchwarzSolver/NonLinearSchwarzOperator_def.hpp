@@ -403,6 +403,11 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     FEDD::logGreen("Terminated inner Newton", this->MpiComm_);
     totalIters_ += nlIts;
 
+    // Nasty hack, but if no iterations have been done, we need to call solve once to initialize the locat direct solver object for SimpleOverlappingOperator
+    if (totalIters_ == 0) {
+        problem_->solveAndUpdate("", absResidual, this->MpiComm_->getRank(), useBT);
+    }
+
     if (problem_->getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts", false)) {
         TEUCHOS_TEST_FOR_EXCEPTION(nlIts == maxNumIts_, std::runtime_error,
                                    "Maximum nonlinear Iterations reached. Problem might have converged in the last "

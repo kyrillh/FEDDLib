@@ -207,12 +207,12 @@ int main(int argc, char *argv[]) {
             bcFactory->addBC(customBC, 1, 1, domainPressure, "CustomBC", 1);
             bcFactory->addBC(customBC, 2, 1, domainPressure, "CustomBC", 1);
         }
-        bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1);
         // The current global solution must be set as the Dirichlet BC on the ghost nodes for nonlinear Schwarz solver
         // to correctly solve on the subdomains
         bcFactory->addBC(currentSolutionDirichlet2D, -99, 0, domainVelocity, "Dirichlet", dim);
     } else if (dim == 3) {
         bcFactory->addBC(zeroDirichlet3D, 1, 0, domainVelocity, "Dirichlet", dim);
+        bcFactory->addBC(zeroDirichlet3D, 3, 0, domainVelocity, "Dirichlet", dim);
         bcFactory->addBC(ldcFunc3D, 2, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
         bcFactory->addBC(currentSolutionDirichlet3D, -99, 0, domainVelocity, "Dirichlet", dim);
     }
