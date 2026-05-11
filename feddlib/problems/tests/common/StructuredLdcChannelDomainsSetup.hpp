@@ -17,7 +17,7 @@ namespace Problems {
 namespace Tests {
 namespace Common {
 
-/** Output of setupStructuredLdcChannelDomains (steadyLDC / steadyLDCSchwarz structured paths). */
+/** Output of setupStructuredLdcChannelDomains (steadyNavierStokesNKS / steadyNavierStokesNLS structured paths). */
 template <class SC, class LO, class GO, class NO>
 struct StructuredLdcChannelDomainsResult {
     int n{};

@@ -49,10 +49,12 @@
                         value="true" />
                     <ParameterList name="Blocks">
                         <ParameterList name="1">
+                            <Parameter name="Exclude" type="string" value="2" />
                             <Parameter name="Use For Coarse Space" type="bool" value="true" />
                             <ParameterList name="InterfacePartitionOfUnity">
                                 <Parameter name="Type" type="string" value="RGDSW" />
                                 <ParameterList name="RGDSW">
+                                    <Parameter name="Distance Function" type="string" value="Constant" />
                                     <Parameter name="Interface Communication Strategy" type="string"
                                         value="CrsGraph" /><!-- CreateOneToOneMap, CrsGraph,
                                     CrsMatrix -->
@@ -68,10 +70,12 @@
                             </ParameterList>
                         </ParameterList>
                         <ParameterList name="2">
+                            <Parameter name="Exclude" type="string" value="1" />
                             <Parameter name="Use For Coarse Space" type="bool" value="true" />
                             <ParameterList name="InterfacePartitionOfUnity">
                                 <Parameter name="Type" type="string" value="RGDSW" />
                                 <ParameterList name="RGDSW">
+                                    <Parameter name="Distance Function" type="string" value="Constant" />
                                     <Parameter name="Interface Communication Strategy" type="string"
                                         value="CrsGraph" />
                                     <Parameter name="Type" type="string" value="Full" />

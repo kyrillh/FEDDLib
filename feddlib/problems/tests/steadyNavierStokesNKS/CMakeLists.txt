@@ -1,28 +1,28 @@
 TRIBITS_ADD_EXECUTABLE(
-  steadyLDC
+  steadyNavierStokesNKS
 	SOURCES main.cpp
 )
 
 TRIBITS_ADD_TEST(
-  steadyLDC
-  NAME steadyLDC
+  steadyNavierStokesNKS
+  NAME steadyNavierStokesNKS
 	ARGS
 #--precfile=parametersPrecMumps.xml
 	NUM_MPI_PROCS 4
 )
 
-TRIBITS_COPY_FILES_TO_BINARY_DIR(data_steadyLDC
+TRIBITS_COPY_FILES_TO_BINARY_DIR(data_steadyNavierStokesNKS
 	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}
 	SOURCE_FILES parametersPrec.xml parametersProblem.xml parametersSolver.xml
 	DEST_DIR ${CMAKE_CURRENT_BINARY_DIR}
 	DEST_FILES parametersPrec.xml parametersProblem.xml parametersSolver.xml
-  EXEDEPS steadyLDC
+  EXEDEPS steadyNavierStokesNKS
 )
 
-TRIBITS_COPY_FILES_TO_BINARY_DIR(mesh_steadyLDC
+TRIBITS_COPY_FILES_TO_BINARY_DIR(mesh_steadyNavierStokesNKS
 	SOURCE_DIR ${CMAKE_SOURCE_DIR}/meshes
 	SOURCE_FILES square.mesh
 	DEST_DIR ${CMAKE_CURRENT_BINARY_DIR}
 	DEST_FILES square.mesh
-  EXEDEPS steadyLDC
+  EXEDEPS steadyNavierStokesNKS
 )
