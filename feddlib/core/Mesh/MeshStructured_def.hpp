@@ -245,7 +245,10 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
 
 
     TEUCHOS_TEST_FOR_EXCEPTION(!(M>=1),std::logic_error,"H/h is to small.");
+    TEUCHOS_TEST_FOR_EXCEPTION(!(N>=1),std::logic_error,"N is to small.");
     TEUCHOS_TEST_FOR_EXCEPTION(this->comm_.is_null(),std::runtime_error,"comm_ is null.");
+    TEUCHOS_TEST_FOR_EXCEPTION(length < height,std::logic_error,
+                               "For structured 2D rectangular meshes we currently require length >= height.");
 
     bool verbose (this->comm_->getRank() == 0);
 
@@ -258,9 +261,33 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
     int         rank = this->comm_->getRank();
     int         size = this->comm_->getSize() - numProcsCoarseSolve;
 
-    SC      h = length/(M*N);//add variable length/width/heigth
-    SC      H = length/N;
-    GO 	nmbPoints_oneDir;
+    // Interpret input N as number of subdomains in y direction and determine x direction from geometry.
+    int Ny = N;
+    SC H = height / Ny; // side length of square subdomain patches
+    SC h = H / M;       // side length of square elements
+
+    // For square-patch tiling, length / H must be integer -> derive Nx.
+    SC NxFloating = length / H;
+    SC NxRounded = std::round(NxFloating);
+    SC tol = 1000.0 * ScalarTraits<SC>::eps() * std::max(1.0, std::abs(static_cast<double>(NxFloating)));
+    TEUCHOS_TEST_FOR_EXCEPTION(std::abs(static_cast<double>(NxFloating - NxRounded)) > tol, std::logic_error,
+                               "Invalid dimensions for square-patch decomposition in 2D structured mesh."
+                               " Choose length/height and N so that Nx = length / (height/N) is an integer.");
+    int Nx = static_cast<int>(NxRounded);
+    TEUCHOS_TEST_FOR_EXCEPTION(Nx < 1, std::logic_error, "Computed invalid Nx for structured 2D mesh.");
+    TEUCHOS_TEST_FOR_EXCEPTION(std::abs(static_cast<double>(length - Nx * H)) > 1000.0 * ScalarTraits<SC>::eps() *
+                                   std::max(1.0, std::abs(static_cast<double>(length))),
+                               std::logic_error,
+                               "Rectangle length cannot be represented exactly by square subdomain patches.");
+
+    int nSubdomains = Nx * Ny;
+    TEUCHOS_TEST_FOR_EXCEPTION(size != nSubdomains, std::logic_error,
+                               "Wrong number of processors for structured rectangular mesh. "
+                               "Got active ranks=" + std::to_string(size) +
+                               ", required=" + std::to_string(nSubdomains) +
+                               " (Nx=" + std::to_string(Nx) + ", Ny=" + std::to_string(Ny) + ").");
+
+    GO nmbPointsGlobX;
 
     LO nmbElements;
     LO nmbPoints;
@@ -271,11 +298,11 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
         TEUCHOS_TEST_FOR_EXCEPTION(true,std::logic_error,"implement P0.");
     }
     else if (FEType == "P1") {
-        nmbPoints_oneDir 	= N * (M+1) - (N-1);
+        nmbPointsGlobX = Nx * (M+1) - (Nx-1);
         nmbPoints			= (M+1)*(M+1);
     }
     else if(FEType == "P2"){
-        nmbPoints_oneDir 	=  N * (2*(M+1)-1) - (N-1);
+        nmbPointsGlobX = Nx * (2*(M+1)-1) - (Nx-1);
         nmbPoints 			= (2*(M+1)-1)*(2*(M+1)-1);
     }
     else {
@@ -284,9 +311,9 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
 
     this->FEType_ = FEType;
 
-    GO nmbPGlob_oneDir = N * (M+1) - (N-1);
-
-    this->numElementsGlob_ = 2*(nmbPGlob_oneDir-1)*(nmbPGlob_oneDir-1);
+    GO nmbPGlobX = Nx * (M+1) - (Nx-1);
+    GO nmbPGlobY = Ny * (M+1) - (Ny-1);
+    this->numElementsGlob_ = 2*(nmbPGlobX-1)*(nmbPGlobY-1);
 
     if (rank>=size) {
         M = -1; // keine Schleife wird ausgefuehrt
@@ -300,7 +327,7 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
     // P1 Mesh
     if (FEType == "P1") {
         if (verbose) {
-            std::cout << "-- H:"<<H << " h:" <<h << " --" << std::endl;
+            std::cout << "-- Nx:" << Nx << " Ny:" << Ny << " H:" << H << " h:" << h << " --" << std::endl;
         }
         if (verbose) {
             std::cout << "-- Building P1 Points Repeated ... " << std::endl;
@@ -312,11 +339,11 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
         Teuchos::Array<GO> pointsRepGlobMapping(nmbPoints);
 
         int counter = 0;
-        int offset_x = (rank % N);
+        int offset_x = (rank % Nx);
         int offset_y = 0;
 
-        if ((rank % (N*N))>=N) {
-            offset_y = (int) (rank % (N*N))/(N);
+        if ((rank % nSubdomains) >= Nx) {
+            offset_y = (rank % nSubdomains) / Nx;
         }
 
         for (int s=0; s < M+1; s++) {
@@ -328,7 +355,7 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
                 if ((*this->pointsRep_)[counter][1]<100*ScalarTraits<SC>::eps() && (*this->pointsRep_)[counter][1]>-100*ScalarTraits<SC>::eps()) {
                     (*this->pointsRep_)[counter][1]=0.0;}
 
-                pointsRepGlobMapping[counter] = r + s*nmbPoints_oneDir + offset_x*(M) + offset_y*(nmbPoints_oneDir)*M;
+                pointsRepGlobMapping[counter] = r + s*nmbPointsGlobX + offset_x*M + offset_y*nmbPointsGlobX*M;
                 if ((*this->pointsRep_)[counter][0] > (coorRec[0]+length-100*ScalarTraits<SC>::eps()) 	|| (*this->pointsRep_)[counter][0] < (coorRec[0]+100*ScalarTraits<SC>::eps()) ||
                     (*this->pointsRep_)[counter][1] > (coorRec[1]+height-100*ScalarTraits<SC>::eps()) 	|| (*this->pointsRep_)[counter][1] < (coorRec[1]+100*ScalarTraits<SC>::eps())) {
 
@@ -423,7 +450,7 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
 
     else if(FEType == "P2"){
         if (verbose) {
-            std::cout << "-- H:"<<H << " h:" <<h << " --" << std::endl;
+            std::cout << "-- Nx:" << Nx << " Ny:" << Ny << " H:" << H << " h:" << h << " --" << std::endl;
         }
         if (verbose) {
             std::cout << "-- Building P2 Points Repeated ... " << std::flush;
@@ -435,11 +462,11 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
         Teuchos::Array<GO> pointsRepGlobMapping(nmbPoints);
 
         int counter = 0;
-        int offset_x = (rank % N);
+        int offset_x = (rank % Nx);
         int offset_y = 0;
 
-        if ((rank % (N*N))>=N) {
-            offset_y = (int) (rank % (N*N))/(N);
+        if ((rank % nSubdomains) >= Nx) {
+            offset_y = (rank % nSubdomains) / Nx;
         }
         bool p1point;
         int p1_s = 0;
@@ -457,7 +484,7 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2D(std::string FEType,
                 (*this->pointsRep_)[counter][1] = s*h/2.0 + offset_y * H;
                 if ((*this->pointsRep_)[counter][1]<100*ScalarTraits<SC>::eps() && (*this->pointsRep_)[counter][1]>-100*ScalarTraits<SC>::eps()) (*this->pointsRep_)[counter][1]=0.0;
 
-                pointsRepGlobMapping[counter] = r + s*nmbPoints_oneDir + offset_x*(2*(M+1)-2) + offset_y*(nmbPoints_oneDir)*(2*(M+1)-2) ;
+                pointsRepGlobMapping[counter] = r + s*nmbPointsGlobX + offset_x*(2*(M+1)-2) + offset_y*nmbPointsGlobX*(2*(M+1)-2);
 
                 if ((*this->pointsRep_)[counter][0] > (coorRec[0]+length-100*ScalarTraits<SC>::eps()) 	|| (*this->pointsRep_)[counter][0] < (coorRec[0]+100*ScalarTraits<SC>::eps()) ||
                     (*this->pointsRep_)[counter][1] > (coorRec[1]+height-100*ScalarTraits<SC>::eps()) 	|| (*this->pointsRep_)[counter][1] < (coorRec[1]+100*ScalarTraits<SC>::eps())){
@@ -585,7 +612,10 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
     using Teuchos::ScalarTraits;
 
     TEUCHOS_TEST_FOR_EXCEPTION(!(M>=1),std::logic_error,"H/h is to small.");
+    TEUCHOS_TEST_FOR_EXCEPTION(!(N>=1),std::logic_error,"N is to small.");
     TEUCHOS_TEST_FOR_EXCEPTION(this->comm_.is_null(),std::runtime_error,"comm_ is null.");
+    TEUCHOS_TEST_FOR_EXCEPTION(length < height,std::logic_error,
+                               "For structured 3D rectangular channel meshes we currently require length >= height.");
 
     bool verbose (this->comm_->getRank() == 0);
 
@@ -600,10 +630,43 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
     int         rank = this->comm_->getRank();
     int         size = this->comm_->getSize() - numProcsCoarseSolve;
 
-    SC      h = length/(M*N);//add variable length/width/heigth
-    SC      H = length/N;
+    TEUCHOS_TEST_FOR_EXCEPTION(std::abs(static_cast<double>(width-height)) >
+                                   1000.0 * ScalarTraits<SC>::eps() *
+                                   std::max(1.0, std::max(std::abs(static_cast<double>(width)),
+                                                          std::abs(static_cast<double>(height)))),
+                               std::logic_error,
+                               "Invalid 3D channel dimensions: width and height must be equal so yz-slices are squares.");
 
-    LO 	nmbPoints_oneDir;
+    int Ny = N;
+    int Nz = N;
+    SC H = height / Ny; // square subdomain patch edge length in all three directions
+    SC h = H / M;       // square element edge length
+
+    SC NxFloating = length / H;
+    SC NxRounded = std::round(NxFloating);
+    SC tol = 1000.0 * ScalarTraits<SC>::eps() * std::max(1.0, std::abs(static_cast<double>(NxFloating)));
+    TEUCHOS_TEST_FOR_EXCEPTION(std::abs(static_cast<double>(NxFloating - NxRounded)) > tol, std::logic_error,
+                               "Invalid dimensions for square-patch decomposition in 3D structured mesh."
+                               " Choose length/height and N so that Nx = length / (height/N) is an integer.");
+    int Nx = static_cast<int>(NxRounded);
+    TEUCHOS_TEST_FOR_EXCEPTION(Nx < 1, std::logic_error, "Computed invalid Nx for structured 3D mesh.");
+    TEUCHOS_TEST_FOR_EXCEPTION(std::abs(static_cast<double>(length - Nx * H)) >
+                                   1000.0 * ScalarTraits<SC>::eps() *
+                                   std::max(1.0, std::abs(static_cast<double>(length))),
+                               std::logic_error,
+                               "Rectangle length cannot be represented exactly by square subdomain patches.");
+
+    int nSubdomains = Nx * Ny * Nz;
+    TEUCHOS_TEST_FOR_EXCEPTION(size != nSubdomains, std::logic_error,
+                               "Wrong number of processors for structured 3D rectangular mesh. "
+                               "Got active ranks=" + std::to_string(size) +
+                               ", required=" + std::to_string(nSubdomains) +
+                               " (Nx=" + std::to_string(Nx) + ", Ny=" + std::to_string(Ny) +
+                               ", Nz=" + std::to_string(Nz) + ").");
+
+    LO nmbPointsGlobX = -1;
+    LO nmbPointsGlobY = -1;
+    LO nmbPointsGlobZ = -1;
 
     LO nmbElements;
     LO nmbPoints;
@@ -611,16 +674,22 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
         TEUCHOS_TEST_FOR_EXCEPTION(true,std::logic_error,"implement P0.");
     }
     else if (FEType == "P1") {
-        nmbPoints_oneDir 	= N * (M+1) - (N-1);
+        nmbPointsGlobX 	= Nx * (M+1) - (Nx-1);
+        nmbPointsGlobY 	= Ny * (M+1) - (Ny-1);
+        nmbPointsGlobZ 	= Nz * (M+1) - (Nz-1);
         nmbPoints			= (M+1)*(M+1)*(M+1);
     }
     else if (FEType == "P2"){
-        nmbPoints_oneDir 	=  N * (2*(M+1)-1) - (N-1);
+        nmbPointsGlobX 	= Nx * (2*(M+1)-1) - (Nx-1);
+        nmbPointsGlobY 	= Ny * (2*(M+1)-1) - (Ny-1);
+        nmbPointsGlobZ 	= Nz * (2*(M+1)-1) - (Nz-1);
         nmbPoints 			= (2*(M+1)-1)*(2*(M+1)-1)*(2*(M+1)-1);
     }
     else if (FEType == "P2-CR"){
         TEUCHOS_TEST_FOR_EXCEPTION(true,std::logic_error,"P2-CR might not work properly.");
-        nmbPoints_oneDir 	=  N * (2*(M+1)-1) - (N-1);
+        nmbPointsGlobX 	= Nx * (2*(M+1)-1) - (Nx-1);
+        nmbPointsGlobY 	= Ny * (2*(M+1)-1) - (Ny-1);
+        nmbPointsGlobZ 	= Nz * (2*(M+1)-1) - (Nz-1);
         nmbPoints 			= (2*(M+1)-1)*(2*(M+1)-1)*(2*(M+1)-1);
     }
     else if (FEType == "P1-disc" || FEType == "P1-disc-global"){
@@ -640,9 +709,10 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
 
     this->FEType_ = FEType;
 
-    GO nmbPGlob_oneDir = N * (M+1) - (N-1);
-
-    this->numElementsGlob_ = 6*(nmbPGlob_oneDir-1)*(nmbPGlob_oneDir-1)*(nmbPGlob_oneDir-1);
+    GO nmbPGlobX = Nx * (M+1) - (Nx-1);
+    GO nmbPGlobY = Ny * (M+1) - (Ny-1);
+    GO nmbPGlobZ = Nz * (M+1) - (Nz-1);
+    this->numElementsGlob_ = 6*(nmbPGlobX-1)*(nmbPGlobY-1)*(nmbPGlobZ-1);
     int MM=M;
     if (rank>=size) {
         M = -1; // keine Schleife wird ausgefuehrt
@@ -664,17 +734,9 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
         Teuchos::Array<GO> pointsRepGlobMapping(nmbPoints);
 
         int counter = 0;
-        int offset_x = (rank % N);
-        int offset_y = 0;
-        int offset_z = 0;
-
-        if ((rank % (N*N))>=N) {
-            offset_y = (int) (rank % (N*N))/(N);
-        }
-
-        if ((rank % (N*N*N))>=N*N ) {
-            offset_z = (int) (rank % (N*N*N))/(N*(N));
-        }
+        int offset_x = rank % Nx;
+        int offset_y = (rank / Nx) % Ny;
+        int offset_z = rank / (Nx * Ny);
 
         for (int t=0; t < M+1; t++) {
             for (int s=0; s < M+1; s++) {
@@ -688,8 +750,8 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
                     (*this->pointsRep_)[counter][2] = t*h + offset_z * H;
                     if ((*this->pointsRep_)[counter][2]<eps && (*this->pointsRep_)[counter][2]>-eps) (*this->pointsRep_)[counter][2]=0.0;
 
-                    pointsRepGlobMapping[counter] = r + s*nmbPoints_oneDir + t*nmbPoints_oneDir*nmbPoints_oneDir \
-                    + offset_x*(M) + offset_y*(nmbPoints_oneDir)*M + offset_z*(nmbPoints_oneDir)*(nmbPoints_oneDir)*M  ;
+                    pointsRepGlobMapping[counter] = r + s*nmbPointsGlobX + t*nmbPointsGlobX*nmbPointsGlobY
+                    + offset_x*M + offset_y*nmbPointsGlobX*M + offset_z*nmbPointsGlobX*nmbPointsGlobY*M;
 
                     if ((*this->pointsRep_)[counter][0] > (coorRec[0]+length-eps) 	|| (*this->pointsRep_)[counter][0] < (coorRec[0]+eps) ||
                         (*this->pointsRep_)[counter][1] > (coorRec[1]+width-eps) 	|| (*this->pointsRep_)[counter][1] < (coorRec[1]+eps) ||
@@ -769,17 +831,9 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
         Teuchos::Array<GO> pointsRepGlobMapping(nmbPoints);
 
         int counter = 0;
-        int offset_x = (rank % N);
-        int offset_y = 0;
-        int offset_z = 0;
-
-        if ((rank % (N*N))>=N) {
-            offset_y = (int) (rank % (N*N))/(N);
-        }
-
-        if ((rank % (N*N*N))>=N*N ) {
-            offset_z = (int) (rank % (N*N*N))/(N*(N));
-        }
+        int offset_x = rank % Nx;
+        int offset_y = (rank / Nx) % Ny;
+        int offset_z = rank / (Nx * Ny);
         bool p1point;
         int p1_s = 0;
         int p1_r = 0;
@@ -801,8 +855,8 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
                     (*this->pointsRep_)[counter][2] = t*h/2.0 + offset_z * H;
                     if ((*this->pointsRep_)[counter][2]<eps && (*this->pointsRep_)[counter][2]>-eps) (*this->pointsRep_)[counter][2]=0.0;
 
-                    pointsRepGlobMapping[counter] = r + s*nmbPoints_oneDir + t*nmbPoints_oneDir*nmbPoints_oneDir \
-                    + offset_x*(2*(M+1)-2) + offset_y*(nmbPoints_oneDir)*(2*(M+1)-2) + offset_z*(nmbPoints_oneDir)*(nmbPoints_oneDir)*(2*(M+1)-2) ;
+                    pointsRepGlobMapping[counter] = r + s*nmbPointsGlobX + t*nmbPointsGlobX*nmbPointsGlobY \
+                    + offset_x*(2*(M+1)-2) + offset_y*nmbPointsGlobX*(2*(M+1)-2) + offset_z*nmbPointsGlobX*nmbPointsGlobY*(2*(M+1)-2);
 
                     if ((*this->pointsRep_)[counter][0] > (coorRec[0]+length-eps) || (*this->pointsRep_)[counter][0] < (coorRec[0]+eps) ||
                         (*this->pointsRep_)[counter][1] > (coorRec[1]+width-eps) 	|| (*this->pointsRep_)[counter][1] < (coorRec[1]+eps) ||
@@ -824,13 +878,18 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh3D(std::string FEType,
         this->bcFlagUni_.reset(new std::vector<int> (this->mapUnique_->getNodeNumElements(),0));
 
         for (int i=0; i<this->mapUnique_->getNodeNumElements(); i++) {
-            (*this->pointsUni_)[i][0] = (this->mapUnique_->getGlobalElement(i) % nmbPoints_oneDir) * h/2;
+            GO gid = this->mapUnique_->getGlobalElement(i);
+            LO idxX = gid % nmbPointsGlobX;
+            LO idxY = (gid % (nmbPointsGlobX*nmbPointsGlobY)) / nmbPointsGlobX;
+            LO idxZ = gid / (nmbPointsGlobX*nmbPointsGlobY);
+
+            (*this->pointsUni_)[i][0] = idxX * h/2;
             if ((*this->pointsUni_)[i][0]<eps && (*this->pointsUni_)[i][0]>-eps) (*this->pointsUni_)[i][0]=0.0;
 
-            (*this->pointsUni_)[i][1] = ((int) ((this->mapUnique_->getGlobalElement(i) % (nmbPoints_oneDir*nmbPoints_oneDir)) / nmbPoints_oneDir) + eps) *h/2;
+            (*this->pointsUni_)[i][1] = idxY * h/2;
             if ((*this->pointsUni_)[i][1]<eps && (*this->pointsUni_)[i][1]>-eps) (*this->pointsUni_)[i][1]=0.0;
 
-            (*this->pointsUni_)[i][2] = ((int)(this->mapUnique_->getGlobalElement(i) / (nmbPoints_oneDir*nmbPoints_oneDir) + eps)) * h/2;
+            (*this->pointsUni_)[i][2] = idxZ * h/2;
             if ((*this->pointsUni_)[i][2]<eps && (*this->pointsUni_)[i][2]>-eps) (*this->pointsUni_)[i][2]=0.0;
 
             if ((*this->pointsUni_)[i][0] > (coorRec[0]+length-eps) 	|| (*this->pointsUni_)[i][0] < (coorRec[0]+eps) ||

@@ -566,10 +566,10 @@ public:
    mutable  CommConstPtr_Type comm_; // underlying comm
    MeshPtr_Type mesh_;      // underlying mesh as base class mesh type. usually underlying mesh is either structured or unstructured
    int dim_;                // dimension
-   vec_dbl_Type coorRec;
-   double length;
-   double height;
-   double width;
+   vec_dbl_Type coorRec_;
+   double length_;
+   double height_;
+   double width_;
    int n_;
    int m_;
    std::string FEType_; // Finite element discretization

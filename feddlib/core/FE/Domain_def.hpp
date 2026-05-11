@@ -94,10 +94,10 @@ partialGlobalInterfaceVecFieldMap_(),
     otherGlobalInterfaceMapVecFieldUnique_(),
     otherPartialGlobalInterfaceVecFieldMap_()
 {
-    coorRec	= coor;
-    length 	= l;
-	height 	= h;
-    width = -1;
+    coorRec_	= coor;
+    length_ 	= l;
+	height_ 	= h;
+    width_ = -1;
     // Available 2D geometries 
     geometries2DVec_.reset(new string_vec_Type(0));
     geometries2DVec_->push_back("Square");
@@ -123,10 +123,10 @@ globalInterfaceMapUnique_(),
 globalInterfaceMapVecFieldUnique_(),
 partialGlobalInterfaceVecFieldMap_()
 {
-    coorRec	= coor;
-    length 	= l;
-    width 	= w;
-    height	= h;
+    coorRec_	= coor;
+    length_ 	= l;
+    width_ 	= w;
+    height_	= h;
     // Different geometries available as geometries. 
     geometries3DVec_.reset(new string_vec_Type(0));
     geometries3DVec_->push_back("Square"); // for 3D this is synonymous to Cube with 6-Element subcube structure
@@ -223,11 +223,11 @@ void Domain<SC,LO,GO,NO>::buildMesh(int flagsOption , std::string meshType, int 
         case 2:
             switch (geoNumber) {
                 case 0:
-                    meshStructured->setGeometry2DRectangle(coorRec, length, height);
+                    meshStructured->setGeometry2DRectangle(coorRec_, length_, height_);
                     meshStructured->buildMesh2D(FEType, n_, m_, numProcsCoarseSolve);
                     break;
                 case 1:
-                    meshStructured->setGeometry2DRectangle(coorRec, length, height);
+                    meshStructured->setGeometry2DRectangle(coorRec_, length_, height_);
                     meshStructured->buildMesh2DBFS(FEType, n_, m_, numProcsCoarseSolve);
                     break;
                 default:
@@ -239,15 +239,15 @@ void Domain<SC,LO,GO,NO>::buildMesh(int flagsOption , std::string meshType, int 
         case 3:
             switch (geoNumber) {
                 case 0:
-                    meshStructured->setGeometry3DBox(coorRec, length, width, height);
+                    meshStructured->setGeometry3DBox(coorRec_, length_, width_, height_);
                     meshStructured->buildMesh3D( FEType, n_, m_, numProcsCoarseSolve);
                     break;
                 case 1:
-                    meshStructured->setGeometry3DBox(coorRec, length, width, height);
+                    meshStructured->setGeometry3DBox(coorRec_, length_, width_, height_);
                     meshStructured->buildMesh3DBFS(	FEType, n_, m_, numProcsCoarseSolve);
                     break;
                 case 2:
-                    meshStructured->setGeometry3DBox(coorRec, length, width, height);
+                    meshStructured->setGeometry3DBox(coorRec_, length_, width_, height_);
                     meshStructured->buildMesh3D5Elements(	FEType, n_, m_, numProcsCoarseSolve);
                 break;
                 default:
