@@ -7,11 +7,14 @@
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 #include "feddlib/problems/specific/NavierStokesAssFE.hpp"
+#include "feddlib/problems/tests/common/StructuredLdcChannelDomainsSetup.hpp"
 
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
 #include <Teuchos_TestForException.hpp>
 #include <stdexcept>
+
+using FEDD::Problems::Tests::Common::setupStructuredLdcChannelDomains;
 
 void zeroDirichlet(double *x, double *res, double t, const double *parameters) {
     res[0] = 0.;
@@ -102,6 +105,8 @@ int main(int argc, char *argv[]) {
 
     double length = 4.;
     myCLP.setOption("length", &length, "length of domain.");
+    double height = 1.;
+    myCLP.setOption("height", &height, "height of domain.");
     bool debug = false;
     myCLP.setOption("debug", "", &debug, "Bool option for debugging");
 
@@ -137,7 +142,6 @@ int main(int argc, char *argv[]) {
 
     int m = parameterListProblem->sublist("Parameter").get("H/h", 5);
     std::string precMethod = parameterListProblem->sublist("General").get("Preconditioner Method", "Monolithic");
-    int n;
 
     ParameterListPtr_Type parameterListAll(new Teuchos::ParameterList(*parameterListProblem));
     if (!precMethod.compare("Monolithic")) {
@@ -149,45 +153,17 @@ int main(int argc, char *argv[]) {
 
     int minNumberSubdomains = 1;
 
-    int numProcsCoarseSolve = 0;
-    int size = comm->getSize();
+    int numProcsCoarseSolve = parameterListProblem->sublist("General").get("Mpi Ranks Coarse", 0);
+    int size = comm->getSize() - numProcsCoarseSolve;
 
-    DomainPtr_Type domainPressure;
-    DomainPtr_Type domainVelocity;
     if (verbose) {
         std::cout << "-- Building Mesh ..." << std::flush;
     }
-    // Structured meshes for either LDC (flag 5) or channel flow (flag 1)
-    TEUCHOS_TEST_FOR_EXCEPTION(size % minNumberSubdomains != 0, std::logic_error,
-                               "Wrong number of processors for structured mesh.")
-    if (dim == 2) {
-        n = (int)(std::pow(size / minNumberSubdomains, 1 / 2.) + 100 * Teuchos::ScalarTraits<double>::eps()); // 1/H
-        std::vector<double> x(2);
-        x[0] = 0.0;
-        x[1] = 0.0;
-        domainPressure.reset(new Domain<SC, LO, GO, NO>(x, 2., 1., comm));
-        domainVelocity.reset(new Domain<SC, LO, GO, NO>(x, 2., 1., comm));
-    } else if (dim == 3) {
-        n = (int)(std::pow(size / minNumberSubdomains, 1 / 3.) + 100 * Teuchos::ScalarTraits<double>::eps()); // 1/H
-        std::vector<double> x(3);
-        x[0] = 0.0;
-        x[1] = 0.0;
-        x[2] = 0.0;
-        domainPressure.reset(new Domain<SC, LO, GO, NO>(x, 2., 1., 1., comm));
-        domainVelocity.reset(new Domain<SC, LO, GO, NO>(x, 2., 1., 1., comm));
-    }
-    int geometryFlag = -1;
-    if (!meshType.compare("structured_ldc")) {
-        geometryFlag = 5;
-    } else if (!meshType.compare("structured")) {
-        geometryFlag = 1;
-    } else {
-        TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error,
-                                   "Unsupported Mesh Type for this test. Use 'structured_ldc' or 'structured'.");
-    }
-    domainPressure->buildMesh(geometryFlag, "Square", dim, discPressure, n, m, numProcsCoarseSolve);
-    domainVelocity->buildMesh(geometryFlag, "Square", dim, discVelocity, n, m, numProcsCoarseSolve);
-    domainVelocity->preProcessMesh(true, false);
+    const auto structuredDomains = setupStructuredLdcChannelDomains<SC, LO, GO, NO>(
+        comm, verbose, dim, meshType, size, numProcsCoarseSolve, length, height, m, discPressure, discVelocity,
+        minNumberSubdomains);
+    DomainPtr_Type domainPressure = structuredDomains.domainPressure;
+    DomainPtr_Type domainVelocity = structuredDomains.domainVelocity;
 
     std::vector<double> parameter_vec(1, parameterListProblem->sublist("Parameter").get("MaxVelocity", 1.));
 
@@ -207,7 +183,7 @@ int main(int argc, char *argv[]) {
             bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1); // Pressure node
         }
     } else if (!bcType.compare("parabolic")) {
-        parameter_vec.push_back(1.); // Height of inflow region
+        parameter_vec.push_back(height); // Height of inflow region
         if (dim == 2) {
             bcFactory->addBC(zeroDirichlet2D, 1, 0, domainVelocity, "Dirichlet", dim);
             bcFactory->addBC(inflowParabolic2D, 2, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
