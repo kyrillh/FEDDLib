@@ -4,9 +4,10 @@
         <Parameter name="Discretization Velocity" type="string" value="P1" /><!--P1-P1
         with NavierStokesAssFE does not work because of checkFE. -->
         <Parameter name="Discretization Pressure" type="string" value="P1" />
-        <Parameter name="Mesh Type" type="string" value="structured_ldc" /> <!--structured,
+        <Parameter name="Mesh Type" type="string" value="structured" /> <!--structured,
         structured_bfs, structured_ldc, unstructured -->
-        <Parameter name="H/h" type="int" value="5" />
+        <Parameter name="BC Type" type="string" value="parabolic" /> <!--LDC, parabolic -->
+        <Parameter name="H/h" type="int" value="4" />
         <Parameter name="Symmetric gradient" type="bool" value="false" />
         <Parameter name="Viscosity" type="double" value="1.0e-02" />
         <Parameter name="Density" type="double" value="1.0" />

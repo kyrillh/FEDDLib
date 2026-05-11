@@ -396,7 +396,7 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         std::cout << "==> Warning!! local nonlinear solver only reached rel. res. = " << relResidual << " after "
                   << nlIts << " iters. on subdomain " << this->MpiComm_->getRank() << std::endl << std::flush;
     }
-    FROSCH_ASSERT(relResidual < 1, "FROSch::NonLinearSchwarzOperator: The relative residual is greater than 1 after solving.")
+    FROSCH_ASSERT(relResidual < 1 || absResidual == 0, "FROSch::NonLinearSchwarzOperator: The relative residual is greater than 1 after solving.")
 
     // Set solution_ to g_i
     problem_->solution_->update(ST::one(), *x_, -ST::one());

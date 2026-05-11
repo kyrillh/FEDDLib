@@ -476,7 +476,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
 
         nlIts++;
     }
-    FROSCH_ASSERT(relResidual < 1, "FROSch::CoarseNonLinearSchwarzOperator: The relative residual is greater than 1 after solving.")
+    FROSCH_ASSERT(relResidual < 1 || absResidual == 0, "FROSch::CoarseNonLinearSchwarzOperator: The relative residual is greater than 1 after solving.")
 
     // Set solution_ to g_i
     problem_->solution_->update(ST::one(), *x_, -ST::one());
