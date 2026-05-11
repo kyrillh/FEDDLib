@@ -773,8 +773,8 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     // For LDC call problem.solution_->scale(-1.) and problem.bcFactory_->setBCMinusVector(problem.solution_, problem.solution_).
     // For channel flow problem do not. i.e. we want the initial solution to be zero everywhere.
     // TODO: [KH] Investigate the effect of setting the parabolic inflow in this manner? Can you include a harmonic exension into the interior here too?
-    problem.solution_->scale(-1.);
-    problem.bcFactory_->setBCMinusVector(problem.solution_, problem.solution_);
+    // problem.solution_->scale(-1.);
+    // problem.bcFactory_->setBCMinusVector(problem.solution_, problem.solution_);
     problem.assemble();
     problem.assemble("FixedPoint");
     problem.assemble("Newton");
