@@ -7,14 +7,14 @@
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 #include "feddlib/problems/specific/NavierStokes.hpp"
-#include "feddlib/problems/tests/common/StructuredLdcChannelDomainsSetup.hpp"
+#include "feddlib/problems/tests/common/StructuredNavierStokesDomainSetup.hpp"
 
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
 #include <Teuchos_TestForException.hpp>
 #include <stdexcept>
 
-using FEDD::Problems::Tests::Common::setupStructuredLdcChannelDomains;
+using FEDD::Problems::Tests::Common::setupStructuredNavierStokesDomain;
 
 void initialValue(double *x, double *res, double *parameters) {
     int dofs = static_cast<int>(parameters[0]);
@@ -164,8 +164,6 @@ int main(int argc, char *argv[]) {
     ParameterListPtr_Type parameterListAll(new Teuchos::ParameterList(*parameterListProblem));
     parameterListAll->setParameters(*parameterListSolver);
 
-    int minNumberSubdomains = 1;
-
     int numProcsCoarseSolve = parameterListProblem->sublist("General").get("Mpi Ranks Coarse", 0);
     int size = comm->getSize() - numProcsCoarseSolve;
 
@@ -176,9 +174,8 @@ int main(int argc, char *argv[]) {
     ParameterListPtr_Type pListPartitioner = sublist(parameterListAll, "Mesh Partitioner");
     MeshPartitioner<SC, LO, GO, NO> partitioner;
 
-    const auto structuredDomains = setupStructuredLdcChannelDomains<SC, LO, GO, NO>(
-        comm, verbose, dim, meshType, size, numProcsCoarseSolve, length, height, m, discPressure, discVelocity,
-        minNumberSubdomains);
+    const auto structuredDomains = setupStructuredNavierStokesDomain<SC, LO, GO, NO>(
+        comm, verbose, dim, meshType, size, numProcsCoarseSolve, length, height, m, discPressure, discVelocity);
     DomainPtr_Type domainPressure = structuredDomains.domainPressure;
     DomainPtr_Type domainVelocity = structuredDomains.domainVelocity;
 
@@ -218,7 +215,9 @@ int main(int argc, char *argv[]) {
         }
         bcFactory->addBC(zeroDirichlet, 3, 1, domainPressure, "Dirichlet", 1); // Pressure node for LDC
     } else if (!bcType.compare("parabolic")) {
-        parameter_vec.push_back(height); // Height of inflow region
+        // BFS uses example inflow height 1.0; channel uses height set above.
+        const double inflow_height = !meshType.compare("structured_bfs") ? 1.0 : height;
+        parameter_vec.push_back(inflow_height);
         if (dim == 2) {
             bcFactory->addBC(zeroDirichlet2D, 1, 0, domainVelocity, "Dirichlet", dim);
             bcFactory->addBC(inflowParabolic2D, 2, 0, domainVelocity, "Dirichlet", dim, parameter_vec);
