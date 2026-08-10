@@ -6,7 +6,7 @@
 #include "feddlib/core/LinearAlgebra/MultiVector.hpp"
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
-#include "feddlib/problems/specific/NavierStokesAssFE.hpp"
+#include "feddlib/problems/specific/NavierStokes.hpp"
 #include "feddlib/problems/tests/common/StructuredNavierStokesDomainSetup.hpp"
 
 #include <Teuchos_GlobalMPISession.hpp>
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
         TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "Select a valid BC Type: 'LDC' or 'parabolic'.");
     }
 
-    NavierStokesAssFE<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,
+    NavierStokes<SC, LO, GO, NO> navierStokes(domainVelocity, discVelocity, domainPressure, discPressure,
                                                    parameterListAll);
 
     domainVelocity->info();

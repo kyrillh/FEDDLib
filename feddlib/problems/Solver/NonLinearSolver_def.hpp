@@ -366,6 +366,7 @@ template<class SC,class LO,class GO,class NO>
 void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, vec_dbl_ptr_Type valuesForExport ){
 
     bool verbose = problem.getVerbose();
+    auto mpiComm = problem.getComm();
 
     TEUCHOS_TEST_FOR_EXCEPTION(problem.getRhs()->getNumVectors()!=1,std::logic_error,"We need to change the code for numVectors>1.")
     // -------
@@ -380,6 +381,20 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, 
     double criterionValue = 1.;
     std::string criterion = problem.getParameterList()->sublist("Parameter").get("Criterion","Residual");
     bool useBT = problem.getParameterList()->sublist("Parameter").get("Use Backtracking",true);
+
+    print("+++++++++ Newton-Krylov-Schwarz solver configuration ++++++++++\n", mpiComm);
+    print("==> Overlap: " + std::to_string(problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).get("Overlap", 1)) + "\n", mpiComm);
+    print("==> Use Backtracking: " + std::to_string(problem.getParameterList()->sublist("Parameter", true).get("Use Backtracking",false)) + "\n", mpiComm);
+    print("==> Use pressure projection: " + std::to_string(problem.getParameterList()->sublist("Parameter", true).get("Use Pressure Projection", false)) + "\n", mpiComm);
+    print("==> Remove Dirichlet Nodes: " + std::to_string(problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).get("Remove Dirichlet Nodes",false)) + "\n", mpiComm);
+    print("==> IPOU type block 1: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks", true).sublist("1", true).sublist("InterfacePartitionOfUnity", true).get("Type","Use must provide a IPOU type for block 1") + "\n", mpiComm);
+    print("==> Distance function block 1: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks", true).sublist("1", true).sublist("InterfacePartitionOfUnity", true).sublist("RGDSW").get("Distance Function","None provided") + "\n", mpiComm);
+    print("==> IPOU type block 2: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks", true).sublist("2", true).sublist("InterfacePartitionOfUnity", true).get("Type","Use must provide a IPOU type for block 2") + "\n", mpiComm);
+    print("==> Distance function block 2: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks", true).sublist("2", true).sublist("InterfacePartitionOfUnity", true).sublist("RGDSW").get("Distance Function","None provided") + "\n", mpiComm);
+    print("==> Rel. tol: " + std::to_string(tol) + "\n", mpiComm);
+    print("==> Abs. tol: " + std::to_string(problem.getParameterList()->sublist("Parameter", true).get("absNonLinTol",1.0e-6)) + "\n", mpiComm);
+    print("==> Max Newton iters.: " + std::to_string(maxNonLinIts) + "\n", mpiComm);
+    print("++++++++++++++++++++++++++++++++++++++++++\n", mpiComm);
 
     while ( nlIts < maxNonLinIts ) {
         //this makes only sense for Navier-Stokes/Stokes, for other problems, e.g., non linear elasticity, it should do nothing.

@@ -19,7 +19,7 @@
         <Parameter name="Myeps" type="double" value="1.0e-14" />
         <Parameter name="Combo" type="string" value="OR" />
         <Parameter name="Use WRMS" type="bool" value="false" />
-        <Parameter name="Use Pressure Projection" type="bool" value="false"/>   
+        <Parameter name="Use Pressure Projection" type="bool" value="true"/>   
     </ParameterList>
     <ParameterList name="Mesh Partitioner">
         <Parameter name="Contiguous" type="bool" value="true" />
