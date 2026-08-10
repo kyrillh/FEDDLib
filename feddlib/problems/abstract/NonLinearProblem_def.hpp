@@ -166,6 +166,7 @@ namespace FEDD
 
         // Implements a variation of a globalized inexact Newton backtracking as referenced in "Globaly convergent
         // inexact Newton methods" and "Choosing the forcing terms in an inexact Newton method" by Eisenstat and Walker.
+        // Theta in the paper
         SC lambda = 1;
         bool printHere = myRank == 0;
 
@@ -175,7 +176,9 @@ namespace FEDD
                 std::cout << "==> Backtracking commenced\n";
             }
             // Reduction constants
+            // t in the paper
             SC alpha = 1e-3;
+            // eta in the paper
             SC nu = 1e-3;
             // Save current solution since we need to overwrite it to calculate the residual in backtracking
             auto newtonUpdate = this->solution_;
@@ -192,6 +195,14 @@ namespace FEDD
             while (lambda > 1e-2) {
 
                 //  Reset and update the current solution
+                //  This update is not the same as in the Eisenstat Walker paper. There they cummutively shrink the
+                //  current update s_k, rather than beginning at the original size and scaling. To achieve proper
+                //  equivalence with the paper would need to update newtonUpdate here in each iteration, rather than
+                //  just scaling with lambda when adding to previousSolution_ (x_k). Alternatively the update formula
+                //  for the nu could be adjust below to nu = 1 - lambda * (1 - nu_0) since then the scaling parameters
+                //  would behave the same as in the paper for a certain choice of theta in each iteration. This
+                //  discrepancy should not have an effect on the globalization properties of the method. It just
+                //  produces a different sequence of iterates.
                 this->solution_->update(1., *this->previousSolution_, 0.);
                 this->solution_->update(lambda, *newtonUpdate, 1.);
 
@@ -210,9 +221,11 @@ namespace FEDD
                     break;
                 }
 
+                // Choose a theta corresponds to halving lambda
                 lambda *= 0.5;
                 // This is a fixed point iteration that converges to 1
                 // This increases the threshold (makes it less strict) for the backtracking to exit in each iteration. See exit crit. above.
+                // Updating nu like this corresponds to updating eta = 1 - theta * (1 - eta )
                 nu = 1 - lambda * (1 - nu);
                 btIter++;
             }
