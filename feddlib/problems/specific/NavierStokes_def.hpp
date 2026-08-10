@@ -192,7 +192,7 @@ void NavierStokes<SC,LO,GO,NO>::assemble( std::string type ) const{
 
 template<class SC,class LO,class GO,class NO>
 void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
-    
+    FEDD_TIMER_START(NSAssembleConstantMatrices, " - NavierStokes - assembleConstantMatrices");
     if (this->verbose_)
         std::cout << "-- Assembly constant matrices Navier-Stokes ... " << std::flush;
     
@@ -493,6 +493,7 @@ void NavierStokes<SC,LO,GO,NO>::updateConvectionDiffusionOperator() const{
 }
 template<class SC,class LO,class GO,class NO>
 void NavierStokes<SC,LO,GO,NO>::assembleDivAndStab() const{
+    FEDD_TIMER_START(NSAssembleDivAndStab, " - NavierStokes - assembleDivAndStab");
     
     double viscosity = this->parameterList_->sublist("Parameter").get("Viscosity",1.);
     double density = this->parameterList_->sublist("Parameter").get("Density",1.);
@@ -611,6 +612,7 @@ void NavierStokes<SC,LO,GO,NO>::reAssembleFSI(std::string type, MultiVectorPtr_T
 
 template<class SC,class LO,class GO,class NO>
 void NavierStokes<SC,LO,GO,NO>::reAssemble(std::string type) const {
+    FEDD_TIMER_START(NSReAssemble, " - NavierStokes - reAssmble");
 
    
     if (this->verbose_)
@@ -669,7 +671,7 @@ void NavierStokes<SC,LO,GO,NO>::reAssemble(std::string type) const {
 // This is then stored as NNZ_A_
 template<class SC,class LO,class GO,class NO>
 void NavierStokes<SC,LO,GO,NO>::establishNNZPattern() const {
-
+    FEDD_TIMER_START(NSEstablishNNZPattern, " - NavierStokes - establishNNZPattern");
    
     if (this->verbose_)
         std::cout << "-- Establish NNZ Pattern Navier-Stokes ... " << std::flush;
@@ -745,6 +747,7 @@ void NavierStokes<SC,LO,GO,NO>::reAssembleExtrapolation(BlockMultiVectorPtrArray
 
 template<class SC,class LO,class GO,class NO>
 void NavierStokes<SC,LO,GO,NO>::calculateNonLinResidualVec(std::string type, double time) const{
+    FEDD_TIMER_START(NSCalculateNonLinResidualVec, " - NavierStokes - calculateNonLinResidualVec");
     
     if (this->verbose_)
         std::cout << "-- NavierStokes::calculateNonLinResidualVec ("<< type <<") ... " << std::flush;
@@ -807,12 +810,14 @@ void NavierStokes<SC,LO,GO,NO>::calculateNonLinResidualVecWithMeshVelo(std::stri
 
 template <class SC, class LO, class GO, class NO>
 void NavierStokes<SC, LO, GO, NO>::reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) {
+    FEDD_TIMER_START(NSReInitSpecificProblemVectors, " - NavierStokes - reInitSpecificProblemVectors");
     this->u_rep_ = Teuchos::rcp(new MultiVector_Type(newMap->getBlock(0)));
     // establishNNZPattern();
     assembleConstantMatrices();
 }
 
 template <class SC, class LO, class GO, class NO> void NavierStokes<SC, LO, GO, NO>::assembleCoarseConnectivity() {
+    FEDD_TIMER_START(NSAssembleCoarseConnectivity, " - NavierStokes - assembleCoarseConnectivity");
     if (this->getFEType(0).compare("P1") && this->getFEType(0).compare("Q1")) {
         TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error,
                                    "Another assembly routine must be called before calling assembleCoarseConnectivity");
@@ -828,6 +833,7 @@ template <class SC, class LO, class GO, class NO> void NavierStokes<SC, LO, GO, 
 }
 
 template <class SC, class LO, class GO, class NO> void NavierStokes<SC, LO, GO, NO>::removeCoarseConnectivity() {
+    FEDD_TIMER_START(NSRemoveCoarseConnectivity, " - NavierStokes - removeCoarseConnectivity");
     if (this->getFEType(0).compare("P1") && this->getFEType(0).compare("Q1")) {
         TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error,
                                    "Calling removeCoarseConnectivity() on an empty system_ does not make sense.");

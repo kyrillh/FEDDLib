@@ -244,6 +244,7 @@ template <class SC, class LO, class GO, class NO>
 void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFEDD x, BlockMultiVectorPtrFEDD y,
                                                      SC alpha, SC beta) {
     FEDD_TIMER_START(NonLinearSchwarzApply, " - Schwarz - apply NonLinearSchwarzOperator");
+    FEDD_TIMER_START(NonLinearSchwarzApplySetup, " - Schwarz - apply setup");
     auto domainVec = problem_->getDomainVector();
 
     // Store distributed problem properties
@@ -373,6 +374,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     // this = alpha*xTmp + beta*this
     problem_->solution_->update(ST::one(), *x_, -ST::one());
 
+    FEDD_TIMER_STOP(NonLinearSchwarzApplySetup);
+    FEDD_TIMER_START(NonLinearSchwarzApplySolve, " - Schwarz - apply solve");
     // Need to update solution_ within each iteration to assemble at u+P_i*g_i but update only g_i
     // This is necessary since u is nonzero on the artificial (interface) zero Dirichlet boundary
     // It would be more efficient to only store u on the boundary and update this value in each iteration
@@ -409,7 +412,8 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
 
         nlIts++;
     }
-
+    FEDD_TIMER_STOP(NonLinearSchwarzApplySolve);
+    FEDD_TIMER_START(NonLinearSchwarzApplyCleanup, " - Schwarz - apply cleanup");
     if (nlIts == maxNumIts_) {
         std::cout << "==> Warning!! local nonlinear solver only reached rel. res. = " << relResidual << " after "
                   << nlIts << " iters. on subdomain " << this->MpiComm_->getRank() << std::endl << std::flush;
@@ -582,6 +586,7 @@ template <class SC, class LO, class GO, class NO> string NonLinearSchwarzOperato
 // NOTE: [KH] if FROSch_OverlappingOperator is modified this functionality could be shared
 template <class SC, class LO, class GO, class NO>
 void NonLinearSchwarzOperator<SC, LO, GO, NO>::replaceMapAndExportProblem() {
+    FEDD_TIMER_START(ReplaceMapAndExportProblem, " - Schwarz - replaceMapAndExportProblem");
 
     auto domainVec = problem_->getDomainVector();
     MapConstPtrFEDD mapUnique;

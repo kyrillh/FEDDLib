@@ -142,6 +142,7 @@ namespace FEDD
     template <class SC, class LO, class GO, class NO>
     int NonLinearProblem<SC, LO, GO, NO>::solveUpdate()
     {
+        FEDD_TIMER_START(SolveUpdate, " - NonLinearProblem - solveUpdate");
 
         // solution COPY!
         *previousSolution_ = *this->solution_;
@@ -154,6 +155,7 @@ namespace FEDD
     template <class SC, class LO, class GO, class NO>
     int NonLinearProblem<SC, LO, GO, NO>::solveAndUpdate(const std::string &criterion, double &criterionValue, const int myRank, const bool useBT)
     {
+        FEDD_TIMER_START(SolveAndUpdate, " - NonLinearProblem - solveAndUpdate");
         //    BlockMatrixPtr_Type system
         int its = solveUpdate();
 
@@ -171,6 +173,7 @@ namespace FEDD
         bool printHere = myRank == 0;
 
         if (useBT) {
+            FEDD_TIMER_START(BackTracking, " - NonLinearProblem - solveAndUpdate - backtracking");
             // if (false) {
             if (printHere) {
                 std::cout << "==> Backtracking commenced\n";

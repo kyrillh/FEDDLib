@@ -1180,6 +1180,7 @@ typename Domain<SC,LO,GO,NO>::MapConstPtr_Type Domain<SC,LO,GO,NO>::getMapVecFie
 template <class SC, class LO, class GO, class NO>
 void Domain<SC, LO, GO, NO>::replaceRepeatedMembers(const MapPtr_Type newVecFieldMap, const MapPtr_Type newMap, const vec2D_dbl_ptr_Type newPoints,
                                                   const vec_int_ptr_Type newBCs) const {
+    FEDD_TIMER_START(ReplaceRepeatedMembers, " - Domain - replaceRepeatedMembers");
     // Ensure that all members being replaced have the same number of local elements
     TEUCHOS_TEST_FOR_EXCEPTION(newMap->getNodeNumElements() != newPoints->size(), std::runtime_error,
                                "New memembers must have the same number of local elements");
@@ -1190,6 +1191,7 @@ void Domain<SC, LO, GO, NO>::replaceRepeatedMembers(const MapPtr_Type newVecFiel
 template <class SC, class LO, class GO, class NO>
 void Domain<SC, LO, GO, NO>::replaceUniqueMembers(const MapPtr_Type newVecFieldMap, const MapPtr_Type newMap, const vec2D_dbl_ptr_Type newPoints,
                                                   const vec_int_ptr_Type newBCs) const {
+    FEDD_TIMER_START(ReplaceRepeatedMembers, " - Domain - replaceRepeatedMembers");
     // Ensure that all members being replaced have the same number of local elements
     TEUCHOS_TEST_FOR_EXCEPTION(newMap->getNodeNumElements() != newPoints->size(), std::runtime_error,
                                "New memembers must have the same number of local elements");
