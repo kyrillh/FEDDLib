@@ -807,7 +807,7 @@ void NavierStokes<SC,LO,GO,NO>::calculateNonLinResidualVecWithMeshVelo(std::stri
 template <class SC, class LO, class GO, class NO>
 void NavierStokes<SC, LO, GO, NO>::reInitSpecificProblemVectors(const Teuchos::RCP<const BlockMap<LO, GO, NO>> newMap) {
     this->u_rep_ = Teuchos::rcp(new MultiVector_Type(newMap->getBlock(0)));
-    establishNNZPattern();
+    // establishNNZPattern();
     assembleConstantMatrices();
 }
 

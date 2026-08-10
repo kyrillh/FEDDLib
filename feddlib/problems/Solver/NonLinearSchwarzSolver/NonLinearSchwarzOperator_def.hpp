@@ -10,6 +10,7 @@
 #include "feddlib/core/LinearAlgebra/Map_decl.hpp"
 #include "feddlib/core/LinearAlgebra/MultiVector_decl.hpp"
 #include "feddlib/core/Utils/FEDDUtils.hpp"
+#include "feddlib/problems/specific/NavierStokes_decl.hpp"
 #include <Tacho_Driver.hpp>
 #include <Teuchos_Array.hpp>
 #include <Teuchos_BLAS_types.hpp>
@@ -55,6 +56,7 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
       blockElementMapLocal_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
       blockMapOverlappingGhostsLocal_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
       blockMapVecFieldOverlappingGhostsLocal_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))}, relNewtonTol_{},
+      NNZ_A_{Teuchos::null},
       absNewtonTol_{}, maxNumIts_{}, combinationMode_{},
       multiplicity_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))}, aProjection_{}, sumAA_{},
       blockElementMapMpiTmp_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))},
@@ -64,6 +66,7 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
       blockMapVecFieldUniqueMpiTmp_{Teuchos::rcp(new FEDD::BlockMap<LO, GO, NO>(1))}, pointsRepTmp_{}, pointsUniTmp_{},
       bcFlagRepTmp_{}, bcFlagUniTmp_{}, elementsCTmp_{},
       systemTmp_{Teuchos::rcp(new FEDD::BlockMatrix<SC, LO, GO, NO>(1))},
+      NNZ_A_Tmp_{Teuchos::rcp(new FEDD::Matrix<SC, LO, GO, NO>())},
       solutionTmp_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
       rhsTmp_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
       sourceTermTmp_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
@@ -222,6 +225,11 @@ template <class SC, class LO, class GO, class NO> int NonLinearSchwarzOperator<S
             multiplicity_->addBlock(multiplicityUnique, i);
         }
     }
+    // For NavierStokes only, save the global sparsity pattern to avoid repeated calls to establishNNZPattern()
+    auto ns = Teuchos::rcp_dynamic_cast<FEDD::NavierStokes<SC, LO, GO, NO>>(problem_);
+    if (!Teuchos::is_null(ns)){
+        NNZ_A_Tmp_ = ns->NNZ_A_;
+    }
     return 0;
 }
 
@@ -311,6 +319,16 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     problem_->feFactory_ = feFactoryGhostsLocal_;
 
     // 7. rebuild problem->u_rep_ to use overlapping map
+    // Establish the local sparsity pattern if it doesn't exist yet for NavierStokes only
+    auto ns = Teuchos::rcp_dynamic_cast<FEDD::NavierStokes<SC, LO, GO, NO>>(problem_);
+    if (!Teuchos::is_null(ns)) {
+        if (Teuchos::is_null(NNZ_A_)) {
+            ns->establishNNZPattern();
+            NNZ_A_ = ns->NNZ_A_;
+        } else {
+            ns->NNZ_A_ = NNZ_A_;
+        }
+    }
     problem_->reInitSpecificProblemVectors(blockMapVecFieldOverlappingGhostsLocal_);
 
     auto tempVecFlag = problem_->bcFactory_->getVecFlag();
@@ -472,6 +490,10 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     // Restore system state
     problem_->initializeProblem();
     problem_->system_ = systemTmp_;
+    // Restore global sparsity pattern for NavierStokes only
+    if (!Teuchos::is_null(ns)){
+        ns->NNZ_A_ = NNZ_A_Tmp_;
+    }
     problem_->solution_ = solutionTmp_;
     problem_->rhs_ = rhsTmp_;
     problem_->sourceTerm_ = sourceTermTmp_;

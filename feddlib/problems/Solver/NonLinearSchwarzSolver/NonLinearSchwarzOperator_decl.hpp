@@ -45,6 +45,7 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
 
     using NonLinearProblemPtrFEDD = typename Teuchos::RCP<FEDD::NonLinearProblem<SC, LO, GO, NO>>;
     using BlockMatrixPtrFEDD = typename Teuchos::RCP<FEDD::BlockMatrix<SC, LO, GO, NO>>;
+    using MatrixPtrFEDD = typename Teuchos::RCP<FEDD::Matrix<SC, LO, GO, NO>>;
     using BlockMultiVectorPtrFEDD = typename Teuchos::RCP<FEDD::BlockMultiVector<SC, LO, GO, NO>>;
     using MapConstPtrFEDD = typename Teuchos::RCP<const FEDD::Map<LO, GO, NO>>;
     using BlockMapPtrFEDD = typename Teuchos::RCP<FEDD::BlockMap<LO, GO, NO>>;
@@ -91,6 +92,9 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
     BlockMapPtrFEDD blockElementMapLocal_;
     BlockMapPtrFEDD blockMapVecFieldOverlappingGhostsLocal_;
     BlockMapPtrFEDD blockMapOverlappingGhostsLocal_;
+    // Sparsity pattern for NavierStokes class specifically. Nasty hack, but improves runtimes over calling
+    // establishNNZPattern() repeatedly.
+    MatrixPtrFEDD NNZ_A_;
 
     // Newtons method params
     SC relNewtonTol_;
@@ -114,15 +118,16 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
     BlockMapPtrFEDD blockMapVecFieldUniqueMpiTmp_;
 
     // Vectors for saving repeated and unique points
-  std::vector<FEDD::vec2D_dbl_ptr_Type> pointsRepTmp_;
-  std::vector<FEDD::vec2D_dbl_ptr_Type> pointsUniTmp_;
+    std::vector<FEDD::vec2D_dbl_ptr_Type> pointsRepTmp_;
+    std::vector<FEDD::vec2D_dbl_ptr_Type> pointsUniTmp_;
     // Vectors for saving the boundary conditions
-  std::vector<FEDD::vec_int_ptr_Type> bcFlagRepTmp_;
-  std::vector<FEDD::vec_int_ptr_Type> bcFlagUniTmp_;
+    std::vector<FEDD::vec_int_ptr_Type> bcFlagRepTmp_;
+    std::vector<FEDD::vec_int_ptr_Type> bcFlagUniTmp_;
     // Vector of elements for saving elementsC_
-  std::vector<Teuchos::RCP<FEDD::Elements>> elementsCTmp_;
+    std::vector<Teuchos::RCP<FEDD::Elements>> elementsCTmp_;
     // Current global solution of the problem
     BlockMatrixPtrFEDD systemTmp_;
+    MatrixPtrFEDD NNZ_A_Tmp_;
     BlockMultiVectorPtrFEDD solutionTmp_;
     BlockMultiVectorPtrFEDD rhsTmp_;
     BlockMultiVectorPtrFEDD sourceTermTmp_;
