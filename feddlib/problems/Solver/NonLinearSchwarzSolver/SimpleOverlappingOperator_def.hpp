@@ -282,7 +282,7 @@ void SimpleOverlappingOperator<SC, LO, GO, NO>::apply(const XMultiVector &x, XMu
     this->SubdomainSolver_->apply(*x_Ghosts_, *y_Ghosts_, mode, ST::one(), ST::zero());
     y_Ghosts_->replaceMap(this->OverlappingMap_);
 
-    // Apply local pressure correction
+    // Apply local pressure projection
     if (this->ParameterList_->sublist("Parameter").get("Use Pressure Projection", false) == true) {
         FROSCH_ASSERT(!this->aProjection_.is_null(), "FROSch::SimpleOverlappingOperator: Trying to use the projection, but it is does not exist.")
         FROSCH_TIMER_START_LEVELID(applyTime, "Apply Pressure Projection")

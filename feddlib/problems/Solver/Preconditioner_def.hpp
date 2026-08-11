@@ -479,7 +479,6 @@ void Preconditioner<SC,LO,GO,NO>::buildPreconditionerMonolithic( )
             pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").set( "Mpi Ranks Coarse",parameterList->sublist("General").get("Mpi Ranks Coarse",0) );
 
             // This a pressure projection is only used for saddle point problems. We check here if we have a pressure projection set and if we have more than one block or one block with dim dof per node (i.e. fluid problem)
-            // This is unfortunately called pressure correction in FROSch, but is a projection!
             if(!pressureProjection_.is_null() && ( dofsPerNodeVector.size() > 1 || dofsPerNodeVector[0] == 1) ){
                 pressureProjection_->merge(); // We merge the projection vector, as FROSch does not distinguish between blocks
 
@@ -488,9 +487,8 @@ void Preconditioner<SC,LO,GO,NO>::buildPreconditionerMonolithic( )
                 Teuchos::RCP< Xpetra::MultiVector<SC,LO,GO,NO> > vectorXpetra = Teuchos::rcp_dynamic_cast<Xpetra::MultiVector<SC,LO,GO,NO>>(vectorXpetraTpetra);
 
                 pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").sublist("AlgebraicOverlappingOperator").set("Projection",vectorXpetra);
-                // In case of pressure correction we set the parameter in the parameterlist to true
-                pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").sublist("AlgebraicOverlappingOperator").set("Use Pressure Correction", true);
-                pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").sublist("AlgebraicOverlappingOperator").set("Use Local Pressure Correction", true);
+                // In case of pressure projection we set the parameter in the parameterlist to true
+                pListThyraPrec->sublist("Preconditioner Types").sublist("FROSch").sublist("AlgebraicOverlappingOperator").set("Use Pressure Projection", true);
             }
 
             /*  We need to set the ranges of local problems and the coarse problem here.

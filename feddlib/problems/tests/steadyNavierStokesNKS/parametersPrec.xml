@@ -20,7 +20,7 @@
                     value="IPOUHarmonicCoarseOperator" /><!--GDSWCoarseOperator,IPOUHarmonicCoarseOperator-->
                 <Parameter name="Null Space Type" type="string" value="Laplace" />
                 <ParameterList name="AlgebraicOverlappingOperator">
-                    <Parameter name="Reuse: Symbolic Factorization" type="bool" value="false" />
+                    <Parameter name="Reuse: Symbolic Factorization" type="bool" value="true" />
                     <Parameter name="Combine Values in Overlap" type="string" value="Averaging" /><!--Restricted,Averaging,Full-->
                     <Parameter name="Overlapping Operator Combination" type="string"
                         value="Averaging" /><!--Restricted,Averaging,Full-->
@@ -54,7 +54,8 @@
                             <ParameterList name="InterfacePartitionOfUnity">
                                 <Parameter name="Type" type="string" value="RGDSW" />
                                 <ParameterList name="RGDSW">
-                                    <Parameter name="Distance Function" type="string" value="Constant" />
+                                    <Parameter name="Distance Function" type="string"
+                                        value="Constant" />
                                     <Parameter name="Interface Communication Strategy" type="string"
                                         value="CrsGraph" /><!-- CreateOneToOneMap, CrsGraph,
                                     CrsMatrix -->
@@ -75,7 +76,8 @@
                             <ParameterList name="InterfacePartitionOfUnity">
                                 <Parameter name="Type" type="string" value="RGDSW" />
                                 <ParameterList name="RGDSW">
-                                    <Parameter name="Distance Function" type="string" value="Constant" />
+                                    <Parameter name="Distance Function" type="string"
+                                        value="Constant" />
                                     <Parameter name="Interface Communication Strategy" type="string"
                                         value="CrsGraph" />
                                     <Parameter name="Type" type="string" value="Full" />

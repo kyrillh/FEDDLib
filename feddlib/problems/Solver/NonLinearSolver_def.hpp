@@ -387,10 +387,10 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, 
     print("==> Use Backtracking: " + std::to_string(problem.getParameterList()->sublist("Parameter", true).get("Use Backtracking",false)) + "\n", mpiComm);
     print("==> Use pressure projection: " + std::to_string(problem.getParameterList()->sublist("Parameter", true).get("Use Pressure Projection", false)) + "\n", mpiComm);
     print("==> Remove Dirichlet Nodes: " + std::to_string(problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).get("Remove Dirichlet Nodes",false)) + "\n", mpiComm);
-    print("==> IPOU type block 1: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks", true).sublist("1", true).sublist("InterfacePartitionOfUnity", true).get("Type","Use must provide a IPOU type for block 1") + "\n", mpiComm);
-    print("==> Distance function block 1: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks", true).sublist("1", true).sublist("InterfacePartitionOfUnity", true).sublist("RGDSW").get("Distance Function","None provided") + "\n", mpiComm);
-    print("==> IPOU type block 2: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks", true).sublist("2", true).sublist("InterfacePartitionOfUnity", true).get("Type","Use must provide a IPOU type for block 2") + "\n", mpiComm);
-    print("==> Distance function block 2: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks", true).sublist("2", true).sublist("InterfacePartitionOfUnity", true).sublist("RGDSW").get("Distance Function","None provided") + "\n", mpiComm);
+    print("==> IPOU type block 1: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks").sublist("1").sublist("InterfacePartitionOfUnity").get("Type","Use must provide a IPOU type for block 1") + "\n", mpiComm);
+    print("==> Distance function block 1: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks").sublist("1").sublist("InterfacePartitionOfUnity").sublist("RGDSW").get("Distance Function","None provided") + "\n", mpiComm);
+    print("==> IPOU type block 2: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks").sublist("2").sublist("InterfacePartitionOfUnity").get("Type","Use must provide a IPOU type for block 2") + "\n", mpiComm);
+    print("==> Distance function block 2: " + problem.getParameterList()->sublist("ThyraPreconditioner", true).sublist("Preconditioner Types", true).sublist("FROSch", true).sublist("IPOUHarmonicCoarseOperator", true).sublist("Blocks").sublist("2").sublist("InterfacePartitionOfUnity").sublist("RGDSW").get("Distance Function","None provided") + "\n", mpiComm);
     print("==> Rel. tol: " + std::to_string(tol) + "\n", mpiComm);
     print("==> Abs. tol: " + std::to_string(problem.getParameterList()->sublist("Parameter", true).get("absNonLinTol",1.0e-6)) + "\n", mpiComm);
     print("==> Max Newton iters.: " + std::to_string(maxNonLinIts) + "\n", mpiComm);
@@ -745,16 +745,6 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     print("############ Starting nonlinear Schwarz solve ... #############\n", problem.getComm());
     print("###############################################################\n", problem.getComm());
 
-    // If local pressure projection is to be used, modify the parameter list as required
-    auto pressureProjection = problem.getPreconditioner()->getPressureProjection();
-    if (problem.getParameterList()->sublist("Parameter").get("Use Pressure Projection", false)) {
-        TEUCHOS_ASSERT(!pressureProjection.is_null())
-        pressureProjection->merge(); // We merge the projection vector, as FROSch does not distinguish between blocks
-        Teuchos::RCP< Tpetra::MultiVector<SC,LO,GO,NO> > vectorTpetra =  pressureProjection->getMergedVectorNonConst()->getTpetraMultiVectorNonConst();
-        Teuchos::RCP< Xpetra::TpetraMultiVector<SC,LO,GO,NO> > vectorXpetraTpetra = Teuchos::rcp(new Xpetra::TpetraMultiVector<SC,LO,GO,NO>(vectorTpetra));
-        Teuchos::RCP< Xpetra::MultiVector<SC,LO,GO,NO> > vectorXpetra = Teuchos::rcp_dynamic_cast<Xpetra::MultiVector<SC,LO,GO,NO>>(vectorXpetraTpetra);
-        problem.getParameterList()->set("Projection", vectorXpetra);
-    }
     // Define nonlinear Schwarz operator
     auto domainVec = problem.getDomainVector();
     auto mpiComm = domainVec.at(0)->getComm();
@@ -794,6 +784,18 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     problem.assemble("FixedPoint");
     problem.assemble("Newton");
     problem.setBoundariesSystem();
+
+    // If local pressure projection is to be used, modify the parameter list as required
+    auto pressureProjection = problem.getPreconditioner()->getPressureProjection();
+    if (problem.getParameterList()->sublist("Parameter").get("Use Pressure Projection", false)) {
+        TEUCHOS_ASSERT(!pressureProjection.is_null())
+        pressureProjection->merge(); // We merge the projection vector, as FROSch does not distinguish between blocks
+        Teuchos::RCP< Tpetra::MultiVector<SC,LO,GO,NO> > vectorTpetra =  pressureProjection->getMergedVectorNonConst()->getTpetraMultiVectorNonConst();
+        Teuchos::RCP< Xpetra::TpetraMultiVector<SC,LO,GO,NO> > vectorXpetraTpetra = Teuchos::rcp(new Xpetra::TpetraMultiVector<SC,LO,GO,NO>(vectorTpetra));
+        Teuchos::RCP< Xpetra::MultiVector<SC,LO,GO,NO> > vectorXpetra = Teuchos::rcp_dynamic_cast<Xpetra::MultiVector<SC,LO,GO,NO>>(vectorXpetraTpetra);
+        TEUCHOS_ASSERT(!vectorXpetra.is_null())
+        problem.getParameterList()->set("Projection", vectorXpetra);
+    }
 
     // The operators
     auto nonLinearSchwarzOp = Teuchos::rcp(new FROSch::NonLinearSchwarzOperator<SC, LO, GO, NO>(

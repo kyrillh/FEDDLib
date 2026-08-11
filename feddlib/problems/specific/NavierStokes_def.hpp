@@ -224,7 +224,8 @@ void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
     
     // If pressure projection is used, we need to assemble the projection vector here
     // Only for P2-P1 or Q2-Q1 elements in monolithic case
-    if(this->parameterList_->sublist("Parameter").get("Use Pressure Projection",false) && (!this->getFEType(0).compare("P2") || (!this->getFEType(0).compare("Q2") && !this->getFEType(1).compare("Q1"))) && !this->parameterList_->sublist("General").get("Preconditioner Method","Monolithic").compare("Monolithic")){ 
+    if(this->parameterList_->sublist("Parameter").get("Use Pressure Projection",false) && !this->parameterList_->sublist("General").get("Preconditioner Method","Monolithic").compare("Monolithic")){ 
+    // if(this->parameterList_->sublist("Parameter").get("Use Pressure Projection",false) && (!this->getFEType(0).compare("P2") || (!this->getFEType(0).compare("Q2") && !this->getFEType(1).compare("Q1"))) && !this->parameterList_->sublist("General").get("Preconditioner Method","Monolithic").compare("Monolithic")){ 
         // Projection vector a: \int p dx, for pressure component and 0 for velocity.
         BlockMultiVectorPtr_Type projection(new BlockMultiVector_Type (2));
 
@@ -244,7 +245,7 @@ void NavierStokes<SC,LO,GO,NO>::assembleConstantMatrices() const{
         this->getPreconditionerConst()->setPressureProjection( projection );    
 
         if (this->verbose_)
-            std::cout << "\n 'Use pressure correction' was set to 'true'. This requires a version of Trilinos that includes pressure correction in the FROSch_OverlappingOperator!!" << std::endl;  
+            std::cout << "\n 'Use Pressure Projection' was set to 'true'. This requires a version of Trilinos that includes pressure projection in the FROSch_OverlappingOperator!!" << std::endl;  
 
     }
 

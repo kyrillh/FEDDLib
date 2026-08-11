@@ -205,7 +205,7 @@ void NavierStokesAssFE<SC,LO,GO,NO>::assembleConstantMatrices() const{
         this->getPreconditionerConst()->setPressureProjection( projection );    
 
         if (this->verbose_)
-            std::cout << "\n 'Use pressure correction' was set to 'true'. This requieres a version of Trilinos of that includes pressure correction in the FROSch_OverlappingOperator!!" << std::endl;  
+            std::cout << "\n 'Use Pressure Projection' was set to 'true'. This requieres a version of Trilinos of that includes pressure projection in the FROSch_OverlappingOperator!!" << std::endl;  
 
     }
 
