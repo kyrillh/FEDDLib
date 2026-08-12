@@ -453,10 +453,6 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     // Assigning like this does not copy across the map pointer and results in a non-fillComplete matrix
     /* localJacobian_->getMergedMatrix() = problem_->system_->getBlock(0, 0); */
 
-    // Set all solutions to zero except for rank 0 for testing
-    /* if (this->MpiComm_->getRank() != 0) */
-    /*     problem_->solution_->putScalar(0.); */
-
     // ================= Restore shared objects ===============================
     //    1. comm_ to MpiComm_ in problem, domainVec, Mesh
     //    2. mapRepeated_ and mapUnique_

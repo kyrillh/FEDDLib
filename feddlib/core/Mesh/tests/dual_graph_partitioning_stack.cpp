@@ -11,6 +11,7 @@
 #include <Teuchos_TestForException.hpp>
 #include <Teuchos_VerbosityLevel.hpp>
 #include <Xpetra_DefaultPlatform.hpp>
+#include <algorithm>
 #include <stdexcept>
 
 typedef unsigned UN;
@@ -60,7 +61,9 @@ int main(int argc, char *argv[]) {
 
     auto elementMap = domain->getElementMap();
     auto mapRepeated = domain->getMapRepeated();
+    auto mapOverlapping = domain->getMapOverlapping();
     auto mapOverlappingGhosts = domain->getMapOverlappingGhosts();
+    auto bcFlagOverlappingGhosts = domain->getMesh()->getBCFlagOverlappingGhosts();
     auto elementsC = domain->getElementsC();
     auto elementMapVecIs = createVector(elementMap->getNodeElementList());
     std::vector<GO> elementMapVec{0, 1};
@@ -77,6 +80,17 @@ int main(int argc, char *argv[]) {
     std::vector<GO> mapOverlappingVec{0, 1, 2, 3, 4, 5, 6, 7, 8};
     if (myRank == 0) {
         TEUCHOS_ASSERT(mapOverlappingVecIs == mapOverlappingVec);
+    }
+
+    auto mapOverlappingInteriorVec = createVector(mapOverlapping->getNodeElementList());
+    for (std::size_t i = 0; i < mapOverlappingVecIs.size(); i++) {
+        const bool isInterior = std::binary_search(mapOverlappingInteriorVec.begin(), mapOverlappingInteriorVec.end(),
+                                                   mapOverlappingVecIs.at(i));
+        if (isInterior) {
+            TEUCHOS_ASSERT(bcFlagOverlappingGhosts->at(i) != -99);
+        } else {
+            TEUCHOS_ASSERT(bcFlagOverlappingGhosts->at(i) == -99);
+        }
     }
 
     auto elementsNodeListIs = elementsC->getElementsNodeList();

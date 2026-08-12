@@ -8,7 +8,6 @@
 #include "feddlib/core/Mesh/MeshPartitioner.hpp"
 #include "feddlib/problems/Solver/NonLinearSolver.hpp"
 #include "feddlib/problems/specific/NonLinElasticity.hpp"
-#include "feddlib/problems/specific/NonLinElasticity_decl.hpp"
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_StackedTimer.hpp>
 

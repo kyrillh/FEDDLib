@@ -1772,7 +1772,7 @@ void MeshPartitioner<SC, LO, GO, NO>::buildSubdomainFromDualGraphUnstructured(co
         }
         meshUnstr->bcFlagOverlappingGhosts_->at(i) = flags.at(nodeIDcont);
         // This only works because index lists are ordered
-        if (*interiorIt != nodeIDcont) {
+        if (interiorIt == nodesOverlappingIndices.end() || *interiorIt != nodeIDcont) {
             // Also set ghost flag for nodes that are on the real Dirichlet boundary
             // Further volume flags must be added here if used in the mesh
             meshUnstr->bcFlagOverlappingGhosts_->at(i) = -99;

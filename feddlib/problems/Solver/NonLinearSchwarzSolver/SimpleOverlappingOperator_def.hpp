@@ -55,7 +55,7 @@ SimpleOverlappingOperator<SC, LO, GO, NO>::SimpleOverlappingOperator(NonLinearPr
     }
     // Extract overlappingGhostFlags
     auto numDomains = problem_->getDomainVector().size();
-    bcFlagOverlappingGhostsVec_ = std::vector<FEDD::vec_int_ptr_Type>(2);
+    bcFlagOverlappingGhostsVec_ = std::vector<FEDD::vec_int_ptr_Type>(numDomains);
     for (int i = 0; i < numDomains; i++) {
         bcFlagOverlappingGhostsVec_[i] = problem_->getDomain(i)->getMesh()->bcFlagOverlappingGhosts_;
     }
