@@ -356,8 +356,8 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
 
     makeContinuousElements(elementsMesh, eind_vec, eptr_vec);
 
-    idx_t *eptr = &eptr_vec.at(0);
-    idx_t *eind = &eind_vec.at(0);
+    idx_t *eptr = eptr_vec.data();
+    idx_t *eind = eind_vec.data();
 
     idx_t ncommon;
     int orderSurface;
@@ -421,10 +421,6 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
                 pointsRepIndices.push_back(eind[j]); // Ids of element nodes, globalIDs
         }
     }
-    // TODO: [KH] why erase the vectors here? eind points to the underlying array and is used later.
-    eind_vec.erase(eind_vec.begin(), eind_vec.end());
-    eptr_vec.erase(eptr_vec.begin(), eptr_vec.end());
-
     // Sorting ids with global and corresponding local values to create repeated map
     make_unique(pointsRepIndices);
     if (verbose)
@@ -450,9 +446,9 @@ void MeshPartitioner<SC, LO, GO, NO>::readAndPartitionMesh(int meshNumber) {
             int localSurfaceCounter = 0;
             for (int i = 0; i < locepart.size(); i++) {
                 std::vector<int> tmpElement;
-                for (int j = eptr[locepart.at(i)]; j < eptr[locepart.at(i) + 1]; j++) {
+                for (int j = eptr_vec.at(locepart.at(i)); j < eptr_vec.at(locepart.at(i) + 1); j++) {
                     // local indices
-                    int index = mapRepeated->getLocalElement((long long)eind[j]);
+                    int index = mapRepeated->getLocalElement(static_cast<GO>(eind_vec.at(j)));
                     tmpElement.push_back(index);
                 }
                 // std::sort(tmpElement.begin(), tmpElement.end());
