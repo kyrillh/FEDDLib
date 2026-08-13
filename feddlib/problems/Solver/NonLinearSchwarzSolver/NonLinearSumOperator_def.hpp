@@ -26,7 +26,9 @@ void NonLinearSumOperator<SC, LO, GO, NO>::apply(TMultiVector &x, TMultiVector &
     if (this->NonLinearOperatorVector_.size() > 0) {
         if (this->XTmpTpetra_.is_null())
             this->XTmpTpetra_ = Teuchos::rcp(new Tpetra::MultiVector<SC, LO, GO, NO>(x.getMap(), x.getNumVectors()));
-        *this->XTmpTpetra_ = x; // Incase x=y
+        FEDD_TIMER_START(DeepCopyTimer, " - Schwarz - deep copy NonLinearSum");
+        Tpetra::deep_copy(*this->XTmpTpetra_, x); // In case x=y
+        FEDD_TIMER_STOP(DeepCopyTimer);
         bool firstOp = true;
         for (UN i = 0; i < this->NonLinearOperatorVector_.size(); i++) {
             if (this->EnableNonLinearOperators_[i]) {

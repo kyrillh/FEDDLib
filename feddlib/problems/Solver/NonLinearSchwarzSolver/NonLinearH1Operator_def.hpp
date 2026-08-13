@@ -36,7 +36,9 @@ void NonLinearH1Operator<SC, LO, GO, NO>::apply(TMultiVector &x, TMultiVector &y
     if (this->z0_.is_null())
         this->z0_ = Teuchos::rcp(new Tpetra::MultiVector<SC, LO, GO, NO>(y.getMap(), y.getNumVectors()));
 
-    *this->XTmpTpetra_ = x;
+    FEDD_TIMER_START(DeepCopyTimer, " - Schwarz - deep copy NonLinearH1");
+    Tpetra::deep_copy(*this->XTmpTpetra_, x);
+    FEDD_TIMER_STOP(DeepCopyTimer);
 
     auto zero = ST::zero();
     auto one = ST::one();
@@ -52,7 +54,7 @@ void NonLinearH1Operator<SC, LO, GO, NO>::apply(TMultiVector &x, TMultiVector &y
         ->apply(*this->z1_, *this->XTmpTpetra_, one, zero);
     // Add the coarse correction to the overlapping correction g(u-g0) + g0
     y.update(alpha, *this->z0_, beta);
-    y.update(one, *this->XTmpTpetra_, one);
+    y.update(alpha, *this->XTmpTpetra_, one);
 }
 
 }; // namespace FROSch
