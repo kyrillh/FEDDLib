@@ -15,7 +15,7 @@
                 <Parameter name="Level Combination" type="string" value="Additive"/><!--Multiplicative,Additive-->
                 <Parameter name="OverlappingOperator Type" type="string" value="AlgebraicOverlappingOperator"/>
                 <Parameter name="CoarseOperator Type" type="string" value="IPOUHarmonicCoarseOperator"/><!--GDSWCoarseOperator,IPOUHarmonicCoarseOperator-->
-                <Parameter name="Null Space Type" type="string" value="Laplace"/>
+                <Parameter name="Null Space Type" type="string" value="Linear Elasticity"/>
                 <ParameterList name="AlgebraicOverlappingOperator">
                     <Parameter name="Reuse: Symbolic Factorization" type="bool" value="false"/>
                     <Parameter name="Combine Values in Overlap" type="string" value="Averaging"/><!--Restricted,Averaging,Full-->

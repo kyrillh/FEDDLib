@@ -2,7 +2,7 @@
     <Parameter name="Nonlin Schwarz Variant" type="string" value="H1"/><!-- Additive, H1 -->
     <Parameter name="Use ASPEN" type="bool" value="true"/>
     <Parameter name="Levels" type="int" value="2"/>
-    <Parameter name="Overlap" type="int" value="3"/>
+    <Parameter name="Overlap" type="int" value="10"/>
     <Parameter name="Combine Mode" type="string" value="Averaging"/> <!-- Averaging, Full, Restricted -->
     <Parameter name="Zero Initial Guess" type="bool" value="false"/>
     <ParameterList name="ThyraSolver"> <!-- Solver used by the FEDD::Problem object in the inner Newton -->

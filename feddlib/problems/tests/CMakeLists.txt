@@ -1,2 +1,2 @@
-add_subdirectories(nonLinSchwarz steadyNavierStokesNLS steadyNavierStokesNKS steadyNonLinElasAssFE2D steadyNonLinElasWithNonLinSchwarz steadyNavierStokesAssFE unsteadyNavierStokesAssFE steadyLinElasAssFE unsteadyLinElasAssFE steadyNonLinElasAssFE UnitTest)
+add_subdirectories(nonLinSchwarz steadyNavierStokesNLS steadyNavierStokesNKS steadyNonLinElasNKS steadyNonLinElasNLS steadyNavierStokesAssFE unsteadyNavierStokesAssFE steadyLinElasAssFE unsteadyLinElasAssFE steadyNonLinElasAssFE UnitTest)
                    
