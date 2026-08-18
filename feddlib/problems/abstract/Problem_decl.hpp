@@ -237,6 +237,7 @@ public:
     mutable BlockMatrixPtr_Type system_;
     mutable BlockMultiVectorPtr_Type rhs_;
     mutable BlockMultiVectorPtr_Type solution_;
+    mutable MultiVectorPtr_Type timingData_;
     PreconditionerPtr_Type preconditioner_;
     LinSolverBuilderPtr_Type linearSolverBuilder_;
 

@@ -67,7 +67,7 @@ class CoarseNonLinearSchwarzOperator : public IPOUHarmonicCoarseOperator<SC, LO,
 
     void exportCoarseBasis();
 
-    std::vector<SC> getRunStats() const;
+    int getRunStats() const;
 
     void describe(FancyOStream &out, const EVerbosityLevel verbLevel = Describable::verbLevel_default) const override;
 

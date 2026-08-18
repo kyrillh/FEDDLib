@@ -52,6 +52,14 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
     using ST = typename Teuchos::ScalarTraits<SC>;
 
   public:
+    struct RunStats {
+        std::vector<int> totalIters; // Ordered by rank; nonempty only on rank 0
+        std::vector<SC> totalTimes; // Ordered by rank; nonempty only on rank 0
+        LO minIters = 0;
+        SC avgIters = 0;
+        LO maxIters = 0;
+    };
+
     explicit NonLinearSchwarzOperator(CommPtr serialComm, NonLinearProblemPtrFEDD problem,
                                       ParameterListPtr parameterList);
 
@@ -71,7 +79,7 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
 
     BlockMatrixPtrFEDD getLocalJacobianGhosts() const;
 
-    std::vector<SC> getRunStats() const;
+    RunStats getRunStats() const;
 
     void describe(FancyOStream &out, const EVerbosityLevel verbLevel = Describable::verbLevel_default) const override;
 

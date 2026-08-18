@@ -30,6 +30,7 @@ namespace FEDD
                                                                system_(),
                                                                rhs_(),
                                                                solution_(),
+                                                               timingData_(),
                                                                preconditioner_(),
                                                                linearSolverBuilder_(),
                                                                verbose_(comm->getRank() == 0),
@@ -59,6 +60,7 @@ namespace FEDD
                                                                                                      system_(),
                                                                                                      rhs_(),
                                                                                                      solution_(),
+                                                                                                     timingData_(),
                                                                                                      preconditioner_(),
                                                                                                      linearSolverBuilder_(),
                                                                                                      verbose_(comm->getRank() == 0),
@@ -396,29 +398,23 @@ namespace FEDD
         rhs_.reset(new BlockMultiVector_Type(size));
         sourceTerm_.reset(new BlockMultiVector_Type(size));
         rhsFuncVec_.resize(size);
+        // Use the first block's map for the timing data
+        timingData_.reset(new MultiVector_Type(domainPtr_vec_[0]->getMapUnique()));
 
-        for (UN i = 0; i < size; i++)
-        {
-            if (dofsPerNode_vec_[i] > 1)
-            {
-                MapConstPtr_Type map = domainPtr_vec_[i]->getMapVecFieldUnique();
-                MultiVectorPtr_Type solutionPart = Teuchos::rcp(new MultiVector_Type(map));
-                solution_->addBlock(solutionPart, i);
-                MultiVectorPtr_Type rhsPart = Teuchos::rcp(new MultiVector_Type(map));
-                rhs_->addBlock(rhsPart, i);
-                MultiVectorPtr_Type sourceTermPart = Teuchos::rcp(new MultiVector_Type(map));
-                sourceTerm_->addBlock(sourceTermPart, i);
+        for (UN i = 0; i < size; i++) {
+            MapConstPtr_Type map;
+            if (dofsPerNode_vec_[i] > 1) {
+                map = domainPtr_vec_[i]->getMapVecFieldUnique();
+            } else {
+                map = domainPtr_vec_[i]->getMapUnique();
             }
-            else
-            {
-                MapConstPtr_Type map = domainPtr_vec_[i]->getMapUnique();
-                MultiVectorPtr_Type solutionPart = Teuchos::rcp(new MultiVector_Type(map));
-                solution_->addBlock(solutionPart, i);
-                MultiVectorPtr_Type rhsPart = Teuchos::rcp(new MultiVector_Type(map));
-                rhs_->addBlock(rhsPart, i);
-                MultiVectorPtr_Type sourceTermPart = Teuchos::rcp(new MultiVector_Type(map));
-                sourceTerm_->addBlock(sourceTermPart, i);
-            }
+            MultiVectorPtr_Type solutionPart = Teuchos::rcp(new MultiVector_Type(map));
+            solution_->addBlock(solutionPart, i);
+            MultiVectorPtr_Type rhsPart = Teuchos::rcp(new MultiVector_Type(map));
+            rhs_->addBlock(rhsPart, i);
+            MultiVectorPtr_Type sourceTermPart = Teuchos::rcp(new MultiVector_Type(map));
+            sourceTerm_->addBlock(sourceTermPart, i);
+            // Always a scalar value
         }
     }
 

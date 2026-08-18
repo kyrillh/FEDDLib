@@ -626,8 +626,8 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::exportCoarseBasis() {
 }
 
 template <class SC, class LO, class GO, class NO>
-std::vector<SC> CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::getRunStats() const {
-    return std::vector<SC>{static_cast<SC>(totalIters_)};
+int CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::getRunStats() const {
+    return totalIters_;
 }
 
 template <class SC, class LO, class GO, class NO>

@@ -149,9 +149,9 @@ int main(int argc, char *argv[])
         // P1 und P2 Gitter bauen
         // ########################
         {
-            FEDD_TIMER_START(totalTime,"Total");
+            FEDD_TIMER_START(totalTime," Total");
             {
-                FEDD_TIMER_START(meshTime,"Build Mesh");
+                FEDD_TIMER_START(meshTime," Build Mesh");
                 if(verbose)
                 {
                     cout << "-- Building Mesh ..." << flush;
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
             else if(dim==3)
                 LinElas.addRhsFunction( rhs );
             {
-                FEDD_TIMER_START(solveTimer,"Solve Problem");
+                FEDD_TIMER_START(solveTimer," Solve Problem");
 
                 LinElas.addBoundaries(bcFactory); // Dem Problem RW hinzufuegen
 

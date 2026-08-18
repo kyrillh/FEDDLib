@@ -258,10 +258,11 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
 
     // Save the current input on the overlapping map
     for (int i = 0; i < domainVec.size(); i++) {
+        // This is a global synchronization point because either the importer is contructed, or source and destination
+        // are checked for compatibility, both requiring global reductions.
         x_->getBlockNonConst(i)->importFromVector(x->getBlock(i), true, "Insert", "Forward");
 
         // Store all distributed properties that need replacing for local computations on domain level
-
         auto mesh = domainVec.at(i)->getMesh();
         blockElementMapMpiTmp_->addBlock(mesh->getElementMap(), i);
         blockMapRepeatedMpiTmp_->addBlock(mesh->getMapRepeated(), i);
@@ -486,8 +487,7 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         mesh->setElementsC(elementsCTmp_.at(i));
     }
     this->replaceMapAndExportProblem();
-    this->MpiComm_->barrier();
-    // Restore system state
+    // Restore system state. First guaranteed global synchronization point for monolithic precs./block problems.
     problem_->initializeProblem();
     problem_->system_ = systemTmp_;
     // Restore global sparsity pattern for NavierStokes only
@@ -554,24 +554,35 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::getLocalJacobianGhosts() const {
 }
 
 template <class SC, class LO, class GO, class NO>
-std::vector<SC> NonLinearSchwarzOperator<SC, LO, GO, NO>::getRunStats() const {
+typename NonLinearSchwarzOperator<SC, LO, GO, NO>::RunStats
+NonLinearSchwarzOperator<SC, LO, GO, NO>::getRunStats() const {
+    const int rank = this->MpiComm_->getRank();
+    const int size = this->MpiComm_->getSize();
 
-    // Import all iteration counts to rank 0
-    std::vector<LO> totalItersVec({0});
-    if (this->MpiComm_->getRank() == 0) {
-        totalItersVec = std::vector<LO>(this->MpiComm_->getSize());
+    auto timer = Teuchos::TimeMonitor::getNewCounter(std::string("FEDD - Schwarz - apply solve"));
+    const auto totalTime = timer->totalElapsedTime();
+    // Save runtstats for paraview export
+    problem_->timingData_->putScalar(totalTime);
+    // Teuchos::gather needs a valid receive pointer on every rank, although MPI only writes to it on rank 0.
+    std::vector<int> gatheredIters(rank == 0 ? static_cast<std::size_t>(size) : 1);
+    std::vector<SC> gatheredTimes(rank == 0 ? static_cast<std::size_t>(size) : 1);
+    Teuchos::gather(&totalIters_, 1, gatheredIters.data(), 1, 0, *this->MpiComm_);
+    Teuchos::gather(&totalTime, 1, gatheredTimes.data(), 1, 0, *this->MpiComm_);
+    RunStats result;
+
+    if (rank == 0) {
+        result.totalIters = std::move(gatheredIters);
+        result.totalTimes = std::move(gatheredTimes);
+
+        const auto minmax = std::minmax_element(result.totalIters.begin(), result.totalIters.end());
+        result.minIters = *minmax.first;
+        result.maxIters = *minmax.second;
+
+        // Accumulate as SC so that division produces a fractional average and to avoid overflowing LO as easily.
+        const SC sum = std::accumulate(result.totalIters.begin(), result.totalIters.end(), SC{0});
+        result.avgIters = sum / static_cast<SC>(size);
     }
-    Teuchos::gather(&totalIters_, 1, totalItersVec.data(), 1, 0, *this->MpiComm_);
-    auto maxIters = std::max_element(totalItersVec.begin(), totalItersVec.end());
-
-    auto minIters = std::min_element(totalItersVec.begin(), totalItersVec.end());
-    SC avgIters = 0;
-    for (auto val : totalItersVec) {
-        avgIters += val;
-    }
-
-    avgIters = avgIters / this->MpiComm_->getSize();
-    return std::vector<SC>{static_cast<SC>(*minIters), avgIters, static_cast<SC>(*maxIters)};
+    return result;
 }
 
 template <class SC, class LO, class GO, class NO>

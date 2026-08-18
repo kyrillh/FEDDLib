@@ -283,16 +283,20 @@ int main(int argc, char *argv[]) {
     if (parameterListAll->sublist("General").get("ParaViewExport", false)) {
         Teuchos::RCP<ExporterParaView<SC, LO, GO, NO>> exParaVelocity(new ExporterParaView<SC, LO, GO, NO>());
         Teuchos::RCP<ExporterParaView<SC, LO, GO, NO>> exParaPressure(new ExporterParaView<SC, LO, GO, NO>());
+        Teuchos::RCP<ExporterParaView<SC, LO, GO, NO>> exParaTiming(new ExporterParaView<SC, LO, GO, NO>());
 
         Teuchos::RCP<const MultiVector<SC, LO, GO, NO>> exportSolutionV = navierStokes.getSolution()->getBlock(0);
         Teuchos::RCP<const MultiVector<SC, LO, GO, NO>> exportSolutionP = navierStokes.getSolution()->getBlock(1);
+        Teuchos::RCP<const MultiVector<SC, LO, GO, NO>> exportTiming = navierStokes.timingData_;
 
         DomainPtr_Type dom = domainVelocity;
 
         exParaVelocity->setup("velocity", dom->getMesh(), dom->getFEType());
+        exParaTiming->setup("timing", dom->getMesh(), dom->getFEType());
 
         UN dofsPerNode = dim;
         exParaVelocity->addVariable(exportSolutionV, "u", "Vector", dofsPerNode, dom->getMapUnique());
+        exParaTiming->addVariable(exportTiming, "t", "Scalar", 1, dom->getMapUnique());
 
         dom = domainPressure;
         exParaPressure->setup("pressure", dom->getMesh(), dom->getFEType());
@@ -301,6 +305,7 @@ int main(int argc, char *argv[]) {
 
         exParaVelocity->save(0.0);
         exParaPressure->save(0.0);
+        exParaTiming->save(0.0);
     }
     return (EXIT_SUCCESS);
 }

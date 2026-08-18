@@ -14,6 +14,11 @@
 #include "feddlib/problems/abstract/Problem_decl.hpp"
 #include <FROSch_TpetraPreconditioner_decl.hpp>
 #include <Teuchos_Assert.hpp>
+#include <fstream>
+#include <limits>
+#include <stdexcept>
+#include <filesystem>
+#include <string>
 
 /*!
  Definition of NonLinearSolver
@@ -396,6 +401,22 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, 
     print("==> Max Newton iters.: " + std::to_string(maxNonLinIts) + "\n", mpiComm);
     print("++++++++++++++++++++++++++++++++++++++++++\n", mpiComm);
 
+    std::ofstream logFileRel;
+    std::ofstream logFileAbs;
+    if (mpiComm->getRank() == 0) {
+        std::filesystem::path residualsPath = "./Residual-logs";
+        if (std::filesystem::is_directory(residualsPath)) {
+            logFileRel.open(residualsPath / ("logRel" + std::to_string(problem.getComm()->getSize()) + ".txt"));
+            logFileAbs.open(residualsPath / ("logAbs" + std::to_string(problem.getComm()->getSize()) + ".txt"));
+            TEUCHOS_TEST_FOR_EXCEPTION(
+                !logFileRel && !logFileAbs, std::runtime_error,
+                "FEDD::NonLinearSolver: failed to open abs. or rel. log file.")
+        } else {
+            std::cout << "==> Not exporting residual data because directory \"./Residual-logs/\" does "
+                         "not exist.\n";
+        }
+    }  
+
     while ( nlIts < maxNonLinIts ) {
         //this makes only sense for Navier-Stokes/Stokes, for other problems, e.g., non linear elasticity, it should do nothing.
 
@@ -413,8 +434,13 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, 
         
         if (criterion=="Residual"){
             criterionValue = residual/residual0;
-            if (verbose)
-                std::cout << "### Newton iteration : " << nlIts << "  relative nonlinear residual : " << criterionValue << std::endl;
+            if (verbose) {
+                std::cout << "### Newton iteration : " << nlIts << " relative nonlinear residual : " << criterionValue << " absolute residual: " << residual << std::endl;
+                if (logFileRel && logFileAbs) {
+                    logFileRel << criterionValue << ", ";
+                    logFileAbs << residual << ", ";
+                }
+            }
             if ( criterionValue < tol )
                 break;
         }
@@ -431,6 +457,11 @@ void NonLinearSolver<SC,LO,GO,NO>::solveNewton( NonLinearProblem_Type &problem, 
         }
 
         // ####### end FPI #######
+    }
+
+    if (verbose && logFileRel && logFileAbs) {
+        logFileRel.close();
+        logFileAbs.close();
     }
 
     gmresIts/=nlIts;
@@ -916,6 +947,23 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     auto residual = residual0;
     auto relativeResidual = residual / residual0;
 
+    auto Re = static_cast<int>(1 / problem.getParameterList()->sublist("Parameter").get("Viscosity", 1.e-2));
+    logGreen("Starting nonlinear Schwarz with Re: " + std::to_string(Re), mpiComm);
+    std::ofstream logFileRel;
+    std::ofstream logFileAbs;
+    if (mpiComm->getRank() == 0) {
+        std::filesystem::path residualsPath = "./Residual-logs";
+        if (std::filesystem::is_directory(residualsPath)) {
+            logFileRel.open(residualsPath / ("logRel" + std::to_string(problem.getComm()->getSize()) + ".txt"));
+            logFileAbs.open(residualsPath / ("logAbs" + std::to_string(problem.getComm()->getSize()) + ".txt"));
+            TEUCHOS_TEST_FOR_EXCEPTION(
+                !logFileRel && !logFileAbs, std::runtime_error,
+                "FEDD::NonLinearSolver: failed to open abs. or rel. log file.")
+        } else {
+            std::cout << "==> Not exporting residual data because directory \"./Residual-logs/\" does "
+                         "not exist.\n";
+        }
+    }
     // Outer Newton iterations
     while (relativeResidual > outerRelTol && residual > outerAbsTol && outerNonLinIts < maxOuterNonLinIts) {
         logGreen("Starting outer Newton iteration: " + std::to_string(outerNonLinIts), mpiComm);
@@ -924,7 +972,10 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
         print(" Abs. residual: ", mpiComm);
         print(residual, mpiComm);
         print("\n", mpiComm);
-
+        if (mpiComm->getRank() == 0 && logFileRel && logFileAbs) {
+            logFileRel << relativeResidual << ", ";
+            logFileAbs << residual << ", ";
+        }
         // Compute the residual of the alternative problem \mathcal{F} = g
         // g fulfills the boundary conditions
         logGreen("Computing nonlinear Schwarz operator", mpiComm);
@@ -985,9 +1036,15 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
 
         outerNonLinIts += 1;
     }
+    if (mpiComm->getRank() == 0 && logFileRel && logFileAbs) {
+        logFileRel << relativeResidual;
+        logFileAbs << residual;
+        logFileRel.close();
+        logFileAbs.close();
+    }
 
-    auto itersVecSubdomains = nonLinearSchwarzOp->getRunStats();
-    auto itersVecCoarse = coarseOperator->getRunStats();
+    auto runStatsLocal = nonLinearSchwarzOp->getRunStats();
+    auto itersCoarse = coarseOperator->getRunStats();
     print("================= Nonlinear Schwarz terminated =========================", mpiComm);
     print("\n\nOuter Newton:", mpiComm, 25);
     print("Rel. residual:", mpiComm, 15);
@@ -1004,16 +1061,43 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     print("mean iters.", mpiComm, 15);
     print("max. iters.", mpiComm, 15);
     print("\n", mpiComm, 25);
-    print(itersVecSubdomains.at(0), mpiComm, 15, 2);
-    print(itersVecSubdomains.at(1), mpiComm, 15, 2);
-    print(itersVecSubdomains.at(2), mpiComm, 15, 2);
+    print(runStatsLocal.minIters, mpiComm, 15, 2);
+    print(runStatsLocal.avgIters, mpiComm, 15, 2);
+    print(runStatsLocal.maxIters, mpiComm, 15, 2);
     if (numLevels == 2) {
         print("\n\nCoarse Newton:", mpiComm, 25);
         print("Iters.", mpiComm, 15);
         print("\n", mpiComm, 25);
-        print(itersVecCoarse.at(0), mpiComm, 15, 2);
+        print(itersCoarse, mpiComm, 15, 2);
     }
     print("\n", mpiComm);
+    print("========================================================================\n", mpiComm);
+    if (mpiComm->getRank() == 0) {
+        std::filesystem::path subdomainSolverPath = "./Subdomain-solver-data";
+        if (std::filesystem::is_directory(subdomainSolverPath)) {
+            std::ofstream itersFile;
+            std::ofstream timingFile;
+            itersFile.open(subdomainSolverPath / ("subdomain-iters-" + std::to_string(mpiComm->getSize()) + ".csv"));
+            timingFile.open(subdomainSolverPath / ("subdomain-timing-" + std::to_string(mpiComm->getSize()) + ".csv"));
+            TEUCHOS_TEST_FOR_EXCEPTION(
+                !itersFile && !timingFile, std::runtime_error,
+                "FEDD::NonLinearSolver: failed to open subdomain-iters.csv or subdomain-timing.csv.")
+            itersFile << "rank, num. iters.\n";
+            timingFile << std::fixed << std::setprecision(std::numeric_limits<double>::max_digits10) << "rank, time\n";
+            for (size_t i = 0; i < runStatsLocal.totalIters.size(); i++) {
+                itersFile << i << ", " << runStatsLocal.totalIters.at(i) << "\n";
+                timingFile << i << ", " << runStatsLocal.totalTimes.at(i) << "\n";
+            }
+            itersFile.close();
+            timingFile.close();
+            TEUCHOS_TEST_FOR_EXCEPTION(
+                !itersFile && !timingFile, std::runtime_error,
+                "FEDD::NonLinearSolver: write to subdomain-iters.csv or subdomain-timing.csv failed.")
+        } else {
+            std::cout << "==> Not exporting subdomain solver data because directory \"./Subdomain-solver-data/\" does "
+                         "not exist.\n";
+        }
+    }
 }
 
 template <class SC, class LO, class GO, class NO>
