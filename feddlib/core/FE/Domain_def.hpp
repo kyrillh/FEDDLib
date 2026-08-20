@@ -261,7 +261,7 @@ void Domain<SC,LO,GO,NO>::buildMesh(int flagsOption , std::string meshType, int 
     }
     meshStructured->buildElementMap();
     meshStructured->setStructuredMeshFlags(flagsOption,FEType);
-    meshStructured->buildSurfaces(flagsOption,FEType);
+    // meshStructured->buildSurfaces(flagsOption,FEType);
     
     mesh_ = meshStructured;
 }

@@ -524,15 +524,15 @@ void NavierStokes<SC,LO,GO,NO>::assembleDivAndStab() const{
     this->system_->addBlock( BT, 0, 1 );
     this->system_->addBlock( B, 1, 0 );
     
-    if ( !this->getFEType(0).compare("P1") ||  !this->getFEType(0).compare("Q1") ) {
+    // if ( !this->getFEType(0).compare("P1") ||  !this->getFEType(0).compare("Q1") ) {
         C.reset(new Matrix_Type( this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow() ) );
-        this->feFactory_->assemblyBDStabilization( this->dim_, this->getFEType(0), C, true);
+        this->feFactory_->assemblyBDStabilization( this->dim_, this->getFEType(1), C, true);
         C->resumeFill();
         C->scale( -1. / ( viscosity * density ) ); // scaled with dynamic viscosity with mu = nu*rho
         C->fillComplete( pressureMap, pressureMap );
         
         this->system_->addBlock( C, 1, 1 );
-    }
+    // }
 
     // Implementation of augmented lagrange. This works in theory, but the resulting matrix changes the nnz pattern and has a wider FE Stenciln than before. This can present an issue for the algebraic overlap.
     // Compare for example to 'ANALYSIS OF AUGMENTED LAGRANGIAN-BASED PRECONDITIONERS FOR THE STEADY INCOMPRESSIBLE NAVIER–STOKES EQUATIONS, MICHELE BENZI AND ZHEN WANG' for the theory behind this.
@@ -817,29 +817,29 @@ void NavierStokes<SC, LO, GO, NO>::reInitSpecificProblemVectors(const Teuchos::R
 }
 
 template <class SC, class LO, class GO, class NO> void NavierStokes<SC, LO, GO, NO>::assembleCoarseConnectivity() {
-    FEDD_TIMER_START(NSAssembleCoarseConnectivity, " - NavierStokes - assembleCoarseConnectivity");
-    if (this->getFEType(0).compare("P1") && this->getFEType(0).compare("Q1")) {
-        TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error,
-                                   "Another assembly routine must be called before calling assembleCoarseConnectivity");
-        auto FEType = this->getFEType(1);
-        auto pressureMap = this->getDomain(1)->getMapUnique();
-        MatrixPtr_Type C(
-            new Matrix_Type(this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow()));
-        this->feFactory_->assemblyBDStabilization(this->dim_, FEType, C, true);
-        C->resumeFill();
-        C->fillComplete(pressureMap, pressureMap);
-        this->system_->addBlock(C, 1, 1);
-    }
+    // FEDD_TIMER_START(NSAssembleCoarseConnectivity, " - NavierStokes - assembleCoarseConnectivity");
+    // if (this->getFEType(0).compare("P1") && this->getFEType(0).compare("Q1")) {
+    //     TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error,
+    //                                "Another assembly routine must be called before calling assembleCoarseConnectivity");
+    //     auto FEType = this->getFEType(1);
+    //     auto pressureMap = this->getDomain(1)->getMapUnique();
+    //     MatrixPtr_Type C(
+    //         new Matrix_Type(this->getDomain(1)->getMapUnique(), this->getDomain(1)->getApproxEntriesPerRow()));
+    //     this->feFactory_->assemblyBDStabilization(this->dim_, FEType, C, true);
+    //     C->resumeFill();
+    //     C->fillComplete(pressureMap, pressureMap);
+    //     this->system_->addBlock(C, 1, 1);
+    // }
 }
 
 template <class SC, class LO, class GO, class NO> void NavierStokes<SC, LO, GO, NO>::removeCoarseConnectivity() {
-    FEDD_TIMER_START(NSRemoveCoarseConnectivity, " - NavierStokes - removeCoarseConnectivity");
-    if (this->getFEType(0).compare("P1") && this->getFEType(0).compare("Q1")) {
-        TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error,
-                                   "Calling removeCoarseConnectivity() on an empty system_ does not make sense.");
-        this->system_->removeBlock(1, 1);
-        this->setBoundariesSystem();
-    }
+    // FEDD_TIMER_START(NSRemoveCoarseConnectivity, " - NavierStokes - removeCoarseConnectivity");
+    // if (this->getFEType(0).compare("P1") && this->getFEType(0).compare("Q1")) {
+    //     TEUCHOS_TEST_FOR_EXCEPTION(this->system_.is_null(), std::runtime_error,
+    //                                "Calling removeCoarseConnectivity() on an empty system_ does not make sense.");
+    //     this->system_->removeBlock(1, 1);
+    //     this->setBoundariesSystem();
+    // }
 }
 }
 
