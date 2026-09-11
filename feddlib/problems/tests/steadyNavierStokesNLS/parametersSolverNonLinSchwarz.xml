@@ -15,6 +15,10 @@
             </ParameterList>
         </ParameterList>
     </ParameterList>
+    <ParameterList name="Solver"> <!-- Solver used by SimpleOverlappingOperator -->
+        <Parameter name="SolverType" type="string" value="Amesos2" />
+        <Parameter name="Solver" type="string" value="KLU2" />
+    </ParameterList>
     <ParameterList name="Outer Newton Nonlinear Schwarz">
         <ParameterList name="Thyra Solver Outer Newton">
             <Parameter name="Linear Solver Type" type="string" value="Belos" />
