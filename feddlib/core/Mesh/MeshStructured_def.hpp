@@ -2515,7 +2515,7 @@ void MeshStructured<SC,LO,GO,NO>::buildMesh2DBFS(std::string FEType,
 }
 
 
-
+// [KH] This uses the Kuhn triangulation resulting in 6 tetrahedra per cube.
 template <class SC, class LO, class GO, class NO>
 void MeshStructured<SC,LO,GO,NO>::buildMesh3DBFS(std::string FEType,
                                                     int N,

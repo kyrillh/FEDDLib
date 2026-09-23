@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     Teuchos::RCP<const Teuchos::Comm<int>> comm = Xpetra::DefaultPlatform::getDefaultPlatform().getComm();
 
-    Teuchos::RCP<StackedTimer> stackedTimer = rcp(new StackedTimer("Nonlinear Schwarz solver", true));
+    Teuchos::RCP<StackedTimer> stackedTimer = rcp(new StackedTimer("Newton solver", true));
     TimeMonitor::setStackedTimer(stackedTimer);
  
     // Command Line Parameters
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
     comm->barrier();
 
     Teuchos::TimeMonitor::report(cout, "FEDD");
-    stackedTimer->stop("Nonlinear Schwarz solver");
+    stackedTimer->stop("Newton solver");
     StackedTimer::OutputOptions options;
     options.output_fraction = options.output_histogram = options.output_minmax = true;
     stackedTimer->report((std::cout), comm, options);

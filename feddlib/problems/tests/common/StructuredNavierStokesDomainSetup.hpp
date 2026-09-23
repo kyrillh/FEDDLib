@@ -2,7 +2,6 @@
 #define FEDDLIB_PROBLEMS_TESTS_COMMON_STRUCTURED_NAVIER_STOKES_DOMAINS_SETUP_HPP
 
 #include "feddlib/core/FE/Domain.hpp"
-#include "feddlib/problems/tests/common/VerboseStructuredDomainStats.hpp"
 
 #include <Teuchos_ScalarTraits.hpp>
 #include <Teuchos_TestForException.hpp>
@@ -42,11 +41,10 @@ struct StructuredNavierStokesDomainResult {
  *   - LDC: same Domain ctor as channel. Height is passed for all three dimensions to get a cube.
  *   - BFS: length = step length; height is unused here (fixed BFS box geometry).
  *
- * Caller should print "-- Building Mesh ..." before calling when verbose.
  */
 template <class SC, class LO, class GO, class NO>
 inline StructuredNavierStokesDomainResult<SC, LO, GO, NO> setupStructuredNavierStokesDomain(
-    const Teuchos::RCP<const Teuchos::Comm<int>> &comm, bool verbose, int dim, const std::string &meshType,
+    const Teuchos::RCP<const Teuchos::Comm<int>> &comm, int dim, const std::string &meshType,
     int active_ranks, int mpi_ranks_coarse_solve, double length, double height, int m,
     const std::string &discPressure, const std::string &discVelocity) {
     StructuredNavierStokesDomainResult<SC, LO, GO, NO> out;
@@ -165,11 +163,6 @@ inline StructuredNavierStokesDomainResult<SC, LO, GO, NO> setupStructuredNavierS
                            std::max(1.0, std::abs(static_cast<double>(active_ranks)));
         TEUCHOS_TEST_FOR_EXCEPTION(std::abs(active_ranks - expected) > tol, std::logic_error,
                                    "Inconsistent activeRanks, length and n in structured BFS mesh.");
-    }
-
-    if (verbose) {
-        printVerboseStructuredDomainStats(dim, meshType, comm->getSize(), mpi_ranks_coarse_solve, active_ranks, length,
-                                          height, n, m);
     }
 
     // flagsOption: 1 channel, 5 LDC, 2 BFS (surface/BC tagging). geometryName selects the Domain/MeshStructured builder.

@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
     MeshPartitioner<SC, LO, GO, NO> partitioner;
 
     const auto structuredDomains = setupStructuredNavierStokesDomain<SC, LO, GO, NO>(
-        comm, verbose, dim, meshType, size, numProcsCoarseSolve, length, height, m, discPressure, discVelocity);
+        comm, dim, meshType, size, numProcsCoarseSolve, length, height, m, discPressure, discVelocity);
     DomainPtr_Type domainPressure = structuredDomains.domainPressure;
     DomainPtr_Type domainVelocity = structuredDomains.domainVelocity;
 
