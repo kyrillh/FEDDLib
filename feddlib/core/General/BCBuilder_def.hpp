@@ -644,33 +644,24 @@ bool BCBuilder<SC,LO,GO,NO>::blockHasDirichletBC(int block, int &loc) const{
 }
 
 template<class SC,class LO,class GO,class NO>
-bool BCBuilder<SC,LO,GO,NO>::findFlag(LO flag, int block, int &loc) const{
-
-#ifdef BCBuilder_TIMER
-    Teuchos::TimeMonitor FindFlagMonitor(*FindFlagTimer_);
-#endif
-
-    bool hasFlag = false;
-    bool found = false;
+bool BCBuilder<SC,LO,GO,NO>::findFlag(LO flag, int block, int &loc, const std::string &type) const {
     loc = -1;
-    std::vector<int>::const_iterator it = vecFlag_.begin();
-    while (it!=vecFlag_.end() && !found) {
-        it = std::find(it,vecFlag_.end(),flag);
-        if (it!=vecFlag_.end()) {
-            loc = distance(vecFlag_.begin(),it);
-            if (vecBlockID_.at(loc)==block) {
-                hasFlag = true;
-                found 	= true;
+    for (size_t i = 0; i < vecFlag_.size(); ++i) {
+        if (type == "") {
+            if (vecFlag_[i] == flag && vecBlockID_[i] == block) {
+                loc = static_cast<int>(i);
+                return true;
             }
-            else{
-                it++;
+
+        } else {
+            if (vecFlag_[i] == flag && vecBlockID_[i] == block && vecBCType_[i] == type) {
+                loc = static_cast<int>(i);
+                return true;
             }
         }
     }
-    
-    return hasFlag;
+    return false;
 }
-
 
 template<class SC,class LO,class GO,class NO>
 void BCBuilder<SC,LO,GO,NO>::setSystemScaled(const BlockMatrixPtr_Type &blockMatrix,double eps) const{

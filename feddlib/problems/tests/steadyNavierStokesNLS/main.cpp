@@ -230,6 +230,11 @@ int main(int argc, char *argv[]) {
     } else {
         TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, "Select a valid BC Type: 'LDC' or 'parabolic'.");
     }
+    // Register coarse-space tags after physical BCs so physical lookup still finds the inflow Dirichlet BC.
+    // if (meshType == "structured_bfs" && bcType == "parabolic") {
+    //     bcFactory->addBC(customBC, 2, 0, domainVelocity, "CustomBC", dim);
+    //     bcFactory->addBC(customBC, 2, 1, domainPressure, "CustomBC", 1);
+    // }
     // The current global solution must be set as the Dirichlet BC on the ghost nodes for nonlinear Schwarz solver
     // to correctly solve on the subdomains
     if (dim == 2) {

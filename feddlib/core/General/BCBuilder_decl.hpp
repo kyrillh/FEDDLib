@@ -232,7 +232,7 @@ public:
     /// @param block 
     /// @param loc 
     /// @return 
-    bool findFlag(LO flag, int block, int &loc) const;
+    bool findFlag(LO flag, int block, int &loc, const std::string &type = "") const;
     
     /// @brief 
     /// @param block 

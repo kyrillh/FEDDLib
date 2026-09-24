@@ -153,7 +153,12 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
             // The vector vecFlag_ contains the flags that have been set with addBC().
             // loc: local index in vecFlag_ of the flag if found. Is set by the function.
             // block: block id in which to search. Needs to be provided to the function.
-            if (problem_->getBCFactory()->findFlag(flag, block, loc)) {
+            // findFlag() finds the first added BC that matches the flag and the block unless a BC type is also
+            // provided. The "usual" of using it is to not provide a BC type as these are usually unique. CustomBC
+            // "hijacks" this in a sence since it may coexist with other boundary types. It is just a flag for the
+            // coarse space construction, not a physical boundary type flag.
+            if (problem_->getBCFactory()->findFlag(flag, block, loc, "CustomBC") ||
+                problem_->getBCFactory()->findFlag(flag, block, loc)) {
                 for (auto j = 0; j < dofsPerNode; j++) {
                     if (problem_->getBCFactory()->getBCType(loc) == "CustomBC") {
                         customBCDofsVec->push_back(repeatedDofsMap->getGlobalElement(dofsPerNode * i + j));
@@ -282,8 +287,13 @@ template <class SC, class LO, class GO, class NO> int CoarseNonLinearSchwarzOper
                 // The vector vecFlag_ contains the flags that have been set with addBC().
                 // loc: local index in vecFlag_ of the flag if found. Is set by the function.
                 // block: block id in which to search. Needs to be provided to the function.
-                // offset is required since FROSch indexes the Dirichlet boundary dofs by their global index
-                if (problem_->getBCFactory()->findFlag(flag, i, loc)) {
+                // offset is required since FROSch indexes the Dirichlet boundary dofs by their global index.
+                // findFlag() finds the first added BC that matches the flag and the block unless a BC type is also
+                // provided. The "usual" of using it is to not provide a BC type as these are usually unique. CustomBC
+                // "hijacks" this in a sence since it may coexist with other boundary types. It is just a flag for the
+                // coarse space construction, not a physical boundary type flag.
+                if (problem_->getBCFactory()->findFlag(flag, i, loc, "CustomBC") ||
+                    problem_->getBCFactory()->findFlag(flag, i, loc)) {
                     for (auto k = 0; k < dofsPerNodeVec[i]; k++) {
                         if (problem_->getBCFactory()->getBCType(loc) == "CustomBC") {
                             tempCustomBCDofs->push_back(
