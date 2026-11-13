@@ -73,7 +73,7 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::NonLinearSchwarzOperator(CommPtr seria
       previousSolutionTmp_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
       residualVecTmp_{Teuchos::rcp(new FEDD::BlockMultiVector<SC, LO, GO, NO>(1))},
       feFactoryTmp_{Teuchos::rcp(new FEDD::FE<SC, LO, GO, NO>())},
-      feFactoryGhostsLocal_{Teuchos::rcp(new FEDD::FE<SC, LO, GO, NO>())}, totalIters_{0} {
+      feFactoryGhostsLocal_{Teuchos::rcp(new FEDD::FE<SC, LO, GO, NO>())}, currentIters_{0}, totalIters_{0} {
 
     // Ensure that the mesh object has been initialized and a dual graph generated
     auto domainVec = problem_->getDomainVector();
@@ -365,7 +365,7 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     SC residual0 = 1.;
     SC relResidual = 1.;
     SC absResidual = 1.;
-    int nlIts = 0;
+    currentIters_ = 0;
 
     // Need to initialize the rhs_ and set boundary values in rhs_
     problem_->assemble();
@@ -380,17 +380,17 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     // Need to update solution_ within each iteration to assemble at u+P_i*g_i but update only g_i
     // This is necessary since u is nonzero on the artificial (interface) zero Dirichlet boundary
     // It would be more efficient to only store u on the boundary and update this value in each iteration
-    while (nlIts < maxNumIts_) {
+    while (currentIters_ < maxNumIts_) {
         problem_->calculateNonLinResidualVec("reverse");
 
         absResidual = problem_->calculateResidualNorm();
 
-        if (nlIts == 0) {
+        if (currentIters_ == 0) {
             residual0 = absResidual;
         }
 
         relResidual = absResidual / residual0;
-        FEDD::logGreen("Inner Newton iteration: " + std::to_string(nlIts), this->MpiComm_);
+        FEDD::logGreen("Inner Newton iteration: " + std::to_string(currentIters_), this->MpiComm_);
         FEDD::print("Absolute residual: ", this->MpiComm_);
         FEDD::print(absResidual, this->MpiComm_, 0, 10);
         FEDD::print("\nRelative residual: ", this->MpiComm_);
@@ -411,20 +411,20 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
         // Not using this value here though so it does not matter
         problem_->solveAndUpdate("", absResidual, this->MpiComm_->getRank(), useBT);
 
-        nlIts++;
+        currentIters_++;
     }
     FEDD_TIMER_STOP(NonLinearSchwarzApplySolve);
     FEDD_TIMER_START(NonLinearSchwarzApplyCleanup, " - Schwarz - apply cleanup");
-    if (nlIts == maxNumIts_) {
+    if (currentIters_ == maxNumIts_) {
         std::cout << "==> Warning!! local nonlinear solver only reached rel. res. = " << relResidual << " after "
-                  << nlIts << " iters. on subdomain " << this->MpiComm_->getRank() << std::endl << std::flush;
+                  << currentIters_ << " iters. on subdomain " << this->MpiComm_->getRank() << std::endl << std::flush;
     }
     FROSCH_ASSERT(relResidual < 1 || absResidual == 0, "FROSch::NonLinearSchwarzOperator: The relative residual is greater than 1 after solving.")
 
     // Set solution_ to g_i
     problem_->solution_->update(ST::one(), *x_, -ST::one());
     FEDD::logGreen("Terminated inner Newton", this->MpiComm_);
-    totalIters_ += nlIts;
+    totalIters_ += currentIters_;
 
     // Nasty hack, but if no iterations have been done, we need to call solve once to initialize the locat direct solver object for SimpleOverlappingOperator
     if (totalIters_ == 0) {
@@ -432,7 +432,7 @@ void NonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVectorPtrFE
     }
 
     if (problem_->getParameterList()->sublist("Parameter").get("Cancel MaxNonLinIts", false)) {
-        TEUCHOS_TEST_FOR_EXCEPTION(nlIts == maxNumIts_, std::runtime_error,
+        TEUCHOS_TEST_FOR_EXCEPTION(currentIters_ == maxNumIts_, std::runtime_error,
                                    "Maximum nonlinear Iterations reached. Problem might have converged in the last "
                                    "step. Still we cancel here.");
     }
@@ -564,22 +564,25 @@ NonLinearSchwarzOperator<SC, LO, GO, NO>::getRunStats() const {
     // Save runtstats for paraview export
     problem_->timingData_->putScalar(totalTime);
     // Teuchos::gather needs a valid receive pointer on every rank, although MPI only writes to it on rank 0.
-    std::vector<int> gatheredIters(rank == 0 ? static_cast<std::size_t>(size) : 1);
-    std::vector<SC> gatheredTimes(rank == 0 ? static_cast<std::size_t>(size) : 1);
-    Teuchos::gather(&totalIters_, 1, gatheredIters.data(), 1, 0, *this->MpiComm_);
-    Teuchos::gather(&totalTime, 1, gatheredTimes.data(), 1, 0, *this->MpiComm_);
+    std::vector<int> gatheredCurrentIters(rank == 0 ? static_cast<std::size_t>(size) : 1);
+    std::vector<int> gatheredTotalIters(rank == 0 ? static_cast<std::size_t>(size) : 1);
+    std::vector<SC> gatheredTotalTimes(rank == 0 ? static_cast<std::size_t>(size) : 1);
+    Teuchos::gather(&currentIters_, 1, gatheredCurrentIters.data(), 1, 0, *this->MpiComm_);
+    Teuchos::gather(&totalIters_, 1, gatheredTotalIters.data(), 1, 0, *this->MpiComm_);
+    Teuchos::gather(&totalTime, 1, gatheredTotalTimes.data(), 1, 0, *this->MpiComm_);
     RunStats result;
 
     if (rank == 0) {
-        result.totalIters = std::move(gatheredIters);
-        result.totalTimes = std::move(gatheredTimes);
+        result.currentIters = std::move(gatheredCurrentIters);
+        result.totalIters = std::move(gatheredTotalIters);
+        result.totalTimes = std::move(gatheredTotalTimes);
 
-        const auto minmax = std::minmax_element(result.totalIters.begin(), result.totalIters.end());
+        const auto minmax = std::minmax_element(result.currentIters.begin(), result.currentIters.end());
         result.minIters = *minmax.first;
         result.maxIters = *minmax.second;
 
         // Accumulate as SC so that division produces a fractional average and to avoid overflowing LO as easily.
-        const SC sum = std::accumulate(result.totalIters.begin(), result.totalIters.end(), SC{0});
+        const SC sum = std::accumulate(result.currentIters.begin(), result.currentIters.end(), SC{0});
         result.avgIters = sum / static_cast<SC>(size);
     }
     return result;

@@ -5,6 +5,7 @@
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/H1Operator.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearH1Operator.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSchwarzOperator.hpp"
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSchwarzOperator.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/SumOperator.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSumOperator.hpp"
 #include "feddlib/problems/Solver/NonLinearSchwarzSolver/SimpleCoarseOperator.hpp"
@@ -14,6 +15,7 @@
 #include "feddlib/problems/abstract/Problem_decl.hpp"
 #include <FROSch_TpetraPreconditioner_decl.hpp>
 #include <Teuchos_Assert.hpp>
+#include <Teuchos_DefaultMpiComm.hpp>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -809,8 +811,8 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     // For LDC call problem.solution_->scale(-1.) and problem.bcFactory_->setBCMinusVector(problem.solution_, problem.solution_).
     // For channel flow problem do not. i.e. we want the initial solution to be zero everywhere.
     // TODO: [KH] Investigate the effect of setting the parabolic inflow in this manner? Can you include a harmonic exension into the interior here too?
-    // problem.solution_->scale(-1.);
-    // problem.bcFactory_->setBCMinusVector(problem.solution_, problem.solution_);
+    problem.solution_->scale(-1.);
+    problem.bcFactory_->setBCMinusVector(problem.solution_, problem.solution_);
     problem.assemble();
     problem.assemble("FixedPoint");
     problem.assemble("Newton");
@@ -1034,6 +1036,7 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
         residual = problem.calculateResidualNorm();
         relativeResidual = residual / residual0;
 
+        logSubdomainSolverData(mpiComm, nonLinearSchwarzOp->getRunStats());
         outerNonLinIts += 1;
     }
     if (mpiComm->getRank() == 0 && logFileRel && logFileAbs) {
@@ -1072,32 +1075,7 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
     }
     print("\n", mpiComm);
     print("========================================================================\n", mpiComm);
-    if (mpiComm->getRank() == 0) {
-        std::filesystem::path subdomainSolverPath = "./Subdomain-solver-data";
-        if (std::filesystem::is_directory(subdomainSolverPath)) {
-            std::ofstream itersFile;
-            std::ofstream timingFile;
-            itersFile.open(subdomainSolverPath / ("subdomain-iters-" + std::to_string(mpiComm->getSize()) + ".csv"));
-            timingFile.open(subdomainSolverPath / ("subdomain-timing-" + std::to_string(mpiComm->getSize()) + ".csv"));
-            TEUCHOS_TEST_FOR_EXCEPTION(
-                !itersFile && !timingFile, std::runtime_error,
-                "FEDD::NonLinearSolver: failed to open subdomain-iters.csv or subdomain-timing.csv.")
-            itersFile << "rank, num. iters.\n";
-            timingFile << std::fixed << std::setprecision(std::numeric_limits<double>::max_digits10) << "rank, time\n";
-            for (size_t i = 0; i < runStatsLocal.totalIters.size(); i++) {
-                itersFile << i << ", " << runStatsLocal.totalIters.at(i) << "\n";
-                timingFile << i << ", " << runStatsLocal.totalTimes.at(i) << "\n";
-            }
-            itersFile.close();
-            timingFile.close();
-            TEUCHOS_TEST_FOR_EXCEPTION(
-                !itersFile && !timingFile, std::runtime_error,
-                "FEDD::NonLinearSolver: write to subdomain-iters.csv or subdomain-timing.csv failed.")
-        } else {
-            std::cout << "==> Not exporting subdomain solver data because directory \"./Subdomain-solver-data/\" does "
-                         "not exist.\n";
-        }
-    }
+    logSubdomainSolverData(mpiComm, runStatsLocal, true);
 }
 
 template <class SC, class LO, class GO, class NO>
@@ -1132,6 +1110,58 @@ int NonLinearSolver<SC, LO, GO, NO>::solveThyraLinOp(Teuchos::RCP<const Thyra::L
         its = 0;
     }
     return its;
+}
+
+template <class SC, class LO, class GO, class NO>
+void NonLinearSolver<SC, LO, GO, NO>::logSubdomainSolverData(const Teuchos::RCP<const Teuchos::Comm<LO>> mpiComm,
+                            const typename FROSch::NonLinearSchwarzOperator<SC, LO, GO, NO>::RunStats runStatsLocal,
+                            const bool logTotals) {
+    if (mpiComm->getRank() == 0) {
+        std::filesystem::path subdomainSolverPath = "./Subdomain-solver-data";
+        if (std::filesystem::is_directory(subdomainSolverPath)) {
+            // Persistent iter counter to keep track of how many times we have called this function
+            static int outerIter = 1;
+            std::ofstream itersFile;
+            std::ofstream timingFile;
+            if (logTotals) {
+                itersFile.open(subdomainSolverPath / ("subdomain-iters-" + std::to_string(mpiComm->getSize()) + ".csv"));
+                timingFile.open(subdomainSolverPath / ("subdomain-timing-" + std::to_string(mpiComm->getSize()) + ".csv"));
+                TEUCHOS_TEST_FOR_EXCEPTION(
+                    !itersFile && !timingFile, std::runtime_error,
+                    "FEDD::NonLinearSolver: failed to open subdomain-iters.csv or subdomain-timing.csv.")
+                itersFile << "rank, num. iters.\n";
+                timingFile << std::fixed << std::setprecision(std::numeric_limits<double>::max_digits10) << "rank, time\n";
+                for (size_t i = 0; i < runStatsLocal.totalIters.size(); i++) {
+                    itersFile << i << ", " << runStatsLocal.totalIters.at(i) << "\n";
+                    timingFile << i << ", " << runStatsLocal.totalTimes.at(i) << "\n";
+                }
+                itersFile.close();
+                timingFile.close();
+                TEUCHOS_TEST_FOR_EXCEPTION(
+                    !itersFile && !timingFile, std::runtime_error,
+                    "FEDD::NonLinearSolver: write to subdomain-iters.csv or subdomain-timing.csv failed.")
+            } else {
+                // Create a clean slate when calling this function for the first time during a solve
+                if (outerIter == 1) {
+                    std::filesystem::remove_all(subdomainSolverPath / (std::to_string(mpiComm->getSize()) + "-ranks"));
+                    std::filesystem::create_directories(subdomainSolverPath / (std::to_string(mpiComm->getSize()) + "-ranks"));
+                }
+                itersFile.open(subdomainSolverPath / (std::to_string(mpiComm->getSize()) + "-ranks") / ("subdomain-iters-at-outer-iter-" + std::to_string(outerIter++) + ".csv"));
+                TEUCHOS_TEST_FOR_EXCEPTION(!itersFile, std::runtime_error,
+                                           "FEDD::NonLinearSolver: failed to open subdomain-iters.csv.")
+                itersFile << "rank, num. iters.\n";
+                for (size_t i = 0; i < runStatsLocal.currentIters.size(); i++) {
+                    itersFile << i << ", " << runStatsLocal.currentIters.at(i) << "\n";
+                }
+                itersFile.close();
+                TEUCHOS_TEST_FOR_EXCEPTION(!itersFile, std::runtime_error,
+                                           "FEDD::NonLinearSolver: write to subdomain-iters.csv failed.")
+            }
+        } else {
+            std::cout << "==> Not exporting subdomain solver data because directory \"./Subdomain-solver-data/\" does "
+                         "not exist.\n";
+        }
+    }
 }
 } // namespace FEDD
 #endif

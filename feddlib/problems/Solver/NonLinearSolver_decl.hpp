@@ -1,5 +1,6 @@
 #ifndef NONLINEARSOLVER_DECL_hpp
 #define NONLINEARSOLVER_DECL_hpp
+#include "feddlib/problems/Solver/NonLinearSchwarzSolver/NonLinearSchwarzOperator.hpp"
 #include "feddlib/problems/problems_config.h"
 #include "feddlib/problems/abstract/NonLinearProblem.hpp"
 #include "feddlib/problems/abstract/TimeProblem.hpp"
@@ -164,12 +165,30 @@ private:
     */
     void solveExtrapolation(TimeProblem_Type& problem, double time);
     // ########## Nonlinear Schwarz related ##############
+    /*!
+        \brief Solve a nonlinear problem with the two-level nonlinear Schwarz method
+		@param[in] problem object containing the problem to be solved
+    */
     void solveNonLinearSchwarz(NonLinearProblem_Type &problem);
 
+    /*!
+        \brief Helper function for the two-level nonlinear Schwarz method that implements a linear solver
+		@param[in] thyraX linear operator object representing the matrix to be inverted in Ax = b
+        @param[in] thyraB the rhs vector b
+        @param[in] parameterList linear solver parameter list
+        @param[in] verbose control what is logged by the linear solver
+    */
     int solveThyraLinOp(Teuchos::RCP<const Thyra::LinearOpBase<SC>> thyraLinOp,
                         Teuchos::RCP<Thyra::MultiVectorBase<SC>> thyraX,
                         Teuchos::RCP<const Thyra::MultiVectorBase<SC>> thyraB, ParameterListPtr_Type parameterList,
                         bool verbose = false);
+    /*!
+        \brief Helper function for the two-level nonlinear Schwarz method that logs the number of nonlinear iterations
+       required on each subdomain in each outer iteration.
+    */
+    void logSubdomainSolverData(const Teuchos::RCP<const Teuchos::Comm<LO>> mpiComm,
+                                const typename FROSch::NonLinearSchwarzOperator<SC, LO, GO, NO>::RunStats runStatsLocal,
+                                const bool logTotals = false);
 
     enum class NonlinSchwarzVariant { ASPIN, ASPEN };
 // ###################################################

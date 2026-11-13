@@ -53,8 +53,13 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
 
   public:
     struct RunStats {
-        std::vector<int> totalIters; // Ordered by rank; nonempty only on rank 0
-        std::vector<SC> totalTimes; // Ordered by rank; nonempty only on rank 0
+        // Following vectors are ordered by rank; nonempty only on rank 0
+        // Number of iterations required in the last local solve
+        std::vector<int> currentIters;
+        // Accumulated local iters required since solving commenced
+        std::vector<int> totalIters;
+        // Accumllated time since solving commenced. Corresponds to totalIters
+        std::vector<SC> totalTimes;
         LO minIters = 0;
         SC avgIters = 0;
         LO maxIters = 0;
@@ -145,6 +150,7 @@ class NonLinearSchwarzOperator : public SchwarzOperator<SC, LO, GO, NO>, public 
     Teuchos::RCP<FEDD::FE<SC, LO, GO, NO>> feFactoryTmp_;
     Teuchos::RCP<FEDD::FE<SC, LO, GO, NO>> feFactoryGhostsLocal_;
     // Store total iteration count of inner Newton methods over all calls to apply()
+    int currentIters_;
     int totalIters_;
 };
 
