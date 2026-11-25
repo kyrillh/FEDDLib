@@ -868,8 +868,10 @@ void NonLinearSolver<SC, LO, GO, NO>::solveNonLinearSchwarz(NonLinearProblem_Typ
         problem.setBoundariesSystem();
         tempMat = Teuchos::rcp_const_cast<const Xpetra::Matrix<SC, LO, GO, NO>>(toXpetraMatrix(problem.system_->getMergedMatrix()->getTpetraMatrixNonConst()));
         coarseOperator->resetMatrix(tempMat);
-        coarseOperator->compute();
-
+        if (problem.getParameterList()->sublist("Exporter").get("Export coarse functions", false) ||
+            problem.getParameterList()->sublist("Coarse Nonlinear Schwarz").get("Reuse: Coarse Basis", true)) {
+            coarseOperator->compute();
+        }
         if (problem.getParameterList()->sublist("Exporter").get("Export coarse functions", false)) {
             coarseOperator->exportCoarseBasis();
         }

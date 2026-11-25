@@ -359,7 +359,7 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
     problem_->setBoundaries();
 
     // Set solution_ to be u+P_0*g_0. g_0 is zero on the boundary, simulating P_0 locally
-    // x_ corresponds to u and problem_->solution_ corresponds to g_0
+    // x_ corresponds to u and problem_->solution_ corresponds to g_0, which is zero at this point due to initializeProblem()
     // this = alpha*xTmp + beta*this
     problem_->solution_->update(ST::one(), *x_, -ST::one());
 
@@ -370,6 +370,17 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
 
         problem_->calculateNonLinResidualVec("reverse");
 
+        problem_->assemble("Newton");
+        // After this rows corresponding to Dirichlet nodes are unity and residualVec_ = 0
+        problem_->setBoundariesSystem();
+        // Update the coarse matrix and the coarse solver (coarse factorization)
+        this->K_ = FEDD::toXpetraMatrix(problem_->system_->getMergedMatrix()->getTpetraMatrixNonConst());
+        // Update the coarse space if desired. Done here so that the newly assembled Jacobian is used
+        if (!this->ParameterList_->get("Reuse: Coarse Basis", true) && nlIts == 0){
+            this->compute();
+        } else {
+            this->setUpCoarseOperator();
+        }
         // Restrict the residual to the coarse space
         this->applyPhiT(
             *Xpetra::toXpetra(problem_->getResidualVector()->getMergedVectorNonConst()->getTpetraMultiVectorNonConst()),
@@ -390,15 +401,6 @@ void CoarseNonLinearSchwarzOperator<SC, LO, GO, NO>::apply(const BlockMultiVecto
         FEDD::print("\nRelative residual: ", this->MpiComm_);
         FEDD::print(relResidual, this->MpiComm_, 0, 10);
         FEDD::print("\n", this->MpiComm_);
-
-        problem_->assemble("Newton");
-
-        // After this rows corresponding to Dirichlet nodes are unity and residualVec_ = 0
-        problem_->setBoundariesSystem();
-
-        // Update the coarse matrix and the coarse solver (coarse factorization)
-        this->K_ = FEDD::toXpetraMatrix(problem_->system_->getMergedMatrix()->getTpetraMatrixNonConst());
-        this->setUpCoarseOperator();
 
         if (relResidual < relNewtonTol_ || absResidual < absNewtonTol_) {
             break;
